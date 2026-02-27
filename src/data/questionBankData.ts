@@ -1,0 +1,752 @@
+// Bangla EdTech Question Bank Data
+
+export interface SubjectData {
+  id: string;
+  name: string;
+  nameBn: string;
+  // link to one of `classOptions` (e.g. 'hsc', 'ssc', 'university')
+  classId: string;
+  // link to one of `subjectGroups` (e.g. 'hsc-science', 'admission')
+  groupId: string;
+  icon: string;
+  color: string;
+  bgColor: string;
+  isFree: boolean;
+  chapters: ChapterData[];
+}
+
+export interface ChapterData {
+  id: string;
+  name: string;
+  nameBn: string;
+  questionCount: number;
+}
+
+export const subjectGroups = [
+  { id: "hsc-common", label: "HSC -সাধারণ" },
+  { id: "hsc-science", label: "HSC - বিজ্ঞান" },
+  { id: "hsc-arts", label: "HSC - মানবিক" },
+  { id: "hsc-commerce", label: "HSC - বাণিজ্য" },
+  { id: "ssc-common", label: "SSC -সাধারণ" },
+  { id: "ssc-science", label: "SSC - বিজ্ঞান" },
+  { id: "ssc-arts", label: "SSC - মানবিক" },
+  { id: "ssc-commerce", label: "SSC - বাণিজ্য" },
+];
+
+export const classOptions = [
+  { id: "hsc", label: "HSC" },
+  { id: "ssc", label: "SSC" },
+  { id: "university", label: "University" },
+];
+
+export const subjectsData: SubjectData[] = [
+  {
+    id: "bangla-1",
+    name: "Bangla 1st Paper",
+    nameBn: "বাংলা ১ম পত্র",
+    classId: "hsc",
+    groupId: "hsc-common",
+    icon: "📘",
+    color: "text-red-600",
+    bgColor: "bg-red-50",
+    isFree: true,
+    chapters: [
+      { id: "ba1-ch12", name: "Poetry Section", nameBn: "কবিতা অংশ", questionCount: 80 },
+      { id: "ba1-ch13", name: "Prose Section", nameBn: "গদ্য অংশ", questionCount: 85 },
+      { id: "ba1-ch3", name: "Drama", nameBn: "নাটক", questionCount: 40 },
+    ],
+  },
+  {
+    id: "bangla-2",
+    name: "Bangla 2nd Paper",
+    nameBn: "বাংলা ২য় পত্র",
+    classId: "hsc",
+    groupId: "hsc-common",
+    icon: "📝",
+    color: "text-pink-600",
+    bgColor: "bg-pink-50",
+    isFree: true,
+    chapters: [
+      { id: "ba2-ch1", name: "Grammar", nameBn: "ব্যাকরণ", questionCount: 100 },
+      { id: "ba2-ch2", name: "Composition", nameBn: "রচনা", questionCount: 70 },
+    ],
+  },
+  {
+    id: "english-1",
+    name: "English 1st Paper",
+    nameBn: "ইংরেজি ১ম পত্র",
+    classId: "hsc",
+    groupId: "hsc-common",
+    icon: "📖",
+    color: "text-blue-600",
+    bgColor: "bg-blue-50",
+    isFree: true,
+    chapters: [
+      { id: "en1-ch1", name: "Seen Passage", nameBn: "Seen Passage", questionCount: 90 },
+      { id: "en1-ch2", name: "Unseen Passage", nameBn: "Unseen Passage", questionCount: 75 },
+      { id: "en1-ch3", name: "Writing Part", nameBn: "Writing Part", questionCount: 85 },
+    ],
+  },
+  {
+    id: "english-2",
+    name: "English 2nd Paper",
+    nameBn: "ইংরেজি ২য় পত্র",
+    classId: "hsc",
+    groupId: "hsc-common",
+    icon: "✍️",
+    color: "text-indigo-600",
+    bgColor: "bg-indigo-50",
+    isFree: true,
+    chapters: [
+      { id: "en2-ch1", name: "Grammar", nameBn: "Grammar", questionCount: 120 },
+      { id: "en2-ch2", name: "Composition", nameBn: "Composition", questionCount: 80 },
+    ],
+  },
+  {
+    id: "ict-1",
+    name: "ICT",
+    nameBn: "তথ্য ও যোগাযোগ প্রযুক্তি",
+    classId: "hsc",
+    groupId: "hsc-common",
+    icon: "💻",
+    color: "text-green-600",
+    bgColor: "bg-green-50",
+    isFree: true,
+    chapters: [
+      { id: "ict-ch1", name: "Computer Basics", nameBn: "কম্পিউটার ভিত্তি", questionCount: 50 },
+      { id: "ict-ch2", name: "MS Office", nameBn: "এমএস অফিস", questionCount: 60 },
+      { id: "ict-ch3", name: "Internet & Email", nameBn: "ইন্টারনেট ও ইমেইল", questionCount: 40 },
+    ],
+  },
+  {
+    id: "higher-math-1",
+    name: "Higher Math 1st Paper",
+    nameBn: "উচ্চতর গণিত ১ম পত্র",
+    classId: "hsc",
+    groupId: "hsc-science",
+    icon: "📐",
+    color: "text-blue-600",
+    bgColor: "bg-blue-50",
+    isFree: true,
+    chapters: [
+      { id: "hm1-ch1", name: "Matrix & Determinant", nameBn: "অধ্যায়-০১: ম্যাট্রিক্স ও নির্ণায়ক", questionCount: 45 },
+      { id: "hm1-ch2", name: "Set & Function", nameBn: "অধ্যায়-০২: সেট ও ফাংশন", questionCount: 38 },
+      { id: "hm1-ch3", name: "Straight Line", nameBn: "অধ্যায়-০৩: সরলরেখা", questionCount: 52 },
+      { id: "hm1-ch4", name: "Circle", nameBn: "অধ্যায়-০৪: বৃত্ত", questionCount: 41 },
+      { id: "hm1-ch5", name: "Trigonometric Ratios", nameBn: "অধ্যায়-০৫: ত্রিকোণমিতিক অনুপাত", questionCount: 35 },
+      { id: "hm1-ch6", name: "Vectors", nameBn: "অধ্যায়-০৬: ভেক্টর", questionCount: 28 },
+      { id: "hm1-ch7", name: "Differentiation", nameBn: "অধ্যায়-০৭: অন্তরীকরণ", questionCount: 60 },
+      { id: "hm1-ch8", name: "Integration", nameBn: "অধ্যায়-০৮: যোগজীকরণ", questionCount: 55 },
+      { id: "hm1-ch9", name: "Probability", nameBn: "অধ্যায়-০৯: সম্ভাবনা", questionCount: 30 },
+      { id: "hm1-ch10", name: "Complex Numbers", nameBn: "অধ্যায়-১০: জটিল সংখ্যা", questionCount: 25 },
+    ],
+  },
+  {
+    id: "higher-math-2",
+    name: "Higher Math 2nd Paper",
+    nameBn: "উচ্চতর গণিত ২য় পত্র",
+    classId: "hsc",
+    groupId: "hsc-science",
+    icon: "📊",
+    color: "text-indigo-600",
+    bgColor: "bg-indigo-50",
+    isFree: true,
+    chapters: [
+      { id: "hm2-ch1", name: "Real Numbers", nameBn: "অধ্যায়-০১: বাস্তব সংখ্যা", questionCount: 32 },
+      { id: "hm2-ch2", name: "Logarithm", nameBn: "অধ্যায়-০২: লগারিদম", questionCount: 28 },
+      { id: "hm2-ch3", name: "Sequence & Series", nameBn: "অধ্যায়-০৩: অনুক্রম ও ধারা", questionCount: 40 },
+      { id: "hm2-ch4", name: "Permutation & Combination", nameBn: "অধ্যায়-০৪: বিন্যাস ও সমাবেশ", questionCount: 36 },
+      { id: "hm2-ch5", name: "Binomial Expansion", nameBn: "অধ্যায়-০৫: দ্বিপদী বিস্তৃতি", questionCount: 22 },
+    ],
+  },
+  {
+    id: "physics-1",
+    name: "Physics 1st Paper",
+    nameBn: "পদার্থবিজ্ঞান ১ম পত্র",
+    classId: "hsc",
+    groupId: "hsc-science",
+    icon: "⚛️",
+    color: "text-orange-600",
+    bgColor: "bg-orange-50",
+    isFree: true,
+    chapters: [
+      { id: "ph1-ch1", name: "Physical World & Measurement", nameBn: "অধ্যায়-০১: ভৌত জগৎ ও পরিমাপ", questionCount: 35 },
+      { id: "ph1-ch2", name: "Vector", nameBn: "অধ্যায়-০২: ভেক্টর", questionCount: 42 },
+      { id: "ph1-ch3", name: "Dynamics", nameBn: "অধ্যায়-০৩: গতিবিদ্যা", questionCount: 55 },
+      { id: "ph1-ch4", name: "Newton's Laws", nameBn: "অধ্যায়-০৪: নিউটনের গতিসূত্র", questionCount: 48 },
+      { id: "ph1-ch5", name: "Work, Energy & Power", nameBn: "অধ্যায়-০৫: কাজ, শক্তি ও ক্ষমতা", questionCount: 38 },
+      { id: "ph1-ch6", name: "Gravity", nameBn: "অধ্যায়-০৬: মহাকর্ষ ও অভিকর্ষ", questionCount: 30 },
+      { id: "ph1-ch7", name: "Properties of Matter", nameBn: "অধ্যায়-০৭: পদার্থের গুণাবলি", questionCount: 25 },
+      { id: "ph1-ch8", name: "Oscillation & Waves", nameBn: "অধ্যায়-০৮: পর্যাবৃত্ত গতি", questionCount: 40 },
+    ],
+  },
+  {
+    id: "physics-2",
+    name: "Physics 2nd Paper",
+    nameBn: "পদার্থবিজ্ঞান ২য় পত্র",
+    classId: "hsc",
+    groupId: "hsc-science",
+    icon: "🔌",
+    color: "text-yellow-600",
+    bgColor: "bg-yellow-50",
+    isFree: true,
+    chapters: [
+      { id: "ph2-ch1", name: "Heat & Thermodynamics", nameBn: "অধ্যায়-০১: তাপগতিবিদ্যা", questionCount: 38 },
+      { id: "ph2-ch2", name: "Static Electricity", nameBn: "অধ্যায়-০২: স্থির তড়িৎ", questionCount: 45 },
+      { id: "ph2-ch3", name: "Current Electricity", nameBn: "অধ্যায়-০৩: চল তড়িৎ", questionCount: 50 },
+      { id: "ph2-ch4", name: "Magnetism", nameBn: "অধ্যায়-০৪: চুম্বকত্ব", questionCount: 32 },
+      { id: "ph2-ch5", name: "Modern Physics", nameBn: "অধ্যায়-০৫: আধুনিক পদার্থবিজ্ঞান", questionCount: 40 },
+    ],
+  },
+  {
+    id: "chemistry-1",
+    name: "Chemistry 1st Paper",
+    nameBn: "রসায়ন ১ম পত্র",
+    classId: "hsc",
+    groupId: "hsc-science",
+    icon: "🧪",
+    color: "text-green-600",
+    bgColor: "bg-green-50",
+    isFree: true,
+    chapters: [
+      { id: "ch1-ch1", name: "Atomic Structure", nameBn: "অধ্যায়-০১: ল্যাবরেটরির নিরাপত্তা", questionCount: 20 },
+      { id: "ch1-ch2", name: "Qualitative Analysis", nameBn: "অধ্যায়-০২: গুণগত রসায়ন", questionCount: 35 },
+      { id: "ch1-ch3", name: "Periodic Table", nameBn: "অধ্যায়-০৩: মৌলের পর্যায়বৃত্ত ধর্ম", questionCount: 42 },
+      { id: "ch1-ch4", name: "Chemical Bonds", nameBn: "অধ্যায়-০৪: রাসায়নিক বন্ধন", questionCount: 48 },
+      { id: "ch1-ch5", name: "States of Matter", nameBn: "অধ্যায়-০৫: পদার্থের অবস্থা", questionCount: 30 },
+    ],
+  },
+  {
+    id: "chemistry-2",
+    name: "Chemistry 2nd Paper",
+    nameBn: "রসায়ন ২য় পত্র",
+    classId: "hsc",
+    groupId: "hsc-science",
+    icon: "⚗️",
+    color: "text-teal-600",
+    bgColor: "bg-teal-50",
+    isFree: true,
+    chapters: [
+      { id: "ch2-ch1", name: "Environmental Chemistry", nameBn: "অধ্যায়-০১: পরিবেশ রসায়ন", questionCount: 25 },
+      { id: "ch2-ch2", name: "Organic Chemistry", nameBn: "অধ্যায়-০২: জৈব রসায়ন", questionCount: 55 },
+      { id: "ch2-ch3", name: "Quantitative Analysis", nameBn: "অধ্যায়-০৩: পরিমাণগত রসায়ন", questionCount: 40 },
+      { id: "ch2-ch4", name: "Electrochemistry", nameBn: "অধ্যায়-০৪: তড়িৎ রসায়ন", questionCount: 35 },
+    ],
+  },
+  {
+    id: "biology-1",
+    name: "Biology 1st Paper",
+    nameBn: "জীববিজ্ঞান ১ম পত্র",
+    classId: "hsc",
+    groupId: "hsc-science",
+    icon: "🧬",
+    color: "text-emerald-600",
+    bgColor: "bg-emerald-50",
+    isFree: true,
+    chapters: [
+      { id: "bi1-ch1", name: "Cell Biology", nameBn: "অধ্যায়-০১: কোষ ও এর গঠন", questionCount: 45 },
+      { id: "bi1-ch2", name: "Cell Division", nameBn: "অধ্যায়-০২: কোষ বিভাজন", questionCount: 38 },
+      { id: "bi1-ch3", name: "Plant Tissue", nameBn: "অধ্যায়-০৩: কলা ও টিস্যু তন্ত্র", questionCount: 32 },
+      { id: "bi1-ch4", name: "Plant Physiology", nameBn: "অধ্যায়-০৪: উদ্ভিদ শারীরতত্ত্ব", questionCount: 50 },
+      { id: "bi1-ch5", name: "Ecology", nameBn: "অধ্যায়-০৫: বাস্তুবিদ্যা", questionCount: 28 },
+    ],
+  },
+  {
+    id: "biology-2",
+    name: "Biology 2nd Paper",
+    nameBn: "জীববিজ্ঞান ২য় পত্র",
+    classId: "hsc",
+    groupId: "hsc-science",
+    icon: "🦠",
+    color: "text-pink-600",
+    bgColor: "bg-pink-50",
+    isFree: true,
+    chapters: [
+      { id: "bi2-ch1", name: "Animal Diversity", nameBn: "অধ্যায়-০১: প্রাণীর বৈচিত্র্য", questionCount: 40 },
+      { id: "bi2-ch2", name: "Animal Identity", nameBn: "অধ্যায়-০২: প্রাণীর পরিচিতি", questionCount: 35 },
+      { id: "bi2-ch3", name: "Human Physiology", nameBn: "অধ্যায়-০৩: মানব শারীরতত্ত্ব", questionCount: 55 },
+      { id: "bi2-ch4", name: "Genetics", nameBn: "অধ্যায়-০৪: বংশগতি ও বিবর্তন", questionCount: 42 },
+    ],
+  },
+  // ================= হিসাববিজ্ঞান =================
+  {
+    id: "accounting-1",
+    name: "Accounting 1st Paper",
+    nameBn: "হিসাববিজ্ঞান ১ম পত্র",
+    classId: "hsc",
+    groupId: "hsc-commerce",
+    icon: "📘",
+    color: "text-indigo-600",
+    bgColor: "bg-indigo-50",
+    isFree: true,
+    chapters: [
+      { id: "acc1-ch1", name: "Introduction", nameBn: "হিসাববিজ্ঞান পরিচিতি", questionCount: 60 },
+      { id: "acc1-ch2", name: "Transaction", nameBn: "লেনদেন", questionCount: 70 },
+      { id: "acc1-ch3", name: "Journal", nameBn: "জাবেদা", questionCount: 75 },
+      { id: "acc1-ch4", name: "Ledger", nameBn: "খতিয়ান", questionCount: 65 },
+      { id: "acc1-ch5", name: "Trial Balance", nameBn: "রেওয়ামিল", questionCount: 55 },
+    ],
+  },
+  {
+    id: "accounting-2",
+    name: "Accounting 2nd Paper",
+    nameBn: "হিসাববিজ্ঞান ২য় পত্র",
+    classId: "hsc",
+    groupId: "hsc-commerce",
+    icon: "📊",
+    color: "text-blue-600",
+    bgColor: "bg-blue-50",
+    isFree: true,
+    chapters: [
+      { id: "acc2-ch1", name: "Financial Statement", nameBn: "আর্থিক বিবরণী", questionCount: 80 },
+      { id: "acc2-ch2", name: "Partnership", nameBn: "অংশীদারী ব্যবসা", questionCount: 70 },
+      { id: "acc2-ch3", name: "Company Account", nameBn: "কোম্পানি হিসাব", questionCount: 65 },
+    ],
+  },
+  // ================= ব্যবসায় সংগঠন =================
+  {
+    id: "business-org-1",
+    name: "Business Organization 1st Paper",
+    nameBn: "ব্যবসায় সংগঠন ১ম পত্র",
+    classId: "hsc",
+    groupId: "hsc-commerce",
+    icon: "🏢",
+    color: "text-purple-600",
+    bgColor: "bg-purple-50",
+    isFree: true,
+    chapters: [
+      { id: "bo1-ch1", name: "Business Concept", nameBn: "ব্যবসার ধারণা", questionCount: 60 },
+      { id: "bo1-ch2", name: "Business Environment", nameBn: "ব্যবসায় পরিবেশ", questionCount: 55 },
+      { id: "bo1-ch3", name: "Management", nameBn: "ব্যবস্থাপনা", questionCount: 70 },
+    ],
+  },
+  {
+    id: "business-org-2",
+    name: "Business Organization 2nd Paper",
+    nameBn: "ব্যবসায় সংগঠন ২য় পত্র",
+    classId: "hsc",
+    groupId: "hsc-commerce",
+    icon: "📋",
+    color: "text-fuchsia-600",
+    bgColor: "bg-fuchsia-50",
+    isFree: true,
+    chapters: [
+      { id: "bo2-ch1", name: "Marketing", nameBn: "বিপণন", questionCount: 65 },
+      { id: "bo2-ch2", name: "Human Resource", nameBn: "মানবসম্পদ ব্যবস্থাপনা", questionCount: 60 },
+    ],
+  },
+
+  // ================= অর্থায়ন ও ব্যাংকিং =================
+  {
+    id: "finance-1",
+    name: "Finance & Banking 1st Paper",
+    nameBn: "অর্থায়ন ও ব্যাংকিং ১ম পত্র",
+    classId: "hsc",
+    groupId: "hsc-commerce",
+    icon: "🏦",
+    color: "text-teal-600",
+    bgColor: "bg-teal-50",
+    isFree: true,
+    chapters: [
+      { id: "fb1-ch1", name: "Finance Concept", nameBn: "অর্থায়নের ধারণা", questionCount: 55 },
+      { id: "fb1-ch2", name: "Banking System", nameBn: "ব্যাংকিং ব্যবস্থা", questionCount: 60 },
+      { id: "fb1-ch3", name: "Central Bank", nameBn: "কেন্দ্রীয় ব্যাংক", questionCount: 45 },
+    ],
+  },
+  {
+    id: "finance-2",
+    name: "Finance & Banking 2nd Paper",
+    nameBn: "অর্থায়ন ও ব্যাংকিং ২য় পত্র",
+    classId: "hsc",
+    groupId: "hsc-commerce",
+    icon: "💰",
+    color: "text-green-600",
+    bgColor: "bg-green-50",
+    isFree: true,
+    chapters: [
+      { id: "fb2-ch1", name: "Capital Market", nameBn: "পুঁজিবাজার", questionCount: 65 },
+      { id: "fb2-ch2", name: "Insurance", nameBn: "বীমা", questionCount: 50 },
+    ],
+  },
+   // ================= ইতিহাস =================
+  {
+    id: "history-1",
+    name: "History 1st Paper",
+    nameBn: "ইতিহাস ১ম পত্র",
+    classId: "hsc",
+    groupId: "hsc-arts",
+    icon: "📜",
+    color: "text-amber-600",
+    bgColor: "bg-amber-50",
+    isFree: true,
+    chapters: [
+      { id: "his1-ch1", name: "Ancient Civilization", nameBn: "প্রাচীন সভ্যতা", questionCount: 45 },
+      { id: "his1-ch2", name: "Medieval Period", nameBn: "মধ্যযুগ", questionCount: 40 },
+      { id: "his1-ch3", name: "British India", nameBn: "ব্রিটিশ শাসন", questionCount: 60 },
+      { id: "his1-ch4", name: "Liberation War", nameBn: "মুক্তিযুদ্ধ", questionCount: 70 },
+    ],
+  },
+  {
+    id: "history-2",
+    name: "History 2nd Paper",
+    nameBn: "ইতিহাস ২য় পত্র",
+    classId: "hsc",
+    groupId: "hsc-arts",
+    icon: "🏺",
+    color: "text-yellow-600",
+    bgColor: "bg-yellow-50",
+    isFree: true,
+    chapters: [
+      { id: "his2-ch1", name: "World History", nameBn: "বিশ্ব ইতিহাস", questionCount: 65 },
+      { id: "his2-ch2", name: "Modern World", nameBn: "আধুনিক বিশ্ব", questionCount: 55 },
+    ],
+  },
+
+  // ================= পৌরনীতি =================
+  {
+    id: "civics-1",
+    name: "Civics 1st Paper",
+    nameBn: "পৌরনীতি ১ম পত্র",
+    classId: "hsc",
+    groupId: "hsc-arts",
+    icon: "🏛️",
+    color: "text-green-600",
+    bgColor: "bg-green-50",
+    isFree: true,
+    chapters: [
+      { id: "civ1-ch1", name: "State", nameBn: "রাষ্ট্র", questionCount: 35 },
+      { id: "civ1-ch2", name: "Citizenship", nameBn: "নাগরিকত্ব", questionCount: 30 },
+      { id: "civ1-ch3", name: "Constitution", nameBn: "সংবিধান", questionCount: 45 },
+      { id: "civ1-ch4", name: "Good Governance", nameBn: "সুশাসন", questionCount: 40 },
+    ],
+  },
+  {
+    id: "civics-2",
+    name: "Civics 2nd Paper",
+    nameBn: "পৌরনীতি ২য় পত্র",
+    classId: "hsc",
+    groupId: "hsc-arts",
+    icon: "⚖️",
+    color: "text-teal-600",
+    bgColor: "bg-teal-50",
+    isFree: true,
+    chapters: [
+      { id: "civ2-ch1", name: "Government System", nameBn: "সরকার ব্যবস্থা", questionCount: 50 },
+      { id: "civ2-ch2", name: "Political Parties", nameBn: "রাজনৈতিক দল", questionCount: 40 },
+    ],
+  },
+
+  // ================= অর্থনীতি =================
+  {
+    id: "economics-1-arts",
+    name: "Economics 1st Paper",
+    nameBn: "অর্থনীতি ১ম পত্র",
+    classId: "hsc",
+    groupId: "hsc-arts",
+    icon: "📊",
+    color: "text-emerald-600",
+    bgColor: "bg-emerald-50",
+    isFree: true,
+    chapters: [
+      { id: "eco1-ch1", name: "Basic Concepts", nameBn: "মৌলিক ধারণা", questionCount: 50 },
+      { id: "eco1-ch2", name: "Demand & Supply", nameBn: "চাহিদা ও যোগান", questionCount: 60 },
+      { id: "eco1-ch3", name: "Production", nameBn: "উৎপাদন", questionCount: 55 },
+    ],
+  },
+  {
+    id: "economics-2-arts",
+    name: "Economics 2nd Paper",
+    nameBn: "অর্থনীতি ২য় পত্র",
+    classId: "hsc",
+    groupId: "hsc-arts",
+    icon: "📈",
+    color: "text-lime-600",
+    bgColor: "bg-lime-50",
+    isFree: true,
+    chapters: [
+      { id: "eco2-ch1", name: "Macro Economics", nameBn: "ম্যাক্রো অর্থনীতি", questionCount: 65 },
+      { id: "eco2-ch2", name: "National Income", nameBn: "জাতীয় আয়", questionCount: 50 },
+    ],
+  },
+  // ================= Common Subjects =================
+  {
+    id: "bangla-1",
+    name: "Bangla 1st Paper",
+    nameBn: "বাংলা ১ম পত্র",
+    classId: "ssc",
+    groupId: "ssc-common",
+    icon: "📘",
+    color: "text-red-600",
+    bgColor: "bg-red-50",
+    isFree: true,
+    chapters: [
+      { id: "ba1-ch12", name: "Poetry", nameBn: "কবিতা", questionCount: 80 },
+      { id: "ba1-ch12", name: "Prose", nameBn: "গদ্য", questionCount: 85 },
+      { id: "ba1-ch124", name: "Drama", nameBn: "নাটক", questionCount: 40 },
+    ],
+  },
+  {
+    id: "bangla-2",
+    name: "Bangla 2nd Paper",
+    nameBn: "বাংলা ২য় পত্র",
+    classId: "ssc",
+    groupId: "ssc-common",
+    icon: "📝",
+    color: "text-pink-600",
+    bgColor: "bg-pink-50",
+    isFree: true,
+    chapters: [
+      { id: "ba2-ch1", name: "Grammar", nameBn: "ব্যাকরণ", questionCount: 100 },
+      { id: "ba2-ch2", name: "Composition", nameBn: "রচনা", questionCount: 70 },
+    ],
+  },
+  {
+    id: "english-1",
+    name: "English 1st Paper",
+    nameBn: "ইংরেজি ১ম পত্র",
+    classId: "ssc",
+    groupId: "ssc-common",
+    icon: "📖",
+    color: "text-blue-600",
+    bgColor: "bg-blue-50",
+    isFree: true,
+    chapters: [
+      { id: "en1-ch1", name: "Seen Passage", nameBn: "Seen Passage", questionCount: 90 },
+      { id: "en1-ch2", name: "Unseen Passage", nameBn: "Unseen Passage", questionCount: 75 },
+      { id: "en1-ch3", name: "Writing Part", nameBn: "Writing Part", questionCount: 85 },
+    ],
+  },
+  {
+    id: "english-2",
+    name: "English 2nd Paper",
+    nameBn: "ইংরেজি ২য় পত্র",
+    classId: "ssc",
+    groupId: "ssc-common",
+    icon: "✍️",
+    color: "text-indigo-600",
+    bgColor: "bg-indigo-50",
+    isFree: true,
+    chapters: [
+      { id: "en2-ch1", name: "Grammar", nameBn: "Grammar", questionCount: 120 },
+      { id: "en2-ch2", name: "Composition", nameBn: "Composition", questionCount: 80 },
+    ],
+  },
+  {
+    id: "ict",
+    name: "ICT",
+    nameBn: "তথ্য ও যোগাযোগ প্রযুক্তি",
+    classId: "ssc",
+    groupId: "ssc-common",
+    icon: "💻",
+    color: "text-green-600",
+    bgColor: "bg-green-50",
+    isFree: true,
+    chapters: [
+      { id: "ict-ch1", name: "Computer Basics", nameBn: "কম্পিউটার ভিত্তি", questionCount: 50 },
+      { id: "ict-ch2", name: "MS Office", nameBn: "এমএস অফিস", questionCount: 60 },
+      { id: "ict-ch3", name: "Internet & Email", nameBn: "ইন্টারনেট ও ইমেইল", questionCount: 40 },
+    ],
+  },
+
+  // ================= Science Group =================
+  {
+    id: "physics",
+    name: "Physics",
+    nameBn: "পদার্থবিজ্ঞান",
+    classId: "ssc",
+    groupId: "ssc-science",
+    icon: "⚛️",
+    color: "text-orange-600",
+    bgColor: "bg-orange-50",
+    isFree: true,
+    chapters: [
+      { id: "ph-ch1", name: "Physical World & Measurement", nameBn: "ভৌত জগৎ ও পরিমাপ", questionCount: 35 },
+      { id: "ph-ch2", name: "Motion", nameBn: "গতি", questionCount: 45 },
+      { id: "ph-ch3", name: "Force & Laws of Motion", nameBn: "বল ও গতির সূত্রসমূহ", questionCount: 50 },
+      { id: "ph-ch4", name: "Work, Energy & Power", nameBn: "কাজ, শক্তি ও ক্ষমতা", questionCount: 40 },
+      { id: "ph-ch5", name: "Gravitation", nameBn: "মহাকর্ষ", questionCount: 30 },
+      { id: "ph-ch6", name: "Oscillation & Waves", nameBn: "পর্যাবৃত্তি ও তরঙ্গ", questionCount: 38 },
+      { id: "ph-ch7", name: "Thermodynamics", nameBn: "তাপগতিবিদ্যা", questionCount: 32 },
+      { id: "ph-ch8", name: "Electricity & Magnetism", nameBn: "তড়িৎ ও চুম্বকত্ব", questionCount: 45 },
+    ],
+  },
+  {
+    id: "chemistry",
+    name: "Chemistry",
+    nameBn: "রসায়ন",
+    classId: "ssc",
+    groupId: "ssc-science",
+    icon: "🧪",
+    color: "text-green-600",
+    bgColor: "bg-green-50",
+    isFree: true,
+    chapters: [
+      { id: "ch-ch1", name: "Atomic Structure", nameBn: "পরমাণুর গঠন", questionCount: 40 },
+      { id: "ch-ch2", name: "Periodic Table", nameBn: "পর্যায়ক্রমিক সারণি", questionCount: 35 },
+      { id: "ch-ch3", name: "Chemical Bonding", nameBn: "রাসায়নিক বন্ধন", questionCount: 45 },
+      { id: "ch-ch4", name: "States of Matter", nameBn: "পদার্থের অবস্থা", questionCount: 38 },
+      { id: "ch-ch5", name: "Acid, Base & Salt", nameBn: "অম্ল, ক্ষার ও লবণ", questionCount: 32 },
+      { id: "ch-ch6", name: "Chemical Reactions", nameBn: "রাসায়নিক প্রতিক্রিয়া", questionCount: 40 },
+      { id: "ch-ch7", name: "Organic Chemistry", nameBn: "জৈব রসায়ন", questionCount: 50 },
+    ],
+  },
+  {
+    id: "biology",
+    name: "Biology",
+    nameBn: "জীববিজ্ঞান",
+    classId: "ssc",
+    groupId: "ssc-science",
+    icon: "🧬",
+    color: "text-emerald-600",
+    bgColor: "bg-emerald-50",
+    isFree: true,
+    chapters: [
+      { id: "bi-ch1", name: "Cell & Cell Division", nameBn: "কোষ ও কোষ বিভাজন", questionCount: 50 },
+      { id: "bi-ch2", name: "Plant Physiology & Tissue", nameBn: "উদ্ভিদ শারীরতত্ত্ব ও টিস্যু", questionCount: 40 },
+      { id: "bi-ch3", name: "Human Physiology", nameBn: "মানব শারীরতত্ত্ব", questionCount: 45 },
+      { id: "bi-ch4", name: "Genetics", nameBn: "বংশগতি", questionCount: 35 },
+      { id: "bi-ch5", name: "Ecology", nameBn: "বাস্তুবিদ্যা", questionCount: 30 },
+    ],
+  },
+  {
+    id: "higher-math",
+    name: "Higher Mathematics",
+    nameBn: "উচ্চতর গণিত",
+    classId: "ssc",
+    groupId: "ssc-science",
+    icon: "📐",
+    color: "text-blue-600",
+    bgColor: "bg-blue-50",
+    isFree: true,
+    chapters: [
+      { id: "hm-ch1", name: "Set & Function", nameBn: "সেট ও ফাংশন", questionCount: 40 },
+      { id: "hm-ch2", name: "Algebra", nameBn: "বীজগণিত", questionCount: 45 },
+      { id: "hm-ch3", name: "Geometry", nameBn: "জ্যামিতি", questionCount: 38 },
+      { id: "hm-ch4", name: "Trigonometry", nameBn: "ত্রিকোণমিতি", questionCount: 35 },
+      { id: "hm-ch5", name: "Probability & Statistics", nameBn: "সম্ভাবনা ও পরিসংখ্যান", questionCount: 30 },
+      { id: "hm-ch6", name: "Calculus", nameBn: "ক্যালকুলাস", questionCount: 50 },
+    ],
+  },
+
+  // ================= Arts Group =================
+  {
+    id: "history",
+    name: "History of Bangladesh & World Civilization",
+    nameBn: "বাংলাদেশ ও বিশ্বসভ্যতার ইতিহাস",
+    classId: "ssc",
+    groupId: "ssc-arts",
+    icon: "🏛️",
+    color: "text-yellow-600",
+    bgColor: "bg-yellow-50",
+    isFree: true,
+    chapters: [
+      { id: "hist-ch1", name: "Ancient History", nameBn: "প্রাচীন ইতিহাস", questionCount: 35 },
+      { id: "hist-ch2", name: "Medieval History", nameBn: "মধ্যযুগীয় ইতিহাস", questionCount: 40 },
+      { id: "hist-ch3", name: "Modern History", nameBn: "আধুনিক ইতিহাস", questionCount: 45 },
+    ],
+  },
+  {
+    id: "civics",
+    name: "Civics & Citizenship",
+    nameBn: "পৌরনীতি ও নাগরিকতা",
+    classId: "ssc",
+    groupId: "ssc-arts",
+    icon: "🗳️",
+    color: "text-purple-600",
+    bgColor: "bg-purple-50",
+    isFree: true,
+    chapters: [
+      { id: "civ-ch1", name: "Constitution", nameBn: "সংবিধান", questionCount: 40 },
+      { id: "civ-ch2", name: "Governance", nameBn: "শাসনব্যবস্থা", questionCount: 38 },
+      { id: "civ-ch3", name: "Fundamental Rights", nameBn: "মৌলিক অধিকার", questionCount: 35 },
+    ],
+  },
+  {
+    id: "geography",
+    name: "Geography & Environment",
+    nameBn: "ভূগোল ও পরিবেশ",
+    classId: "ssc",
+    groupId: "ssc-arts",
+    icon: "🌍",
+    color: "text-green-600",
+    bgColor: "bg-green-50",
+    isFree: true,
+    chapters: [
+      { id: "geo-ch1", name: "Physical Geography", nameBn: "পদার্থিক ভূগোল", questionCount: 30 },
+      { id: "geo-ch2", name: "Human Geography", nameBn: "মানব ভূগোল", questionCount: 35 },
+      { id: "geo-ch3", name: "Environmental Studies", nameBn: "পরিবেশ শিক্ষা", questionCount: 28 },
+    ],
+  },
+
+  // ================= Commerce Group =================
+  {
+    id: "accounting",
+    name: "Accounting",
+    nameBn: "হিসাববিজ্ঞান",
+    classId: "ssc",
+    groupId: "ssc-commerce",
+    icon: "💰",
+    color: "text-yellow-700",
+    bgColor: "bg-yellow-50",
+    isFree: true,
+    chapters: [
+      { id: "acc-ch1", name: "Basic Accounting", nameBn: "মূল হিসাববিজ্ঞান", questionCount: 45 },
+      { id: "acc-ch2", name: "Journal & Ledger", nameBn: "জার্নাল ও লেজার", questionCount: 50 },
+      { id: "acc-ch3", name: "Trial Balance", nameBn: "ট্রায়াল ব্যালেন্স", questionCount: 35 },
+      { id: "acc-ch4", name: "Financial Statements", nameBn: "আর্থিক বিবরণী", questionCount: 40 },
+    ],
+  },
+  {
+    id: "business",
+    name: "Business Organization & Management",
+    nameBn: "ব্যবসায় সংগঠন ও ব্যবস্থাপনা",
+    classId: "ssc",
+    groupId: "ssc-commerce",
+    icon: "🏢",
+    color: "text-blue-700",
+    bgColor: "bg-blue-50",
+    isFree: true,
+    chapters: [
+      { id: "bus-ch1", name: "Business Types", nameBn: "ব্যবসার ধরন", questionCount: 38 },
+      { id: "bus-ch2", name: "Management Principles", nameBn: "ব্যবস্থাপনা নীতি", questionCount: 35 },
+      { id: "bus-ch3", name: "Organizational Structure", nameBn: "সংগঠনের কাঠামো", questionCount: 32 },
+    ],
+  },
+  {
+    id: "finance",
+    name: "Finance & Banking",
+    nameBn: "অর্থ ও ব্যাংকিং",
+    classId: "ssc",
+    groupId: "ssc-commerce",
+    icon: "🏦",
+    color: "text-green-700",
+    bgColor: "bg-green-50",
+    isFree: true,
+    chapters: [
+      { id: "fin-ch1", name: "Introduction to Finance", nameBn: "অর্থের পরিচিতি", questionCount: 40 },
+      { id: "fin-ch2", name: "Banking System", nameBn: "ব্যাংকিং সিস্টেম", questionCount: 45 },
+      { id: "fin-ch3", name: "Financial Management", nameBn: "আর্থিক ব্যবস্থাপনা", questionCount: 35 },
+    ],
+  },
+
+];
+
+// Sample questions for question listing
+export interface QuestionItem {
+  id: string;
+  subjectId: string;
+  chapterId: string;
+  classId: string;
+  groupId: string;
+  uddipok?: string; // Optional field for highlighting key points
+  questionText: string;
+  questionBn: string;
+  options?: string[];
+  correctAnswer: string;
+  explanation: string;
+  examTag: string;
+  topic: string;
+  type: "board" | "admission" | "practice" | "test";
+  difficulty: "Easy" | "Medium" | "Hard";
+}
+
