@@ -4,7 +4,16 @@ export const examResultsAPI = {
   getMine: () => fetchAPI('/exam-results/mine'),
   getByExam: (examId: string) => fetchAPI(`/exam-results/exam/${examId}`),
 };
-const API_URL = 'http://localhost:5000/api';
+// Resolve API base URL:
+// - If `VITE_API_URL` is provided (e.g., in production on Vercel), use it.
+// - If running in Vite dev mode, default to local backend `http://localhost:5000/api`.
+// - Otherwise (production build without VITE_API_URL), fall back to the deployed backend URL.
+const API_URL = (() => {
+  const envUrl = import.meta.env.VITE_API_URL as string | undefined;
+  if (envUrl) return envUrl;
+  if (import.meta.env.DEV) return 'http://localhost:5000/api';
+  return 'https://learn-edu-backend.vercel.app/api';
+})();
 
 interface FetchOptions extends RequestInit {
   body?: any;

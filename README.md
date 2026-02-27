@@ -73,6 +73,13 @@ You can deploy the frontend to Vercel and proxy API calls to an externally hoste
 3. Add an Environment Variable in Vercel: `BACKEND_URL` — set it to your backend base URL (e.g. `https://api.example.com`).
 4. The repository contains a serverless proxy at `/api/proxy/*` which forwards `/api/*` requests to `BACKEND_URL`.
 
+Example values for your deployment:
+
+- Frontend (Vercel): https://exampathshala.vercel.app
+- Backend (Vercel): https://learn-edu-backend.vercel.app
+
+Set `VITE_API_URL` to `https://learn-edu-backend.vercel.app/api` in your Vercel Environment Variables for the frontend project (or set `BACKEND_URL` if using the repo-level proxy).
+
 Notes:
 - If you want to host the backend on Vercel too, you'll need to convert the Express routes into serverless functions (move routes under an `api/` folder or wrap Express with a serverless adapter).
 - Alternatively, deploy the backend to a host such as Render, Fly, or a VPS and point `BACKEND_URL` to that service.
