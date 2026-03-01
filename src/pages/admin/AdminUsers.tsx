@@ -6,6 +6,7 @@ import { recentUsers } from "@/data/mockData";
 import { usersAPI } from "@/services/api";
 import { Search, UserPlus, Ban, CheckCircle, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import BeautifulLoader from "@/components/ui/beautiful-loader";
 import {
   Dialog,
   DialogContent,
@@ -406,7 +407,11 @@ const AdminUsers = () => {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td className="p-6 text-center" colSpan={5}>Loading users...</td></tr>
+                  <tr>
+                    <td className="p-6" colSpan={5}>
+                      <BeautifulLoader message="Loading users..." compact />
+                    </td>
+                  </tr>
                 ) : (
                   filtered.map((u, idx) => (
                   <tr key={u.id ?? u.email ?? idx} className="border-b border-border/50">

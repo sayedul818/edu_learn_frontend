@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { examsAPI, subjectsAPI, chaptersAPI, topicsAPI, classesAPI, groupsAPI, usersAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { Save, Settings, BarChart3, FileEdit } from "lucide-react";
@@ -714,7 +715,7 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], initi
                     <Input id="userSearch" value={userSearch} onChange={(e) => setUserSearch(e.target.value)} placeholder="নাম বা ইমেইল লিখুন" className="mt-1" />
                     <div className="mt-3 max-h-48 overflow-auto border rounded">
                       {loadingUsers ? (
-                        <div className="p-3 text-sm text-muted-foreground">লোড হচ্ছে...</div>
+                        <BeautifulLoader message="লোড হচ্ছে..." compact className="m-3" />
                       ) : users.length === 0 ? (
                         <div className="p-3 text-sm text-muted-foreground">কোনো শিক্ষার্থী পাওয়া যায়নি</div>
                       ) : (

@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { parseQuestionWithSubPoints } from "@/lib/utils";
 import ExamCreationModal from "@/components/admin/ExamCreationModal";
 
@@ -184,7 +185,9 @@ const AdminAllExams = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {loading ? (
-          <div className="col-span-full text-center text-muted-foreground">Loading exams...</div>
+          <div className="col-span-full">
+            <BeautifulLoader message="Loading exams..." compact />
+          </div>
         ) : (
           (tab === "live" ? live : previous).map((exam) => (
             <Card key={exam._id} className="p-4">

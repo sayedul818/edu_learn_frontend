@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { classesAPI, groupsAPI, subjectsAPI, chaptersAPI, topicsAPI, examTypesAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
+import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { ChevronDown, ChevronRight, Trash2, Edit2 } from "lucide-react";
 
 const AdminSections = () => {
@@ -540,7 +541,7 @@ const AdminSections = () => {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-muted-foreground">Loading...</p>
+            <BeautifulLoader message="Loading..." compact />
           ) : classes.length === 0 ? (
             <p className="text-muted-foreground">No classes yet. Click "Add Class" to start.</p>
           ) : (
@@ -805,7 +806,7 @@ const AdminSections = () => {
           <CardTitle>Create New Exam Type</CardTitle>
         </CardHeader>
         <CardContent>
-          {loading && <p className="text-muted-foreground mb-4">Loading exam types...</p>}
+          {loading && <BeautifulLoader message="Loading exam types..." compact className="mb-4" />}
           <div className="space-y-4 max-w-2xl">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
@@ -872,7 +873,7 @@ const AdminSections = () => {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-center py-8 text-muted-foreground">Loading exam types...</p>
+            <BeautifulLoader message="Loading exam types..." compact className="py-8" />
           ) : examTypes.length === 0 ? (
             <p className="text-center py-8 text-muted-foreground">No exam types created yet. Create one to get started!</p>
           ) : (

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { examsAPI, examResultsAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -204,8 +205,8 @@ const ExamResult = () => {
 
   if (loading) {
     return (
-      <div className="text-center py-20 font-bangla">
-        <p className="text-muted-foreground">ফলাফল লোড করছি...</p>
+      <div className="py-20 font-bangla">
+        <BeautifulLoader message="ফলাফল লোড করছি..." className="max-w-md mx-auto" />
       </div>
     );
   }

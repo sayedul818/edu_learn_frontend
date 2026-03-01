@@ -8,6 +8,7 @@ import { ChevronDown, ChevronRight, BookOpen, PlusCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { useToast } from "@/hooks/use-toast";
 
 const AdminQuestions = () => {
@@ -220,7 +221,7 @@ const AdminQuestions = () => {
       </div>
 
       {loading ? (
-        <p className="text-muted-foreground">Loading data from database...</p>
+        <BeautifulLoader message="Loading data from database..." className="py-10" />
       ) : (
         <>
           <div className="flex flex-col sm:flex-row gap-3">

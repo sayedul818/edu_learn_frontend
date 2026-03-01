@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { classesAPI, groupsAPI, subjectsAPI, chaptersAPI } from "@/services/api";
 import { ChevronDown, ChevronRight, BookOpen, FileText, Pencil } from "lucide-react";
+import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { useToast } from "@/hooks/use-toast";
 
 const QuestionBank = () => {
@@ -119,9 +120,7 @@ const QuestionBank = () => {
 
       {/* Filters */}
       {loading ? (
-        <div className="text-center py-8 text-muted-foreground">
-          <p>ডাটা লোড করছি...</p>
-        </div>
+        <BeautifulLoader message="ডাটা লোড করছি..." compact className="py-8" />
       ) : (
         <>
           <div className="flex flex-col sm:flex-row gap-3">

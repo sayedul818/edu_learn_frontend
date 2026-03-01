@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
+import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { BookOpen, ChevronRight, ChevronDown } from "lucide-react";
 import ExamCreationModal from "@/components/admin/ExamCreationModal";
 
@@ -142,7 +143,7 @@ const AdminExamBuilder = () => {
       </div>
 
       {loading ? (
-        <p className="text-muted-foreground">Loading data from database...</p>
+        <BeautifulLoader message="Loading data from database..." className="py-10" />
       ) : (
         <>
           <div className="flex flex-col sm:flex-row gap-3">

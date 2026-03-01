@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { examsAPI, examResultsAPI } from "@/services/api";
+import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Clock, ChevronLeft, ChevronRight, Flag, AlertTriangle } from "lucide-react";
@@ -251,7 +252,13 @@ const TakeExam = () => {
     }
   }, [timeLeft, submitted, exam, handleSubmit]);
 
-  if (isLoading) return <div className="text-center py-20 text-muted-foreground">পরীক্ষা লোড করছি...</div>;
+  if (isLoading) {
+    return (
+      <div className="py-20">
+        <BeautifulLoader message="পরীক্ষা লোড করছি..." className="max-w-md mx-auto" />
+      </div>
+    );
+  }
   if (!exam) return <div className="text-center py-20 text-muted-foreground">পরীক্ষা খুঁজে পাওয়া যাচ্ছে না</div>;
 
   const formatTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;

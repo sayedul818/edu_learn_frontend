@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { examsAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -88,7 +89,9 @@ const ExamInstructions = () => {
 
   if (loading) {
     return (
-      <div className="text-center py-20 text-muted-foreground">নির্দেশিকা লোড করছি...</div>
+      <div className="py-20">
+        <BeautifulLoader message="নির্দেশিকা লোড করছি..." className="max-w-md mx-auto" />
+      </div>
     );
   }
 

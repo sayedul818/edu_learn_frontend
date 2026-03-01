@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { examsAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
+import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { Clock, FileText, Play, CheckCircle, Calendar, Eye, BookOpen, Trophy } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -336,7 +337,7 @@ const ExamList = () => {
       {loading ? (
         <Card>
           <CardContent className="flex items-center justify-center py-16">
-            <p className="text-muted-foreground">পরীক্ষা লোড করছি...</p>
+            <BeautifulLoader message="পরীক্ষা লোড করছি..." className="w-full" />
           </CardContent>
         </Card>
       ) : (

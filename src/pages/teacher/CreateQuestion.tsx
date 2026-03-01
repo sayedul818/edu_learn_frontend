@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PlusCircle, Trash2, CheckCircle, Upload } from "lucide-react";
+import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { useToast } from "@/hooks/use-toast";
 import { classesAPI, groupsAPI, subjectsAPI, chaptersAPI, topicsAPI, questionsAPI, examTypesAPI } from "@/services/api";
 
@@ -225,7 +226,7 @@ const CreateQuestion = () => {
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto space-y-6 py-12">
-        <p className="text-muted-foreground text-center">Loading hierarchy data...</p>
+        <BeautifulLoader message="Loading hierarchy data..." className="max-w-md mx-auto" />
       </div>
     );
   }

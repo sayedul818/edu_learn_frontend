@@ -5,6 +5,7 @@ import { classesAPI, groupsAPI, subjectsAPI, chaptersAPI, questionsAPI } from "@
 import { ChevronDown, Minus, Plus, BookOpen, AlertCircle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { useToast } from "@/hooks/use-toast";
 
 const SelfTest = () => {
@@ -214,7 +215,7 @@ const SelfTest = () => {
       <div className="bg-muted/40 rounded-2xl p-5 border border-border">
         <h2 className="font-bold text-foreground mb-4">পরীক্ষার সেটিংস</h2>
         {loading ? (
-          <div className="text-center text-muted-foreground py-8">ডাটা লোড করছি...</div>
+          <BeautifulLoader message="ডাটা লোড করছি..." compact className="py-8" />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Class */}
@@ -408,7 +409,7 @@ const SelfTest = () => {
       <div className="bg-card rounded-2xl border border-border p-5 shadow-sm">
         <h2 className="font-bold text-foreground mb-4">📖 বিষয়ভিত্তিক প্রশ্ন</h2>
         {loading ? (
-          <div className="text-center text-muted-foreground py-8">ডাটা লোড করছি...</div>
+          <BeautifulLoader message="ডাটা লোড করছি..." compact className="py-8" />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {subjects

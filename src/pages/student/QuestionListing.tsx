@@ -3,10 +3,11 @@ import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {classesAPI, groupsAPI, subjectsAPI, chaptersAPI, topicsAPI, questionsAPI } from "@/services/api";
 import {
-  ArrowLeft, Search, ChevronDown, ChevronLeft, ChevronRight,
+  ArrowLeft, Search, ChevronLeft, ChevronRight,
   Info, BarChart3, Flag, Bookmark, CheckCircle, BookOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { useToast } from "@/hooks/use-toast";
 
 const ITEMS_PER_PAGE = 5;
@@ -33,6 +34,7 @@ const QuestionListing = () => {
   const [selectedChapter, setSelectedChapter] = useState(chapterId || "");
   const [selectedTopic, setSelectedTopic] = useState("");
   const [selectedQuestionType, setSelectedQuestionType] = useState("");
+  const [selectedSubQuestionType, setSelectedSubQuestionType] = useState("");
   const [loading, setLoading] = useState(true);
 
   // Load all data from database
@@ -98,9 +100,6 @@ const QuestionListing = () => {
 
   // Filter questions from database
   const allQuestions = dbQuestions.filter((q: any) => {
-    // Filter by question type if selected
-    if (selectedQuestionType && q.questionType !== selectedQuestionType) return false;
-
     // Filter by topic if selected
     if (selectedTopic) {
       const qTopicId = q.topicId?._id || q.topicId;
@@ -119,6 +118,16 @@ const QuestionListing = () => {
       if (qSubjectId !== selectedSubject) return false;
     }
 
+    // Filter by questionType if selected (but not sub-question type)
+    if (selectedQuestionType && !selectedSubQuestionType && q.questionType !== selectedQuestionType) return false;
+
+    // If filtering by sub-question type, only keep questions with matching sub-questions
+    if (selectedSubQuestionType) {
+      const hasMatchingSubQuestions = (q as any).subQuestions && Array.isArray((q as any).subQuestions) &&
+        (q as any).subQuestions.some((sq: any) => sq.type === selectedSubQuestionType);
+      if (!hasMatchingSubQuestions) return false;
+    }
+
     // Search filter
     const textForSearch = (q.questionTextBn || q.questionText || q.questionTextEn || "").toString().toLowerCase();
     if (search && !textForSearch.includes(search.toLowerCase())) return false;
@@ -126,15 +135,29 @@ const QuestionListing = () => {
     return true;
   });
 
+  // If sub-question type is selected, flatten sub-questions into display list
+  const displayItems = selectedSubQuestionType
+    ? allQuestions.flatMap((q: any) => {
+        const matchingSubQuestions = (q.subQuestions || []).filter((sq: any) => sq.type === selectedSubQuestionType);
+        return matchingSubQuestions.map((sq: any, idx: number) => ({
+          _id: `${q._id}-${idx}`,
+          parentId: q._id,
+          isSubQuestion: true,
+          subQuestion: sq,
+          parentQuestion: q,
+        }));
+      })
+    : allQuestions;
+
   // Pagination logic
-  const totalPages = Math.ceil(allQuestions.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(displayItems.length / ITEMS_PER_PAGE);
   const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
-  const questions = allQuestions.slice(startIdx, startIdx + ITEMS_PER_PAGE);
+  const questions = displayItems.slice(startIdx, startIdx + ITEMS_PER_PAGE);
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedClass, selectedGroup, selectedSubject, selectedChapter, selectedTopic, selectedQuestionType, search]);
+  }, [selectedClass, selectedGroup, selectedSubject, selectedChapter, selectedTopic, selectedQuestionType, selectedSubQuestionType, search]);
 
   return (
     <div className="space-y-5 font-bangla">
@@ -248,65 +271,81 @@ const QuestionListing = () => {
           পিছনে
         </button>
         <button
-          onClick={() => setSelectedQuestionType("")}
+          onClick={() => { setSelectedQuestionType(""); setSelectedSubQuestionType(""); }}
           className={`px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-            !selectedQuestionType ? "bg-success text-white" : "bg-card border border-border hover:border-success"
+            !selectedQuestionType && !selectedSubQuestionType ? "bg-success text-white" : "bg-card border border-border hover:border-success"
           }`}
         >
           সব ধরনের প্রশ্ন
         </button>
         <button
-          onClick={() => setSelectedQuestionType("MCQ")}
+          onClick={() => { setSelectedQuestionType("MCQ"); setSelectedSubQuestionType(""); }}
           className={`px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-            selectedQuestionType === "MCQ" ? "bg-success text-white" : "bg-card border border-border hover:border-success"
+            selectedQuestionType === "MCQ" && !selectedSubQuestionType ? "bg-success text-white" : "bg-card border border-border hover:border-success"
           }`}
         >
           MCQ
         </button>
         <button
-          onClick={() => setSelectedQuestionType("CQ")}
+          onClick={() => { setSelectedQuestionType("CQ"); setSelectedSubQuestionType(""); }}
           className={`px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-            selectedQuestionType === "CQ" ? "bg-success text-white" : "bg-card border border-border hover:border-success"
+            selectedQuestionType === "CQ" && !selectedSubQuestionType ? "bg-success text-white" : "bg-card border border-border hover:border-success"
           }`}
         >
           CQ
         </button>
         <button
-          onClick={() => setSelectedQuestionType("গাণিতিক")}
+          onClick={() => { setSelectedQuestionType("গাণিতিক"); setSelectedSubQuestionType(""); }}
           className={`px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-            selectedQuestionType === "গাণিতিক" ? "bg-success text-white" : "bg-card border border-border hover:border-success"
+            selectedQuestionType === "গাণিতিক" && !selectedSubQuestionType ? "bg-success text-white" : "bg-card border border-border hover:border-success"
           }`}
         >
           গাণিতিক
         </button>
         <button
-          onClick={() => setSelectedQuestionType("জ্ঞানমূলক")}
+          onClick={() => { setSelectedQuestionType(""); setSelectedSubQuestionType("জ্ঞানমূলক"); }}
           className={`px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-            selectedQuestionType === "জ্ঞানমূলক" ? "bg-success text-white" : "bg-card border border-border hover:border-success"
+            selectedSubQuestionType === "জ্ঞানমূলক" ? "bg-success text-white" : "bg-card border border-border hover:border-success"
           }`}
         >
           জ্ঞানমূলক
         </button>
         <button
-          onClick={() => setSelectedQuestionType("অনুধাবনমূলক")}
+          onClick={() => { setSelectedQuestionType(""); setSelectedSubQuestionType("অনুধাবনমূলক"); }}
           className={`px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-            selectedQuestionType === "অনুধাবনমূলক" ? "bg-success text-white" : "bg-card border border-border hover:border-success"
+            selectedSubQuestionType === "অনুধাবনমূলক" ? "bg-success text-white" : "bg-card border border-border hover:border-success"
           }`}
         >
           অনুধাবনমূলক
         </button>
         <button
-          onClick={() => setSelectedQuestionType("ছোট লিখিত/সংক্ষিপ্ত প্রশ্ন")}
+          onClick={() => { setSelectedQuestionType(""); setSelectedSubQuestionType("প্রয়োগমূলক"); }}
           className={`px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-            selectedQuestionType === "ছোট লিখিত/সংক্ষিপ্ত প্রশ্ন" ? "bg-success text-white" : "bg-card border border-border hover:border-success"
+            selectedSubQuestionType === "প্রয়োগমূলক" ? "bg-success text-white" : "bg-card border border-border hover:border-success"
+          }`}
+        >
+          প্রয়োগমূলক
+        </button>
+        <button
+          onClick={() => { setSelectedQuestionType(""); setSelectedSubQuestionType("উচ্চতর দক্ষতা"); }}
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+            selectedSubQuestionType === "উচ্চতর দক্ষতা" ? "bg-success text-white" : "bg-card border border-border hover:border-success"
+          }`}
+        >
+          উচ্চতর দক্ষতা
+        </button>
+        <button
+          onClick={() => { setSelectedQuestionType("ছোট লিখিত/সংক্ষিপ্ত প্রশ্ন"); setSelectedSubQuestionType(""); }}
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+            selectedQuestionType === "ছোট লিখিত/সংক্ষিপ্ত প্রশ্ন" && !selectedSubQuestionType ? "bg-success text-white" : "bg-card border border-border hover:border-success"
           }`}
         >
           ছোট লিখিত
         </button>
         <button
-          onClick={() => setSelectedQuestionType("বড় লিখিত/রচনামূলক প্রশ্ন")}
+          onClick={() => { setSelectedQuestionType("বড় লিখিত/রচনামূলক প্রশ্ন"); setSelectedSubQuestionType(""); }}
           className={`px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-            selectedQuestionType === "বড় লিখিত/রচনামূলক প্রশ্ন" ? "bg-success text-white" : "bg-card border border-border hover:border-success"
+            selectedQuestionType === "বড় লিখিত/রচনামূলক প্রশ্ন" && !selectedSubQuestionType ? "bg-success text-white" : "bg-card border border-border hover:border-success"
           }`}
         >
           বড় লিখিত
@@ -315,7 +354,7 @@ const QuestionListing = () => {
 
       {/* Question Count */}
       <p className="text-sm text-muted-foreground">
-        মোট <span className="font-bold text-foreground">{allQuestions.length}</span> টি প্রশ্ন (পৃষ্ঠা {currentPage} of {totalPages || 1})
+        মোট <span className="font-bold text-foreground">{displayItems.length}</span> টি আইটেম (পৃষ্ঠা {currentPage} of {totalPages || 1})
       </p>
 
       {/* Warning Note */}
@@ -328,19 +367,21 @@ const QuestionListing = () => {
 
       {/* Questions */}
       {loading ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <p>ডাটা লোড করছি...</p>
-        </div>
-      ) : allQuestions.length === 0 ? (
+        <BeautifulLoader message="ডাটা লোড করছি..." className="py-10" />
+      ) : displayItems.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-30" />
           <p>কোনো প্রশ্ন খুঁজে পাওয়া যায়নি</p>
         </div>
       ) : (
         <div className="space-y-4">
-          {questions.map((q, idx) => (
+          {questions.map((item, idx) => {
+            const q: any = item.isSubQuestion ? item.parentQuestion : item;
+            const isSubQuestionDisplay = !!item.isSubQuestion;
+
+            return (
             <motion.div
-              key={q._id}
+              key={item._id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.05 }}
@@ -350,13 +391,8 @@ const QuestionListing = () => {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-xs font-bold text-muted-foreground">
-                      প্রশ্ন {startIdx + idx + 1}
+                      {isSubQuestionDisplay ? `Sub-Question ${startIdx + idx + 1}` : `প্রশ্ন ${startIdx + idx + 1}`}
                     </span>
-                    {q.difficulty && (
-                      <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded-full">
-                        {q.difficulty}
-                      </span>
-                    )}
                     {q.examTypeId && (
                       <span className="px-2 py-0.5 bg-purple/10 text-purple text-[10px] font-bold rounded-full">
                         {typeof q.examTypeId === 'object' 
@@ -365,14 +401,67 @@ const QuestionListing = () => {
                       </span>
                     )}
                   </div>
-                  <p className="text-foreground font-medium leading-relaxed">
-                    {q.questionTextBn || q.questionTextEn || q.questionText}
-                  </p>
+                  {(() => {
+                    if (isSubQuestionDisplay) {
+                      const sq = item.subQuestion;
+                      return (
+                        <div className="text-foreground leading-relaxed text-sm">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <div className="font-semibold">{sq.label || 'ক'}</div>
+                            <div>{sq.questionTextBn || sq.questionTextEn}</div>
+                            {sq.type && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200">
+                                {sq.type}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    const hasSubQuestions = q.subQuestions && Array.isArray(q.subQuestions) && q.subQuestions.length > 0;
+                    if (hasSubQuestions) {
+                      const passage = q.questionTextBn || q.questionTextEn || q.questionText || '';
+                      return (
+                        <div>
+                          {passage ? (
+                            <div className="mb-4 rounded-lg bg-card border border-border text-foreground p-4 leading-relaxed text-sm">
+                              <p className="whitespace-pre-line">{passage}</p>
+                            </div>
+                          ) : null}
+
+                          <div className="space-y-3">
+                            {q.subQuestions.map((sq: any, i: number) => (
+                              <div key={i} className="border-l-2 border-success/30 pl-3">
+                                <div className="flex items-start gap-2">
+                                  <div className="w-6 flex-none font-semibold text-foreground text-base leading-tight">{sq.label || (['ক','খ','গ','ঘ','ঙ'][i] || `${i+1}.`)}</div>
+                                  <div className="flex-1 flex flex-wrap items-center gap-2">
+                                    <div className="text-foreground leading-relaxed text-sm">{sq.questionTextBn || sq.questionTextEn}</div>
+                                    {sq.type && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200">
+                                        {sq.type}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <p className="text-foreground font-medium leading-relaxed">
+                        {q.questionTextBn || q.questionTextEn || q.questionText}
+                      </p>
+                    );
+                  })()}
                 </div>
               </div>
 
               {/* Options */}
-              {q.options && Array.isArray(q.options) && (
+              {q.options && Array.isArray(q.options) && !isSubQuestionDisplay && (
                 <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {q.options.map((opt, i) => (
                     <div
@@ -392,11 +481,11 @@ const QuestionListing = () => {
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
                 <Button
                   size="sm"
-                  onClick={() => setExpandedAnswer(expandedAnswer === q._id ? null : q._id)}
+                  onClick={() => setExpandedAnswer(expandedAnswer === item._id ? null : item._id)}
                   className="bg-success hover:bg-success/90 text-white rounded-lg text-xs"
                 >
                   <CheckCircle className="h-3.5 w-3.5 mr-1" />
-                  {expandedAnswer === q._id ? "উত্তর লুকান" : "উত্তর ও সমাধান দেখুন"}
+                  {expandedAnswer === item._id ? "উত্তর লুকান" : "উত্তর ও সমাধান দেখুন"}
                 </Button>
                 <div className="flex items-center gap-1">
                   <button className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
@@ -416,7 +505,7 @@ const QuestionListing = () => {
 
               {/* Answer Expand */}
               <AnimatePresence>
-                {expandedAnswer === q._id && (
+                {expandedAnswer === item._id && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
@@ -425,12 +514,47 @@ const QuestionListing = () => {
                     className="mt-4 pt-4 border-t border-border"
                   >
                     <div className="space-y-3">
-                      <div>
-                        <p className="text-xs font-bold text-success mb-1">✓ সঠিক উত্তর</p>
-                        <p className="text-sm text-foreground">
-                          {q.options?.find((opt: any) => opt.isCorrect)?.text || "N/A"}
-                        </p>
-                      </div>
+                      {!isSubQuestionDisplay && q.options && (
+                        <div>
+                          <p className="text-xs font-bold text-success mb-1">✓ সঠিক উত্তর</p>
+                          <p className="text-sm text-foreground">
+                            {q.options?.find((opt: any) => opt.isCorrect)?.text || "N/A"}
+                          </p>
+                        </div>
+                      )}
+
+                      {isSubQuestionDisplay ? (
+                        <div>
+                          <p className="text-xs font-bold text-success mb-1">✓ উত্তর</p>
+                          <p className="text-sm text-foreground">{item.subQuestion.answerBn || item.subQuestion.answer || "N/A"}</p>
+                        </div>
+                      ) : (
+                        <>
+                          {q.subQuestions && Array.isArray(q.subQuestions) && q.subQuestions.length > 0 && (
+                            <div>
+                              <p className="text-xs font-bold text-success mb-1">Sub-questions & Answers</p>
+                              <div className="space-y-2">
+                                {q.subQuestions.map((sq: any, i: number) => (
+                                  <div key={i} className="text-sm">
+                                    <div className="flex items-start gap-2">
+                                      <span className="inline-block w-6 font-semibold text-foreground leading-tight">{sq.label || (i + 1) + '.'}</span>
+                                      <div className="flex-1 flex flex-wrap items-center gap-2">
+                                        {sq.type && (
+                                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200">
+                                            {sq.type}
+                                          </span>
+                                        )}
+                                        <span className="text-muted-foreground">{sq.answer || sq.answerBn || sq.answerEn || 'N/A'}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+
                       {q.explanation && (
                         <div>
                           <p className="text-xs font-bold text-muted-foreground mb-1">📝 ব্যাখ্যা</p>
@@ -442,7 +566,8 @@ const QuestionListing = () => {
                 )}
               </AnimatePresence>
             </motion.div>
-          ))}
+            );
+          })}
         </div>
       )}
 

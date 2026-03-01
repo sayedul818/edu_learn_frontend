@@ -19,6 +19,44 @@ interface FetchOptions extends RequestInit {
   body?: any;
 }
 
+const GET_CACHE_TTL_MS = 60 * 1000;
+const responseCache = new Map<string, { data: any; expiresAt: number }>();
+const inFlightRequests = new Map<string, Promise<any>>();
+
+const cacheablePrefixes = [
+  '/classes',
+  '/groups',
+  '/subjects',
+  '/chapters',
+  '/topics',
+  '/questions',
+  '/exam-types',
+  '/exams',
+  '/leaderboard',
+];
+
+const nonCacheablePrefixes = [
+  '/auth',
+  '/users',
+  '/exam-results',
+];
+
+function shouldCacheRequest(endpoint: string, method: string) {
+  if (method !== 'GET') return false;
+  if (nonCacheablePrefixes.some((prefix) => endpoint.startsWith(prefix))) return false;
+  return cacheablePrefixes.some((prefix) => endpoint.startsWith(prefix));
+}
+
+function buildCacheKey(baseUrl: string, endpoint: string, authToken: string | null) {
+  return `${baseUrl}${endpoint}::${authToken || 'anon'}`;
+}
+
+async function parseJsonSafely(response: Response) {
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) return null;
+  return response.json();
+}
+
 async function fetchAPI(endpoint: string, options: FetchOptions = {}) {
   const defaultHeaders = {
     'Content-Type': 'application/json',
@@ -32,9 +70,12 @@ async function fetchAPI(endpoint: string, options: FetchOptions = {}) {
     },
   };
 
+  const method = (config.method || 'GET').toString().toUpperCase();
+  let token: string | null = null;
+
   // attach auth token if available
   try {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+    token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
     if (token) (config.headers as any).Authorization = `Bearer ${token}`;
   } catch (e) {
     // ignore when running server-side
@@ -44,14 +85,69 @@ async function fetchAPI(endpoint: string, options: FetchOptions = {}) {
     config.body = JSON.stringify(options.body);
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, config);
+  const cacheKey = buildCacheKey(API_URL, endpoint, token);
+  const canUseCache = shouldCacheRequest(endpoint, method);
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || `API Error: ${response.status}`);
+  if (canUseCache) {
+    const cachedEntry = responseCache.get(cacheKey);
+    if (cachedEntry && cachedEntry.expiresAt > Date.now()) {
+      return cachedEntry.data;
+    }
+
+    const pendingRequest = inFlightRequests.get(cacheKey);
+    if (pendingRequest) {
+      return pendingRequest;
+    }
   }
 
-  return response.json();
+  const requestPromise = (async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+    try {
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        ...config,
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const error = await parseJsonSafely(response);
+        throw new Error(error?.error || `API Error: ${response.status}`);
+      }
+
+      const data = await parseJsonSafely(response);
+
+      if (canUseCache) {
+        responseCache.set(cacheKey, {
+          data,
+          expiresAt: Date.now() + GET_CACHE_TTL_MS,
+        });
+      }
+
+      return data;
+    } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        throw new Error('Request timed out. Please try again.');
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
+      if (canUseCache) inFlightRequests.delete(cacheKey);
+    }
+  })();
+
+  if (canUseCache) {
+    inFlightRequests.set(cacheKey, requestPromise);
+  }
+
+  const data = await requestPromise;
+
+  if (method !== 'GET') {
+    responseCache.clear();
+    inFlightRequests.clear();
+  }
+
+  return data;
 }
 
 // ============ CLASSES API ============

@@ -6,6 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Trophy, ArrowRight } from "lucide-react";
+import BeautifulLoader from "@/components/ui/beautiful-loader";
 
 
 const MyResults = () => {
@@ -94,9 +95,8 @@ const MyResults = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] font-bangla">
-        <Trophy className="h-12 w-12 mb-4 text-muted-foreground animate-spin" />
-        <h2 className="text-xl font-bold mb-2">ফলাফল লোড হচ্ছে...</h2>
+      <div className="min-h-[60vh] font-bangla flex items-center justify-center">
+        <BeautifulLoader message="ফলাফল লোড হচ্ছে..." className="max-w-md w-full" />
       </div>
     );
   }
