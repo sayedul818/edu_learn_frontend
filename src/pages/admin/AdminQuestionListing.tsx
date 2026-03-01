@@ -195,7 +195,8 @@ const AdminQuestionListing = () => {
         ...form,
         chapterId: form.chapterId && (form.chapterId._id || form.chapterId),
         subjectId: form.subjectId && (form.subjectId._id || form.subjectId),
-        topicId: form.topicId && (form.topicId._id || form.topicId),
+        topicId: form.topicId && form.topicId !== "" ? (form.topicId._id || form.topicId) : undefined,
+        examTypeId: form.examTypeId && form.examTypeId !== "" ? (form.examTypeId._id || form.examTypeId) : undefined,
       };
       const response = await questionsAPI.update(editingId, payload);
       console.log('✅ Question updated:', response.data);
@@ -751,7 +752,7 @@ const AdminQuestionListing = () => {
                 <Label>Topic (optional)</Label>
                 <select
                   value={form.topicId || ""}
-                  onChange={(e) => setForm({ ...form, topicId: e.target.value })}
+                  onChange={(e) => setForm({ ...form, topicId: e.target.value || undefined })}
                   disabled={!form.chapterId}
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
                 >
@@ -765,7 +766,7 @@ const AdminQuestionListing = () => {
                 <Label>Exam Type (Optional)</Label>
                 <select 
                   value={form.examTypeId || ""}
-                  onChange={(e) => setForm({ ...form, examTypeId: e.target.value })}
+                  onChange={(e) => setForm({ ...form, examTypeId: e.target.value || undefined })}
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
                 >
                   <option value="">-- No Exam Type --</option>

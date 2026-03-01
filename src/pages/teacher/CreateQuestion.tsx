@@ -141,7 +141,7 @@ const CreateQuestion = () => {
       ...q,
       subjectId: jsonHierarchy.subjectId,
       chapterId: jsonHierarchy.chapterId,
-      ...(jsonHierarchy.topicId ? { topicId: jsonHierarchy.topicId } : {}),
+      ...(jsonHierarchy.topicId && jsonHierarchy.topicId !== "" ? { topicId: jsonHierarchy.topicId } : {}),
     }));
 
     try {
@@ -193,8 +193,8 @@ const CreateQuestion = () => {
         subjectId: form.subjectId,
         chapterId: form.chapterId,
         // include topic only if provided
-        ...(form.topicId ? { topicId: form.topicId } : {}),
-        examTypeId: form.examTypeId || "",
+        ...(form.topicId && form.topicId !== "" ? { topicId: form.topicId } : {}),
+        ...(form.examTypeId && form.examTypeId !== "" ? { examTypeId: form.examTypeId } : {}),
         questionTextEn: form.questionTextEn,
         questionTextBn: form.questionTextBn || "",
         options: formattedOptions,
@@ -289,8 +289,8 @@ const CreateQuestion = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Topic *</Label>
-                <select className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" value={form.topicId} onChange={(e) => setForm({ ...form, topicId: e.target.value })} disabled={!form.chapterId}>
+                <Label>Topic (optional)</Label>
+                <select className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" value={form.topicId} onChange={(e) => setForm({ ...form, topicId: e.target.value || undefined })} disabled={!form.chapterId}>
                   <option value="">Select Topic</option>
                   {availableTopics.map((t) => <option key={t._id} value={t._id}>{t.name}</option>)}
                 </select>
@@ -427,11 +427,11 @@ const CreateQuestion = () => {
                 </div>
 
                 <div className="col-span-2">
-                  <Label className="text-xs">Topic *</Label>
+                  <Label className="text-xs">Topic (optional)</Label>
                   <select className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" value={jsonHierarchy.topicId} onChange={(e) => {
-                    setJsonHierarchy({ ...jsonHierarchy, topicId: e.target.value });
+                    setJsonHierarchy({ ...jsonHierarchy, topicId: e.target.value || undefined });
                   }} disabled={!jsonHierarchy.chapterId}>
-                    <option value="">-- Select Topic --</option>
+                    <option value="">-- No topic --</option>
                     {getAvailableTopics().map((t) => <option key={t._id} value={t._id}>{t.name}</option>)}
                   </select>
                 </div>

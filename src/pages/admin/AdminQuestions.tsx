@@ -120,8 +120,8 @@ const AdminQuestions = () => {
             errors.push(`Question: Must have at least 2 options`);
             continue;
           }
-          if (!it.subjectId && !it.chapterId && !it.topicId) {
-            errors.push(`Question: Must have subjectId, chapterId, and topicId`);
+          if (!it.subjectId || !it.chapterId) {
+            errors.push(`Question: Must have subjectId and chapterId`);
             continue;
           }
 
@@ -134,7 +134,7 @@ const AdminQuestions = () => {
             explanation: it.explanation || it.explain || "",
             subjectId: it.subjectId,
             chapterId: it.chapterId,
-            topicId: it.topicId,
+            ...(it.topicId && it.topicId !== "" ? { topicId: it.topicId } : {}),
             difficulty: (it.difficulty || "medium").toLowerCase(),
             tags: it.tags || [],
           };
