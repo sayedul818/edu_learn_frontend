@@ -328,20 +328,20 @@ const ExamResult = () => {
 
               return (
                 <div className="mt-6">
-                  <div className="max-w-3xl mx-auto p-4 border border-border rounded-lg bg-white">
+                  <div className="max-w-3xl mx-auto p-4 border border-border rounded-lg bg-card">
                     <div className="text-sm font-medium text-muted-foreground">Marks Breakdown</div>
                     <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="p-3 rounded-md bg-muted/10 text-center">
                         <div className="text-sm text-muted-foreground">MCQ Marks</div>
-                        <div className="text-lg font-semibold">{Number(mcqScore).toFixed(2)} / {Number(mcqMax).toFixed(2)}</div>
+                        <div className="text-lg font-semibold text-foreground">{Number(mcqScore).toFixed(2)} / {Number(mcqMax).toFixed(2)}</div>
                       </div>
                       <div className="p-3 rounded-md bg-muted/10 text-center">
                         <div className="text-sm text-muted-foreground">CQ Marks</div>
-                        <div className="text-lg font-semibold">{Number(cqAssigned).toFixed(2)} / {Number(cqMax).toFixed(2)}</div>
+                        <div className="text-lg font-semibold text-foreground">{Number(cqAssigned).toFixed(2)} / {Number(cqMax).toFixed(2)}</div>
                       </div>
                       <div className="p-3 rounded-md bg-muted/10 text-center">
                         <div className="text-sm text-muted-foreground">Total Marks</div>
-                        <div className="text-lg font-semibold">{Number(displayedTotal).toFixed(2)} / {Number(totalMax).toFixed(2)}</div>
+                        <div className="text-lg font-semibold text-foreground">{Number(displayedTotal).toFixed(2)} / {Number(totalMax).toFixed(2)}</div>
                       </div>
                     </div>
                   </div>
