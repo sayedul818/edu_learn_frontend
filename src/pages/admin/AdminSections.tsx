@@ -517,8 +517,8 @@ const AdminSections = () => {
       {/* Academic Structure Tab */}
       {activeTab === "academic" && (
         <>
-      {/* Action Buttons + Hierarchy in responsive columns */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Action Buttons + Hierarchy stacked: Quick Actions on first row, Hierarchy below */}
+      <div className="grid grid-cols-1 gap-4">
       <Card>
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>

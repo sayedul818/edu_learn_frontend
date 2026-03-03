@@ -1,7 +1,22 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Menu, X, BookOpen } from "lucide-react";
+import { Menu, X, BookOpen, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTheme } from "@/contexts/ThemeContext";
+
+const ThemeToggle: React.FC = () => {
+  const { theme, toggle } = useTheme();
+  return (
+    <Button
+      variant="ghost"
+      onClick={toggle}
+      aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+      title={theme === "dark" ? "Light" : "Dark"}
+    >
+      {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+    </Button>
+  );
+};
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -36,6 +51,7 @@ const Navbar = () => {
         </div>
 
         <div className="hidden md:flex items-center gap-3">
+          <ThemeToggle />
           <Button variant="ghost" asChild>
             <Link to="/login">Log In</Link>
           </Button>
@@ -64,6 +80,9 @@ const Navbar = () => {
               {link.label}
             </a>
           ))}
+          <div className="pt-2">
+            <ThemeToggle />
+          </div>
           <div className="flex flex-col gap-2 pt-2">
             <Button variant="outline" asChild>
               <Link to="/login">Log In</Link>

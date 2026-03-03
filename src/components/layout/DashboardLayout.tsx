@@ -4,9 +4,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   BookOpen, LayoutDashboard, FileText, ClipboardList, BarChart3,
   Trophy, Settings, LogOut, Menu, X, Users, PlusCircle, ChevronDown,
-  Shield, Bell, Target
+  Shield, Bell, Target, Sun, Moon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface NavItem {
   label: string;
@@ -38,6 +39,7 @@ const adminNav: NavItem[] = [
   { label: "Questions", href: "/admin/questions", icon: <FileText className="h-5 w-5" /> },
   { label: "Exam", href: "/admin/exams/builder", icon: <ClipboardList className="h-5 w-5" /> },
   { label: "All Exams", href: "/admin/exams", icon: <ClipboardList className="h-5 w-5" /> },
+    { label: "Leaderboard", href: "/admin/leaderboard", icon: <Trophy className="h-5 w-5" /> },
   { label: "Analytics", href: "/admin/analytics", icon: <BarChart3 className="h-5 w-5" /> },
   { label: "Settings", href: "/admin/settings", icon: <Settings className="h-5 w-5" /> },
 ];
@@ -123,6 +125,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
           <div className="hidden lg:block" />
 
           <div className="flex items-center gap-3">
+            <ThemeToggleInline />
             <button className="relative p-2 rounded-lg text-muted-foreground hover:bg-muted transition-colors">
               <Bell className="h-5 w-5" />
               <span className="absolute top-1 right-1 h-2 w-2 bg-destructive rounded-full" />
@@ -159,5 +162,14 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
     </div>
   );
 };
+
+  const ThemeToggleInline: React.FC = () => {
+    const { theme, toggle } = useTheme();
+    return (
+      <button onClick={toggle} className="relative p-2 rounded-lg text-muted-foreground hover:bg-muted transition-colors" aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}>
+        {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+      </button>
+    );
+  };
 
 export default DashboardLayout;
