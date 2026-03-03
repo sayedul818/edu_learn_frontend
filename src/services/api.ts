@@ -17,7 +17,6 @@ const API_URL = (() => {
   if (import.meta.env.DEV) return 'http://localhost:5000/api';
   return 'https://learn-edu-backend.vercel.app/api';
 })();
-export { API_URL };
 
 interface FetchOptions extends RequestInit {
   body?: any;
@@ -265,13 +264,4 @@ export const usersAPI = {
   changeStatus: (id: string, status: string) => fetchAPI(`/users/${id}/status`, { method: 'PATCH', body: { status } }),
   resetPassword: (id: string, password: string) => fetchAPI(`/users/${id}/reset-password`, { method: 'PATCH', body: { password } }),
   delete: (id: string) => fetchAPI(`/users/${id}`, { method: 'DELETE' }),
-};
-
-// ============ ADMIN REPORTS API ============
-export const adminReportsAPI = {
-  students: (params?: { page?: number; limit?: number; q?: string }) => {
-    const qs = params ? `?${new URLSearchParams(Object.entries(params).reduce((acc, [k,v]) => { if (v !== undefined && v !== null) acc[k]=String(v); return acc; }, {} as Record<string,string>)).toString()}` : '';
-    return fetchAPI(`/admin/reports/students${qs}`);
-  },
-  studentDetail: (id: string) => fetchAPI(`/admin/reports/students/${id}`),
 };

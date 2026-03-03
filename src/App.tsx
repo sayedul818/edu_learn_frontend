@@ -41,7 +41,6 @@ import AdminAllExams from "./pages/admin/AdminAllExams";
 import AdminSections from "./pages/admin/AdminSections";
 import AdminCreateSection from "./pages/admin/AdminCreateSection";
 import AdminLeaderboard from "./pages/admin/AdminLeaderboard";
-import AdminStudentReports from "./pages/admin/AdminStudentReports";
 
 const queryClient = new QueryClient();
 
@@ -95,7 +94,6 @@ const AppRoutes = () => (
     <Route path="/admin/sections/:id/edit" element={<ProtectedRoute><AdminCreateSection /></ProtectedRoute>} />
     <Route path="/admin/exams" element={<ProtectedRoute><AdminAllExams /></ProtectedRoute>} />
     <Route path="/admin/leaderboard" element={<ProtectedRoute><AdminLeaderboard /></ProtectedRoute>} />
-    <Route path="/admin/student-reports" element={<ProtectedRoute><AdminStudentReports /></ProtectedRoute>} />
     <Route path="/admin/analytics" element={<ProtectedRoute><AdminAnalytics /></ProtectedRoute>} />
     <Route path="/admin/settings" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
 
