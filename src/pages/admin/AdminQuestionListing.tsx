@@ -168,6 +168,7 @@ const AdminQuestionListing = () => {
   // Editor
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<any>(null);
+  const [optionsText, setOptionsText] = useState<string>("");
   const [imageUploading, setImageUploading] = useState(false);
 
   const openEditor = (id: string) => {
@@ -186,6 +187,7 @@ const AdminQuestionListing = () => {
     normalized.groupId = (q.groupId && (q.groupId._id || q.groupId)) || "";
     normalized.classId = (q.classId && (q.classId._id || q.classId)) || "";
     setForm(normalized);
+    setOptionsText((normalized.options || []).map((opt: any) => opt.text || opt).join(', '));
     setEditingId(q._id);
   };
 
@@ -193,8 +195,11 @@ const AdminQuestionListing = () => {
     if (!editingId || !form) return;
     try {
       // normalize ids before sending
+      const existingOpts = form.options || [];
+      const parsedOptions = optionsText.split(',').map(s => s.trim()).filter(Boolean).map((t, idx) => ({ text: t, isCorrect: !!(existingOpts[idx] && existingOpts[idx].isCorrect) }));
       const payload = {
         ...form,
+        options: parsedOptions.length > 0 ? parsedOptions : form.options,
         chapterId: form.chapterId && (form.chapterId._id || form.chapterId),
         subjectId: form.subjectId && (form.subjectId._id || form.subjectId),
         topicId: form.topicId && form.topicId !== "" ? (form.topicId._id || form.topicId) : undefined,
@@ -616,7 +621,7 @@ const AdminQuestionListing = () => {
       )}
 
       {/* Edit Dialog */}
-      <Dialog open={!!editingId} onOpenChange={() => setEditingId(null)}>
+      <Dialog open={!!editingId} onOpenChange={(open) => { if (!open) setEditingId(null); }}>
         <DialogContent className="w-full sm:max-w-lg md:max-w-2xl lg:max-w-4xl max-h-[85vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>Edit Question</DialogTitle>
@@ -633,34 +638,47 @@ const AdminQuestionListing = () => {
               </div>
               <div>
                 <Label>Options (comma separated)</Label>
-                <Input 
-                  value={(form.options || []).map((opt: any) => opt.text || opt).join(", ")} 
-                  onChange={(e) => setForm({ 
-                    ...form, 
-                    options: e.target.value.split(",").map((text: string) => ({
-                      text: text.trim(),
-                      isCorrect: false
-                    }))
-                  })} 
+                <Input
+                  value={optionsText}
+                  onChange={(e) => setOptionsText(e.target.value)}
                 />
               </div>
               <div>
                 <Label>Mark Correct Answer</Label>
-                <select 
-                  value={form.options?.findIndex((opt: any) => opt.isCorrect) ?? -1}
-                  onChange={(e) => setForm({
-                    ...form,
-                    options: form.options?.map((opt: any, idx: number) => ({
+                <select
+                  value={(() => {
+                    const opts = (form.options || []).map((o:any) => o.text || o);
+                    const correctIdx = (form.options || []).findIndex((opt: any) => opt.isCorrect);
+                    // If optionsText was edited, prefer matching by text
+                    const parsed = optionsText.split(',').map(s => s.trim()).filter(Boolean);
+                    if (parsed.length > 0) {
+                      const idx = parsed.findIndex(p => p === (opts[correctIdx] || ''));
+                      return idx >= 0 ? idx : (correctIdx ?? -1);
+                    }
+                    return correctIdx ?? -1;
+                  })()}
+                  onChange={(e) => {
+                    const newIdx = parseInt(e.target.value);
+                    const updatedOptions = (form.options || []).map((opt: any, idx: number) => ({
                       ...opt,
-                      isCorrect: idx === parseInt(e.target.value)
-                    }))
-                  })}
+                      isCorrect: idx === newIdx
+                    }));
+                    setForm({ ...form, options: updatedOptions });
+                  }}
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
                 >
                   <option value={-1}>Select correct answer</option>
-                  {form.options?.map((opt: any, idx: number) => (
-                    <option key={idx} value={idx}>{String.fromCharCode(65 + idx)}. {opt.text || opt}</option>
-                  ))}
+                  {(() => {
+                    const parsed = optionsText.split(',').map(s => s.trim()).filter(Boolean);
+                    if (parsed.length > 0) {
+                      return parsed.map((text, idx) => (
+                        <option key={idx} value={idx}>{String.fromCharCode(65 + idx)}. {text}</option>
+                      ));
+                    }
+                    return (form.options || []).map((opt: any, idx: number) => (
+                      <option key={idx} value={idx}>{String.fromCharCode(65 + idx)}. {opt.text || opt}</option>
+                    ));
+                  })()}
                 </select>
               </div>
               <div>

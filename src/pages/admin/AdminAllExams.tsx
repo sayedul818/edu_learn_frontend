@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { examsAPI, questionsAPI } from "@/services/api";
+import { examsAPI, questionsAPI, examResultsAPI } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -60,6 +60,10 @@ const AdminAllExams = () => {
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "title">("newest");
   const [editExam, setEditExam] = useState<Exam | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [regradeExamId, setRegradeExamId] = useState<string | null>(null);
+  const [regrading, setRegrading] = useState(false);
+  const [regradeResult, setRegradeResult] = useState<any>(null);
+  const [regradeError, setRegradeError] = useState<string | null>(null);
 
   const loadExams = async () => {
     try {
@@ -276,7 +280,79 @@ const AdminAllExams = () => {
                     <Button size="sm" onClick={() => toggleStatus(exam)}>{exam.status === "live" ? "Unpublish" : "Publish"}</Button>
                     <Button size="sm" variant="outline" onClick={() => openEdit(exam)}>Edit</Button>
                     <Button size="sm" variant="destructive" onClick={() => deleteExam(exam._id)}>Delete</Button>
-                    {/* Regrade feature removed */}
+                    <Dialog open={regradeExamId === exam._id} onOpenChange={(open) => { if (!open) { setRegradeExamId(null); setRegradeResult(null); setRegradeError(null); } }}>
+                      <DialogTrigger asChild>
+                        <Button size="sm" variant="secondary" onClick={() => setRegradeExamId(exam._id)}>Regrade Results</Button>
+                      </DialogTrigger>
+                      <DialogContent className="w-full sm:max-w-lg max-h-[60vh] overflow-y-auto p-4 sm:p-6">
+                        <DialogHeader>
+                          <DialogTitle>Regrade Results</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-3">
+                          <p className="text-sm text-muted-foreground">This will recompute MCQ marks using current correct answers and preserve any stored CQ marks. Students will see updated scores after this completes.</p>
+                          {regrading ? (
+                            <div className="py-4">
+                              <BeautifulLoader message="Regrading results..." compact />
+                            </div>
+                          ) : regradeResult ? (
+                            <div>
+                              <p className="font-medium">Regraded {regradeResult.updatedCount || 0} result(s).</p>
+                              {Array.isArray(regradeResult.updatedIds) && regradeResult.updatedIds.length > 0 && (
+                                <div className="mt-2 text-sm text-muted-foreground max-h-40 overflow-y-auto">
+                                  <p className="mb-1">Updated IDs:</p>
+                                  <ul className="list-disc list-inside">
+                                    {regradeResult.updatedIds.map((id:string)=> <li key={id} className="break-all">{id}</li>)}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          ) : regradeError ? (
+                            <p className="text-sm text-destructive">{regradeError}</p>
+                          ) : (
+                            <p className="text-sm">Are you sure you want to regrade all results for <strong>{exam.title}</strong>?</p>
+                          )}
+
+                          <div className="flex items-center gap-2 justify-end">
+                            {!regrading && !regradeResult && (
+                              <Button size="sm" variant="ghost" onClick={() => { setRegradeExamId(null); }}>Cancel</Button>
+                            )}
+                            {!regrading && !regradeResult && (
+                              <Button size="sm" onClick={async () => {
+                                setRegrading(true); setRegradeError(null);
+                                try {
+                                  const resp:any = await examResultsAPI.regradeExam(exam._id);
+                                  setRegradeResult(resp || { updatedCount: 0, updatedIds: [] });
+                                  toast({ title: `Regraded ${resp?.updatedCount || 0} results` });
+
+                                  // Clear known caches so clients fetch fresh data
+                                  try {
+                                    sessionStorage.removeItem('lastExamResult');
+                                    for (const k of Object.keys(sessionStorage)) {
+                                      if (k.startsWith('lastExamResult_')) sessionStorage.removeItem(k);
+                                    }
+                                    for (const k of Object.keys(localStorage)) {
+                                      if (k.startsWith('examResults_') || k === 'examResults') localStorage.removeItem(k);
+                                    }
+                                  } catch (e) { /* ignore */ }
+
+                                  // Refresh local exams list to reflect any changes
+                                  await loadExams();
+                                } catch (err:any) {
+                                  console.error('Regrade failed', err);
+                                  setRegradeError(err?.message || String(err));
+                                  toast({ title: 'Regrade failed', description: err?.message || String(err), variant: 'destructive' });
+                                } finally {
+                                  setRegrading(false);
+                                }
+                              }}>Run Regrade</Button>
+                            )}
+                            {!regrading && regradeResult && (
+                              <Button size="sm" onClick={() => { setRegradeExamId(null); setRegradeResult(null); }}>Close</Button>
+                            )}
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                     <Dialog> 
                       <DialogTrigger asChild>
                         <Button size="sm" variant="ghost">Preview</Button>
