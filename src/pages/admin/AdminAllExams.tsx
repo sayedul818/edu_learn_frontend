@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { examsAPI } from "@/services/api";
+import { examsAPI, questionsAPI } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -53,6 +53,7 @@ const AdminAllExams = () => {
   const { toast } = useToast();
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
+  const [allQuestions, setAllQuestions] = useState<ExamQuestion[]>([]);
   const [tab, setTab] = useState<"live" | "previous">("live");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "live" | "draft">("all");
@@ -63,8 +64,18 @@ const AdminAllExams = () => {
   const loadExams = async () => {
     try {
       setLoading(true);
-      const response = await examsAPI.getAll();
-      setExams(response.data || []);
+      const response: any = await examsAPI.getAll();
+
+      // Backend shape is typically: { success, count, data: Exam[] }
+      // But keep this resilient so the page never crashes.
+      const maybeArray =
+        Array.isArray(response) ? response :
+        Array.isArray(response?.data) ? response.data :
+        Array.isArray(response?.data?.data) ? response.data.data :
+        Array.isArray(response?.exams) ? response.exams :
+        [];
+
+      setExams(maybeArray);
     } catch (err) {
       console.error("Failed to load exams", err);
       toast({
@@ -79,18 +90,40 @@ const AdminAllExams = () => {
 
   useEffect(() => {
     loadExams();
+    // load all questions once for preview resolution
+    (async () => {
+      try {
+        const res: any = await questionsAPI.getAll();
+        setAllQuestions(res.data || []);
+      } catch (err) {
+        console.error('Failed to load questions for preview:', err);
+        setAllQuestions([]);
+      }
+    })();
   }, []);
 
   const filtered = useMemo(() => {
-    let list = exams.slice();
+    const listRaw = Array.isArray(exams) ? exams : [];
+    let list = listRaw.slice();
     if (search.trim()) {
       const s = search.toLowerCase();
-      list = list.filter((e) => e.title.toLowerCase().includes(s));
+      list = list.filter((e) => (e?.title || "").toLowerCase().includes(s));
     }
     if (statusFilter !== "all") list = list.filter((e) => e.status === statusFilter);
-    if (sortBy === "newest") list.sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||""));
-    if (sortBy === "oldest") list.sort((a,b)=> (a.createdAt||"").localeCompare(b.createdAt||""));
-    if (sortBy === "title") list.sort((a,b)=> (a.title||"").localeCompare(b.title||""));
+
+    const asSortableString = (v: any) => {
+      if (!v) return "";
+      if (typeof v === "string") return v;
+      try {
+        return new Date(v).toISOString();
+      } catch {
+        return String(v);
+      }
+    };
+
+    if (sortBy === "newest") list.sort((a, b) => asSortableString(b?.createdAt).localeCompare(asSortableString(a?.createdAt)));
+    if (sortBy === "oldest") list.sort((a, b) => asSortableString(a?.createdAt).localeCompare(asSortableString(b?.createdAt)));
+    if (sortBy === "title") list.sort((a, b) => (a?.title || "").localeCompare(b?.title || ""));
     return list;
   }, [exams, search, statusFilter, sortBy]);
 
@@ -145,7 +178,43 @@ const AdminAllExams = () => {
   };
 
   const getQuestionsForExam = (exam: Exam) => {
-    return exam.questionIds || [];
+    const raw = exam.questionIds || [];
+    // raw entries might be full question objects or ids. Keep CQ parent structure: return parent objects with `subQuestions` arrays
+    const resolved: any[] = [];
+    raw.forEach((entry: any) => {
+      if (!entry) return;
+      let qObj: any = null;
+      if (typeof entry === 'string') {
+        qObj = allQuestions.find((aq) => aq._id === entry || (aq as any).id === entry) || null;
+      } else if (typeof entry === 'object') {
+        qObj = entry;
+      }
+
+      if (!qObj) {
+        resolved.push({ _id: String(entry), questionTextBn: "(question missing)" });
+        return;
+      }
+
+      if (qObj.subQuestions && Array.isArray(qObj.subQuestions) && qObj.subQuestions.length > 0) {
+        resolved.push({
+          _id: qObj._id,
+          questionTextBn: qObj.questionTextBn || qObj.questionText || "",
+          parentPassage: qObj.questionTextBn || qObj.questionTextEn || qObj.questionText || "",
+          subQuestions: (qObj.subQuestions || []).map((sq: any, idx: number) => ({
+            _id: `${qObj._id}-${idx}`,
+            label: sq.label,
+            image: sq.image || qObj.image || null,
+            questionTextBn: sq.questionTextBn || sq.questionTextEn || sq.questionText || sq.questionBn || "",
+            options: sq.options || [],
+            explanation: sq.explanation || qObj.explanation || "",
+            type: sq.type,
+          })),
+        });
+      } else {
+        resolved.push(qObj);
+      }
+    });
+    return resolved;
   };
 
   const openEdit = (exam: Exam) => {
@@ -188,6 +257,10 @@ const AdminAllExams = () => {
           <div className="col-span-full">
             <BeautifulLoader message="Loading exams..." compact />
           </div>
+        ) : (tab === "live" ? live : previous).length === 0 ? (
+          <div className="col-span-full text-center py-12">
+            <p className="text-muted-foreground">No exams found for this selection.</p>
+          </div>
         ) : (
           (tab === "live" ? live : previous).map((exam) => (
             <Card key={exam._id} className="p-4">
@@ -216,11 +289,60 @@ const AdminAllExams = () => {
                           <p className="text-sm text-muted-foreground">{exam.duration} mins • {exam.totalMarks} marks</p>
                           <div className="mt-2 space-y-2">
                             {getQuestionsForExam(exam).map((q:any, i:number) => {
+                              // If grouped CQ parent
+                              if (q.subQuestions && Array.isArray(q.subQuestions)) {
+                                return (
+                                  <div key={q._id || i} className="p-3 border rounded-lg bg-card">
+                                    {/* parent image */}
+                                    {q.image && (
+                                      <div className="w-full flex justify-center bg-gray-50 py-3 mb-3 border border-border rounded">
+                                        <img src={q.image} alt="Question" className="max-w-full h-auto max-h-60 object-contain rounded" />
+                                      </div>
+                                    )}
+                                    {q.parentPassage ? (
+                                      <div className="mb-3 rounded-lg bg-card border border-border text-foreground p-3 leading-relaxed text-sm">
+                                        <p className="whitespace-pre-line">{q.parentPassage}</p>
+                                      </div>
+                                    ) : null}
+
+                                    <div className="space-y-2">
+                                      {q.subQuestions.map((sq:any, idx:number) => (
+                                        <div key={sq._id} className="border-l-2 border-success/30 pl-3">
+                                          <div className="flex items-start gap-2">
+                                            <div className="w-6 flex-none font-semibold text-foreground text-base leading-tight">{sq.label || (['ক','খ','গ','ঘ'][idx] || `${idx+1}.`)}</div>
+                                            <div className="flex-1">
+                                                    <div className="text-foreground leading-relaxed text-sm">{sq.questionTextBn || sq.questionTextEn || sq.questionText || sq.questionBn}</div>
+                                                    {sq.image && (
+                                                      <div className="mt-2 mb-2 flex justify-center">
+                                                        <img src={sq.image} alt="Sub-question" className="max-w-full h-auto max-h-48 object-contain rounded" />
+                                                      </div>
+                                                    )}
+                                              {sq.options && sq.options.length > 0 && (
+                                                <ul className="mt-2 list-decimal list-inside text-sm">
+                                                  {sq.options.map((opt:any, oidx:number)=>(<li key={oidx}>{typeof opt === "string" ? opt : opt.text}</li>))}
+                                                </ul>
+                                              )}
+                                              {sq.explanation && <p className="text-xs text-muted-foreground mt-2">{sq.explanation}</p>}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              }
+
+                              // Fallback: regular single question
                               const questionText = q?.questionTextBn || q?.questionTextEn || q?.questionText || "(question missing)";
                               const parsed = parseQuestionWithSubPoints(questionText);
-                              
                               return (
-                                <div key={i} className="p-3 border rounded-lg bg-card">
+                                <div key={q._id || i} className="p-3 border rounded-lg bg-card">
+                                  {/* question image */}
+                                  {q.image && (
+                                    <div className="w-full flex justify-center bg-gray-50 py-3 mb-3 border border-border rounded">
+                                      <img src={q.image} alt="Question" className="max-w-full h-auto max-h-60 object-contain rounded" />
+                                    </div>
+                                  )}
                                   {parsed.hasSubPoints ? (
                                     <div className="font-medium">
                                       {parsed.mainQuestion && <p className="mb-2">{parsed.mainQuestion}</p>}
@@ -236,10 +358,18 @@ const AdminAllExams = () => {
                                   ) : (
                                     <p className="font-medium">{questionText}</p>
                                   )}
-                                  {q?.options && (
-                                    <ul className="mt-2 list-decimal list-inside text-sm">
-                                      {q.options.map((opt:any, idx:number)=>(<li key={idx}>{typeof opt === "string" ? opt : opt.text}</li>))}
-                                    </ul>
+
+                                  {q?.options && q.options.length > 0 && (
+                                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                      {q.options.map((opt:any, idx:number) => {
+                                        const text = typeof opt === 'string' ? opt : opt.text;
+                                        return (
+                                          <div key={idx} className="px-3 py-2 rounded border border-border bg-card text-sm">
+                                            <span className="font-medium mr-2">{String.fromCharCode(65+idx)}.</span>{text}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
                                   )}
                                   {q?.explanation && <p className="text-xs text-muted-foreground mt-2">{q.explanation}</p>}
                                 </div>

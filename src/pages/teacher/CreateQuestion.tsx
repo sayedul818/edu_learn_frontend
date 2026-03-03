@@ -46,6 +46,7 @@ const CreateQuestion = () => {
     explanation: "",
     difficulty: "medium",
     questionType: "MCQ",
+    marks: 1,
     tags: [] as string[],
   });
 
@@ -201,6 +202,7 @@ const CreateQuestion = () => {
         explanation: form.explanation || "",
         difficulty: form.difficulty || "medium",
         questionType: form.questionType || "MCQ",
+        marks: form.marks ?? 1,
         tags: form.tags || [],
       };
 
@@ -210,7 +212,7 @@ const CreateQuestion = () => {
       toast({ title: "Question created successfully!", description: `ID: ${response.data._id}` });
       
       // Reset form
-      setForm({ classId: form.classId, groupId: "", subjectId: "", chapterId: "", topicId: "", examTypeId: "", questionTextEn: "", questionTextBn: "", options: ["", "", "", ""], correctAnswer: "", explanation: "", difficulty: "medium", questionType: "MCQ", tags: [] });
+      setForm({ classId: form.classId, groupId: "", subjectId: "", chapterId: "", topicId: "", examTypeId: "", questionTextEn: "", questionTextBn: "", options: ["", "", "", ""], correctAnswer: "", explanation: "", difficulty: "medium", questionType: "MCQ", marks: 1, tags: [] });
     } catch (err) {
       console.error('❌ Error creating question:', err);
       toast({ 
@@ -308,7 +310,7 @@ const CreateQuestion = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Question Type *</Label>
-                <select className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" value={form.questionType} onChange={(e) => setForm({ ...form, questionType: e.target.value })}>
+                <select className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" value={form.questionType} onChange={(e) => setForm({ ...form, questionType: e.target.value, marks: e.target.value === 'MCQ' ? 1 : form.marks })}>
                   <option value="MCQ">MCQ</option>
                   <option value="CQ">CQ</option>
                   <option value="গাণিতিক">গাণিতিক (Mathematical)</option>
@@ -361,6 +363,11 @@ const CreateQuestion = () => {
             <div>
               <Label>Explanation (optional)</Label>
               <textarea className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm min-h-[60px]" value={form.explanation} onChange={(e) => setForm({ ...form, explanation: e.target.value })} placeholder="Explain why this is the correct answer..." />
+            </div>
+
+            <div>
+              <Label>Marks</Label>
+              <Input type="number" min={0} value={form.marks ?? 1} onChange={(e) => setForm({ ...form, marks: Number(e.target.value) })} />
             </div>
 
             <div className="flex gap-2">

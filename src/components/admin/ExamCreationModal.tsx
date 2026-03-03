@@ -8,20 +8,23 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
-import { examsAPI, subjectsAPI, chaptersAPI, topicsAPI, classesAPI, groupsAPI, usersAPI } from "@/services/api";
+import { examsAPI, subjectsAPI, chaptersAPI, topicsAPI, classesAPI, groupsAPI, usersAPI, examResultsAPI, questionsAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Settings, BarChart3, FileEdit } from "lucide-react";
+import { Save, Settings, BarChart3, FileEdit, Eye, Clock, CheckCircle, AlertCircle } from "lucide-react";
 
 type ExamCreationModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedQuestionIds?: string[];
+  selectedQuestionMarks?: { questionId: string; marks: number }[];
   initialExam?: any;
   mode?: "create" | "edit";
   onSuccess?: (exam?: any) => void;
+  selectedSubjectId?: string | null;
+  selectedChapterId?: string | null;
 };
 
-const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], initialExam, mode = "create", onSuccess }: ExamCreationModalProps) => {
+const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selectedQuestionMarks = [], initialExam, mode = "create", onSuccess, selectedSubjectId = null, selectedChapterId = null }: ExamCreationModalProps) => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("edit");
   const [saving, setSaving] = useState(false);
@@ -161,6 +164,14 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], initi
   const [userSearch, setUserSearch] = useState<string>('');
   const [loadingUsers, setLoadingUsers] = useState(false);
 
+  // Tab 3: Results
+  const [loadingResults, setLoadingResults] = useState(false);
+  const [examResults, setExamResults] = useState<any[]>([]);
+  const [selectedResult, setSelectedResult] = useState<any>(null);
+  const [answerSheetOpen, setAnswerSheetOpen] = useState(false);
+  const [resultQuestions, setResultQuestions] = useState<any[]>([]);
+  const [gradingMarks, setGradingMarks] = useState<Record<string, number>>({});
+
   const effectiveQuestionIds = useMemo(() => {
     if (selectedQuestionIds.length > 0) return selectedQuestionIds;
     if (initialExam?.questionIds?.length) {
@@ -169,7 +180,12 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], initi
     return [];
   }, [selectedQuestionIds, initialExam]);
 
-  const totalMarks = effectiveQuestionIds.length * marksPerQuestion;
+  const computedTotalMarks = useMemo(() => {
+    if (selectedQuestionMarks && selectedQuestionMarks.length > 0) {
+      return selectedQuestionMarks.reduce((s, m) => s + Number(m.marks || 0), 0);
+    }
+    return effectiveQuestionIds.length * marksPerQuestion;
+  }, [selectedQuestionMarks, effectiveQuestionIds, marksPerQuestion]);
 
   useEffect(() => {
     if (!open || !initialExam || mode !== "edit") return;
@@ -235,6 +251,162 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], initi
     })();
   }, [open, userSearch]);
 
+  // Fetch exam results when result tab is active and initialExam exists
+  useEffect(() => {
+    if (activeTab !== 'result' || !initialExam?._id) return;
+    
+    (async () => {
+      try {
+        setLoadingResults(true);
+        const res = await examResultsAPI.getByExam(initialExam._id);
+        setExamResults(res.data || []);
+      } catch (err) {
+        console.error('Failed to fetch exam results:', err);
+        setExamResults([]);
+      } finally {
+        setLoadingResults(false);
+      }
+    })();
+  }, [activeTab, initialExam?._id]);
+
+  // Handle View Answer click
+  const handleViewAnswer = async (result: any) => {
+    try {
+      // Get questions for this exam
+      if (!initialExam?.questionIds || initialExam.questionIds.length === 0) {
+        toast({ title: "No questions found", variant: "destructive" });
+        return;
+      }
+      
+      const questionIds = initialExam.questionIds.map((q: any) => q._id || q);
+      const questionsRes = await questionsAPI.getAll();
+      const questions = (questionsRes.data || []).filter((q: any) => questionIds.includes(q._id));
+      
+      setResultQuestions(questions);
+      setSelectedResult(result);
+      // prepare grading marks map from existing result.cqMarks if available
+      const initialMarks: Record<string, number> = {};
+      if (result?.cqMarks && typeof result.cqMarks === 'object') {
+        Object.keys(result.cqMarks).forEach(k => { initialMarks[k] = Number(result.cqMarks[k]) || 0; });
+      }
+      // also ensure subquestion ids exist with 0 default
+      questions.forEach((q:any) => {
+        if (q.subQuestions && Array.isArray(q.subQuestions)) {
+          q.subQuestions.forEach((sq:any, idx:number) => {
+            const id = sq._id || `${q._id}-${idx}`;
+            if (!(id in initialMarks)) initialMarks[id] = 0;
+          });
+        }
+      });
+      setGradingMarks(initialMarks);
+      setAnswerSheetOpen(true);
+    } catch (err) {
+      console.error('Failed to load questions:', err);
+      toast({ title: "Failed to load questions", variant: "destructive" });
+    }
+  };
+
+  // Get student name from result
+  const getStudentName = (result: any) => {
+    if (!result) return "Unknown Student";
+
+    // studentId can be an object or a string id; there are cases where
+    // the API returns nested student object under different keys
+    const sid = result.studentId || result.student || result.user;
+    if (!sid) return "Unknown Student";
+
+    if (typeof sid === "string") {
+      // fallback to id when no name/email available
+      return sid;
+    }
+
+    if (sid.name) return sid.name;
+    if (sid.fullName) return sid.fullName;
+    if (sid.email) return sid.email;
+    return "Unknown Student";
+  };
+
+  const [isEditingGrade, setIsEditingGrade] = useState(false);
+
+  // when selectedResult changes, initialize gradingMarks and reset edit mode
+  useEffect(() => {
+    if (!selectedResult) return;
+    const initialMarks: Record<string, number> = {};
+    if (selectedResult?.cqMarks && typeof selectedResult.cqMarks === 'object') {
+      Object.keys(selectedResult.cqMarks).forEach(k => { initialMarks[k] = Number(selectedResult.cqMarks[k]) || 0; });
+    }
+    setGradingMarks((prev) => ({ ...initialMarks, ...prev }));
+    setIsEditingGrade(false);
+  }, [selectedResult]);
+
+  const openAttachment = async (att: any) => {
+    try {
+      const url = att.dataUrl || att.url;
+      if (!url) {
+        toast({ title: 'No attachment URL', variant: 'destructive' });
+        return;
+      }
+
+      // If we have a dataUrl (base64), open it directly
+      if (att.dataUrl) {
+        window.open(att.dataUrl, '_blank');
+        return;
+      }
+
+      // For PDFs, try to fetch then open as blob to avoid content-type/cors viewer issues
+      if (att.type === 'application/pdf' || (att.name && att.name.toLowerCase().endsWith('.pdf'))) {
+        try {
+          const resp = await fetch(url);
+          if (!resp.ok) throw new Error('Failed to fetch file');
+          const blob = await resp.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          window.open(blobUrl, '_blank');
+          return;
+        } catch (err) {
+          // If fetch failed, try Cloudinary raw URL fallback (image vs raw resource path)
+          console.warn('Blob fetch failed, attempting Cloudinary raw fallback', err);
+          try {
+            if (url.includes('/image/upload/')) {
+              const alt = url.replace('/image/upload/', '/raw/upload/');
+              const r2 = await fetch(alt);
+              if (r2.ok) {
+                const b2 = await r2.blob();
+                const u2 = URL.createObjectURL(b2);
+                window.open(u2, '_blank');
+                return;
+              }
+            }
+          } catch (e2) {
+            console.warn('Raw fallback also failed', e2);
+          }
+          // final fallback: open original URL directly
+          window.open(url, '_blank');
+          return;
+        }
+      }
+
+      // Images and other files: open directly
+      window.open(url, '_blank');
+    } catch (err) {
+      console.error('Failed to open attachment', err);
+      toast({ title: 'Failed to open attachment', variant: 'destructive' });
+    }
+  };
+
+  // Format time (submission time)
+  const formatTime = (date: string | Date) => {
+    return new Date(date).toLocaleString('bn-BD', { 
+      year: 'numeric', month: 'short', day: 'numeric', 
+      hour: '2-digit', minute: '2-digit' 
+    });
+  };
+
+  // Get status (Pending = not evaluated, Evaluated = evaluated)
+  const getStatus = (result: any) => {
+    // If we have a percentage > 0 or score > 0, it's evaluated
+    return (result.score !== null && result.score !== undefined) ? "Evaluated" : "Pending";
+  };
+
   const handleSaveExam = async () => {
     if (!examTitle.trim()) {
       toast({
@@ -247,7 +419,7 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], initi
 
     try {
       setSaving(true);
-      const payload = {
+      const payload: any = {
         title: examTitle,
         description,
         instructions,
@@ -259,8 +431,9 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], initi
         endDate: endDate || null,
         endTime: endTime || null,
         questionIds: effectiveQuestionIds,
-        totalMarks,
+        totalMarks: computedTotalMarks,
         marksPerQuestion,
+        ...(selectedQuestionMarks && selectedQuestionMarks.length > 0 ? { questionMarks: selectedQuestionMarks } : {}),
         negativeMarking,
         negativeMarkValue,
         questionNumbering,
@@ -273,8 +446,8 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], initi
         answerVisibility,
         autoSubmit,
         status: initialExam?.status || "draft",
-        subjectId: subjectId || null,
-        chapterId: chapterId || null,
+        subjectId: subjectId || selectedSubjectId || null,
+        chapterId: chapterId || selectedChapterId || null,
         topicId: topicId || null,
         classId: classId || null,
         groupId: groupId || null,
@@ -335,6 +508,7 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], initi
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -536,7 +710,7 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], initi
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">মোট নম্বর</p>
-                  <p className="text-2xl font-bold">{totalMarks}</p>
+                  <p className="text-2xl font-bold">{computedTotalMarks}</p>
                 </div>
               </div>
             </div>
@@ -761,13 +935,78 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], initi
 
           {/* Tab 3: Result */}
           <TabsContent value="result" className="space-y-6 mt-6">
-            <div className="text-center py-12">
-              <BarChart3 className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground text-lg">ফলাফল দেখার জন্য পরীক্ষা প্রকাশ করুন</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                শিক্ষার্থীরা পরীক্ষা দেওয়ার পর এখানে পরিসংখ্যান দেখা যাবে
-              </p>
-            </div>
+            {!initialExam?._id ? (
+              <div className="text-center py-12">
+                <BarChart3 className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground text-lg">ফলাফল দেখার জন্য পরীক্ষা সংরক্ষণ করুন</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  শিক্ষার্থীরা পরীক্ষা দেওয়ার পর এখানে পরিসংখ্যান দেখা যাবে
+                </p>
+              </div>
+            ) : loadingResults ? (
+              <BeautifulLoader message="ফলাফল লোড হচ্ছে..." className="py-8" />
+            ) : examResults.length === 0 ? (
+              <div className="text-center py-12">
+                <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                <p className="text-muted-foreground">কোনো ফলাফল পাওয়া যায়নি</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/40">
+                      <th className="text-left px-4 py-3 font-semibold">শিক্ষার্থী নাম</th>
+                      <th className="text-center px-4 py-3 font-semibold">স্কোর</th>
+                      <th className="text-center px-4 py-3 font-semibold">গড় (%)</th>
+                      <th className="text-left px-4 py-3 font-semibold">জমা দেওয়ার সময়</th>
+                      <th className="text-center px-4 py-3 font-semibold">অবস্থা</th>
+                      <th className="text-center px-4 py-3 font-semibold">অ্যাকশন</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {examResults.map((result: any) => {
+                      const status = getStatus(result);
+                      const percentage = result.percentage || 0;
+                      return (
+                        <tr key={result._id} className="border-b hover:bg-muted/30 transition">
+                          <td className="px-4 py-3 font-medium">{getStudentName(result)}</td>
+                          <td className="px-4 py-3 text-center font-semibold text-success">
+                            {result.score}/{result.totalMarks}
+                          </td>
+                          <td className="px-4 py-3 text-center">{percentage.toFixed(2)}%</td>
+                          <td className="px-4 py-3 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3.5 w-3.5" />
+                              {formatTime(result.submittedAt)}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              {status === "Evaluated" ? (
+                                <><CheckCircle className="h-4 w-4 text-success" /> মূল্যায়িত</>
+                              ) : (
+                                <><AlertCircle className="h-4 w-4 text-yellow-500" /> অপেক্ষমান</>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleViewAnswer(result)}
+                              className="gap-1"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              উত্তর দেখুন
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
 
@@ -776,7 +1015,7 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], initi
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             বাতিল
           </Button>
-          <Button onClick={handleSaveExam} disabled={saving || !examTitle.trim()}>
+          <Button onClick={handleSaveExam} disabled={saving || !examTitle.trim()} className={activeTab === 'result' ? 'hidden' : ''}>
             {saving ? (
               <>সংরক্ষণ হচ্ছে...</>
             ) : (
@@ -789,6 +1028,208 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], initi
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Answer Sheet Modal */}
+    <Dialog open={answerSheetOpen} onOpenChange={setAnswerSheetOpen}>
+      <DialogContent className="w-full sm:max-w-4xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-xl">
+            উত্তর তালিকা - {getStudentName(selectedResult)}
+          </DialogTitle>
+          <DialogDescription>
+            স্কোর: {selectedResult?.score}/{selectedResult?.totalMarks} ({selectedResult?.percentage?.toFixed(2)}%)
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6">
+            {resultQuestions.map((question: any, index: number) => {
+            const studentAnswer = selectedResult?.answers?.[question._id];
+            const isMultipleChoice = question.questionType === 'MCQ';
+            const correctAnswer = isMultipleChoice ? question.correctAnswer : null;
+            
+            return (
+              <div key={question._id} className="bg-muted/20 p-4 rounded-lg border">
+                <div className="font-semibold mb-2 text-base">
+                  প্রশ্ন {index + 1}: {question.questionTextBn || question.questionTextEn}
+                </div>
+
+                {/* Options for MCQ */}
+                {isMultipleChoice && question.options && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 my-3">
+                    {question.options.map((opt: any, optIdx: number) => {
+                      const optionLetter = String.fromCharCode(65 + optIdx);
+                      const isStudentAnswer = studentAnswer === optionLetter;
+                      const isCorrect = correctAnswer === optionLetter;
+                      
+                      let bgColor = 'bg-card';
+                      if (isStudentAnswer && isCorrect) bgColor = 'bg-success/20 border-success';
+                      else if (isStudentAnswer) bgColor = 'bg-destructive/20 border-destructive';
+                      else if (isCorrect) bgColor = 'bg-yellow-500/10 border-yellow-500';
+
+                      return (
+                        <div 
+                          key={optIdx} 
+                          className={`p-2 rounded border transition ${bgColor}`}
+                        >
+                          <span className="font-medium">{optionLetter}.</span> {opt.text}
+                          {isStudentAnswer && isCorrect && <span className="ml-2 text-success">✓</span>}
+                          {isStudentAnswer && !isCorrect && <span className="ml-2 text-destructive">✗</span>}
+                          {!isStudentAnswer && isCorrect && <span className="ml-2 text-yellow-600">( সঠিক )</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Student Answer for Written Questions */}
+                {!isMultipleChoice && (
+                  <div className="mt-3">
+                    <div className="text-sm font-medium text-muted-foreground mb-1">শিক্ষার্থীর উত্তর:</div>
+                    <div className="bg-card p-3 rounded border">
+                      {studentAnswer || "কোনো উত্তর দেওয়া হয়নি"}
+                    </div>
+
+                    {/* Attachments (if any) */}
+                    {selectedResult?.attachments && Object.keys(selectedResult.attachments || {}).length > 0 && (
+                      <div className="mt-3">
+                        <div className="text-sm font-medium text-muted-foreground mb-1">Uploaded files:</div>
+                        <div className="space-y-2">
+                          {Object.entries(selectedResult.attachments).map(([k, a]: any) => {
+                            // if attachment key belongs to this question (parent or sub), show it
+                            if (!String(k).startsWith(question._id)) return null;
+                            const att = a as any;
+                            const isImage = att.type && att.type.startsWith('image/');
+                            return (
+                              <div key={k} className="p-2 border rounded bg-card">
+                                <div className="flex items-center justify-between">
+                                  <div className="text-sm">{att.name}</div>
+                                        <div className="flex items-center gap-3">
+                                          <button type="button" onClick={() => openAttachment(att)} className="text-sm text-primary">Open</button>
+                                          <a href={att.dataUrl || att.url} download={att.name} className="text-sm text-muted-foreground">Download</a>
+                                        </div>
+                                </div>
+                                {isImage ? (
+                                  <div className="mt-2">
+                                    <img src={att.dataUrl || att.url} alt={att.name} className="max-h-48 w-auto rounded" />
+                                  </div>
+                                ) : (att.type === 'application/pdf' || (att.name && att.name.toLowerCase().endsWith('.pdf'))) ? (
+                                  <div className="mt-2">
+                                    <p className="text-sm text-muted-foreground">PDF file — click Open to view or Download to save locally.</p>
+                                  </div>
+                                ) : null}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Correct Answer */}
+                {question.explanation && (
+                  <div className="mt-3">
+                    <div className="text-sm font-medium text-muted-foreground mb-1">ব্যাখ্যা:</div>
+                    <div className="bg-success/10 p-3 rounded border border-success/30">
+                      {question.explanation}
+                    </div>
+                  </div>
+                )}
+
+                {/* Grading inputs or display for CQ subQuestions */}
+                {question.subQuestions && Array.isArray(question.subQuestions) && (
+                  <div className="mt-3">
+                    <div className="text-sm font-medium text-muted-foreground mb-2">Sub-question marks</div>
+                    <div className="space-y-2">
+                      {question.subQuestions.map((sq:any, sidx:number) => {
+                        const qid = sq._id || `${question._id}-${sidx}`;
+                        const assigned = gradingMarks[qid] ?? (selectedResult?.cqMarks ? Number(selectedResult.cqMarks[qid]) || 0 : 0);
+                        if (selectedResult?.pendingEvaluation || isEditingGrade) {
+                          return (
+                            <div key={qid} className="flex items-center gap-3">
+                              <div className="w-8 font-semibold">{sq.label || (['ক','খ','গ','ঘ'][sidx] || `${sidx+1}.`)}</div>
+                              <div className="flex-1">{sq.questionTextBn || sq.questionTextEn || sq.questionText || sq.questionBn}</div>
+                              <Input
+                                type="number"
+                                value={gradingMarks[qid] ?? assigned}
+                                onChange={(e:any) => setGradingMarks(prev => ({ ...prev, [qid]: Number(e.target.value) }))}
+                                className="w-28 text-sm"
+                                min={0}
+                              />
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div key={qid} className="flex items-center gap-3">
+                            <div className="w-8 font-semibold">{sq.label || (['ক','খ','গ','ঘ'][sidx] || `${sidx+1}.`)}</div>
+                            <div className="flex-1">{sq.questionTextBn || sq.questionTextEn || sq.questionText || sq.questionBn}</div>
+                            <div className="flex items-center space-x-2">
+                              <div className="px-3 py-1 rounded-full bg-success/10 text-success border border-success/30 font-semibold text-sm">{assigned}</div>
+                              <div className="text-xs text-muted-foreground">marks</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex justify-end gap-2 mt-4">
+          <Button variant="outline" onClick={() => { setAnswerSheetOpen(false); setIsEditingGrade(false); }}>
+            বন্ধ করুন
+          </Button>
+
+          {/* If result is pending, show Save Grades */}
+          {selectedResult?.pendingEvaluation && (
+            <Button onClick={async () => {
+              try {
+                const resp = await examResultsAPI.grade(selectedResult._id, { cqMarks: gradingMarks });
+                const updated = resp.data || resp;
+                toast({ title: 'Grades saved', description: 'Result has been evaluated' });
+                setSelectedResult(updated);
+                setExamResults(prev => prev.map(r => r._id === updated._id ? updated : r));
+                setAnswerSheetOpen(false);
+              } catch (err) {
+                console.error('Failed to save grades', err);
+                toast({ title: 'Failed to save grades', variant: 'destructive' });
+              }
+            }}>Save Grades</Button>
+          )}
+
+          {/* If already graded, allow toggling edit mode */}
+          {selectedResult && !selectedResult?.pendingEvaluation && (
+            <>
+              {!isEditingGrade ? (
+                <Button onClick={() => setIsEditingGrade(true)} type="button">Edit Grades</Button>
+              ) : (
+                <>
+                  <Button variant="ghost" onClick={() => { setIsEditingGrade(false); setGradingMarks(selectedResult.cqMarks || {}); }} type="button">Cancel</Button>
+                  <Button onClick={async () => {
+                    try {
+                      const resp = await examResultsAPI.grade(selectedResult._id, { cqMarks: gradingMarks });
+                      const updated = resp.data || resp;
+                      toast({ title: 'Grades updated', description: 'Result grades updated' });
+                      setSelectedResult(updated);
+                      setExamResults(prev => prev.map(r => r._id === updated._id ? updated : r));
+                      setIsEditingGrade(false);
+                    } catch (err) {
+                      console.error('Failed to update grades', err);
+                      toast({ title: 'Failed to update grades', variant: 'destructive' });
+                    }
+                  }}>Save Changes</Button>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 };
 

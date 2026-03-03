@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { useToast } from "@/hooks/use-toast";
+import { parseQuestionWithSubPoints, parseInstructionAndContent } from "@/lib/utils";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -385,8 +386,20 @@ const QuestionListing = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.05 }}
-              className="bg-muted/30 rounded-xl border border-border p-5 shadow-sm"
+              className="bg-muted/30 rounded-xl border border-border shadow-sm overflow-hidden"
             >
+              {/* Question Image (if exists) */}
+              {q.image && (
+                <div className="w-full flex justify-center bg-gray-50 py-4 border-b">
+                  <img 
+                    src={q.image} 
+                    alt="Question" 
+                    className="max-w-full h-auto max-h-96 object-contain rounded" 
+                  />
+                </div>
+              )}
+              
+              <div className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
@@ -452,9 +465,49 @@ const QuestionListing = () => {
                     }
 
                     return (
-                      <p className="text-foreground font-medium leading-relaxed">
-                        {q.questionTextBn || q.questionTextEn || q.questionText}
-                      </p>
+                      <>
+                        {(() => {
+                          const questionText = q.questionTextBn || q.questionTextEn || q.questionText;
+                          
+                          // First, check for instruction pattern (e.g., "নিচের উদ্দীপকটি পড়ে ১ ও ২ সংখ্যক প্রশ্নের উত্তর দাও:")
+                          const instructionData = parseInstructionAndContent(questionText);
+                          if (instructionData.hasInstruction) {
+                            return (
+                              <div>
+                                <p className="mb-3 text-foreground font-semibold">{instructionData.instruction}</p>
+                                <div className="mt-3 p-3 rounded-lg bg-card border border-border text-foreground leading-relaxed text-sm whitespace-pre-wrap">
+                                  {instructionData.content}
+                                </div>
+                              </div>
+                            );
+                          }
+                          
+                          // Then check for Roman numeral pattern
+                          const parsed = parseQuestionWithSubPoints(questionText);
+                          if (parsed.hasSubPoints && parsed.subPoints.length > 0) {
+                            return (
+                              <div>
+                                {parsed.mainQuestion && <p className="mb-2 text-foreground font-medium">{parsed.mainQuestion}</p>}
+                                <div className="ml-4 space-y-1">
+                                  {parsed.subPoints.map((point, i) => (
+                                    <div key={i} className="flex gap-2">
+                                      <span className="font-semibold min-w-[2rem]">{['i.', 'ii.', 'iii.', 'iv.', 'v.', 'vi.', 'vii.', 'viii.', 'ix.', 'x.'][i]}</span>
+                                      <span className="text-foreground leading-relaxed">{point}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          }
+                          
+                          // Default: plain text
+                          return (
+                            <p className="text-foreground font-medium leading-relaxed">
+                              {questionText}
+                            </p>
+                          );
+                        })()}
+                      </>
                     );
                   })()}
                 </div>
@@ -565,6 +618,7 @@ const QuestionListing = () => {
                   </motion.div>
                 )}
               </AnimatePresence>
+              </div>
             </motion.div>
             );
           })}

@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { Search, ArrowLeft, CheckCircle, Info, BarChart3, Flag, Bookmark, BookOpen, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { parseQuestionWithSubPoints } from "@/lib/utils";
+import { parseQuestionWithSubPoints, parseInstructionAndContent } from "@/lib/utils";
+import { uploadImageToCloudinary } from "@/services/cloudinary";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -167,6 +168,7 @@ const AdminQuestionListing = () => {
   // Editor
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<any>(null);
+  const [imageUploading, setImageUploading] = useState(false);
 
   const openEditor = (id: string) => {
     // Check if this is a sub-question item
@@ -356,7 +358,19 @@ const AdminQuestionListing = () => {
           const isSubQuestionDisplay = item.isSubQuestion;
 
           return (
-          <motion.div key={item._id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }} className="bg-muted/30 rounded-xl border border-border p-5 shadow-sm hover:shadow-md transition-shadow">
+          <motion.div key={item._id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }} className="bg-muted/30 rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+            {/* Question Image (if exists) */}
+            {q.image && (
+              <div className="w-full flex justify-center bg-gray-50 py-4 border-b">
+                <img 
+                  src={q.image} 
+                  alt="Question" 
+                  className="max-w-full h-auto max-h-96 object-contain rounded" 
+                />
+              </div>
+            )}
+            
+            <div className="p-5">
             <div className="flex items-start justify-between gap-3 mb-3">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-2">
@@ -422,6 +436,21 @@ const AdminQuestionListing = () => {
 
                   // For regular questions without subQuestions
                   const questionText = (q as any).questionTextBn || (q as any).questionTextEn;
+                  
+                  // First check for instruction pattern
+                  const instructionData = parseInstructionAndContent(questionText);
+                  if (instructionData.hasInstruction) {
+                    return (
+                      <div className="text-foreground font-medium leading-relaxed">
+                        <p className="mb-3 font-semibold">{instructionData.instruction}</p>
+                        <div className="mt-3 p-3 rounded-lg bg-card border border-border text-foreground leading-relaxed text-sm whitespace-pre-wrap">
+                          {instructionData.content}
+                        </div>
+                      </div>
+                    );
+                  }
+                  
+                  // Then check for Roman numeral pattern
                   const parsed = parseQuestionWithSubPoints(questionText);
 
                   if (parsed.hasSubPoints) {
@@ -550,6 +579,7 @@ const AdminQuestionListing = () => {
                 </motion.div>
               )}
             </AnimatePresence>
+            </div>
           </motion.div>
           );
         })}
@@ -636,6 +666,52 @@ const AdminQuestionListing = () => {
               <div>
                 <Label>Explanation</Label>
                 <Input value={form.explanation || ""} onChange={(e) => setForm({ ...form, explanation: e.target.value })} />
+              </div>
+              <div>
+                <Label>Question Image (optional)</Label>
+                <div className="space-y-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    disabled={imageUploading}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        try {
+                          setImageUploading(true);
+                          const imageUrl = await uploadImageToCloudinary(file);
+                          setForm({ ...form, image: imageUrl });
+                          toast({ title: "Image uploaded successfully!", variant: "default" });
+                        } catch (error) {
+                          console.error("Upload failed:", error);
+                          toast({ 
+                            title: "Image upload failed", 
+                            description: error instanceof Error ? error.message : "Unknown error",
+                            variant: "destructive"
+                          });
+                        } finally {
+                          setImageUploading(false);
+                        }
+                      }
+                    }}
+                    className="block w-full text-sm border border-input rounded-lg p-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                  {imageUploading && (
+                    <p className="text-sm text-muted-foreground">Uploading image to Cloudinary...</p>
+                  )}
+                  {form.image && (
+                    <div className="relative">
+                      <img src={form.image} alt="Preview" className="w-full max-h-48 object-contain rounded-lg border border-border" />
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, image: "" })}
+                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
               <div>
                 <Label>Sub-questions (for CQ)</Label>
@@ -747,6 +823,15 @@ const AdminQuestionListing = () => {
                     <option value="hard">Hard</option>
                   </select>
                 </div>
+              </div>
+              <div>
+                <Label>Marks</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={(form.marks ?? 1)}
+                  onChange={(e) => setForm({ ...form, marks: Number(e.target.value) })}
+                />
               </div>
               <div>
                 <Label>Topic (optional)</Label>

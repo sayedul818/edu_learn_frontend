@@ -94,7 +94,7 @@ const AdminExamBuilder = () => {
       }
       if (selectedQuestionType && q.questionType !== selectedQuestionType) return false;
       if (search) {
-        const text = ((q.questionTextBn || q.questionTextEn) || "").toLowerCase();
+        const text = ((q.questionTextBn || q.questionTextEn || q.questionText || q.questionBn) || "").toLowerCase();
         if (!text.includes(search.toLowerCase())) return false;
       }
       return true;
@@ -106,6 +106,7 @@ const AdminExamBuilder = () => {
   const visible = filteredQuestions.slice(start, start + ITEMS_PER_PAGE);
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [questionMarksMap, setQuestionMarksMap] = useState<Record<string, number>>({});
 
   useEffect(() => { setCurrentPage(1); }, [selectedSubjectId, selectedChapterId, selectedQuestionType, search]);
 
@@ -132,8 +133,98 @@ const AdminExamBuilder = () => {
   };
 
   const selectedQuestions = useMemo(() => {
-    return selectedIds.map((id) => dbQuestions.find((q:any) => q._id === id)).filter(Boolean);
+    // Group selected questions: keep CQ parent objects with subQuestions array
+    const map = new Map<string, any>();
+
+    selectedIds.forEach((id) => {
+      // explicit sub-question id like parentId-0
+      if (typeof id === 'string' && id.includes('-')) {
+        const parts = id.split('-');
+        const idx = Number(parts.pop());
+        const parentId = parts.join('-');
+        const parent = dbQuestions.find((q: any) => q._id === parentId || q.id === parentId);
+        if (!parent) return;
+        const sq = parent.subQuestions && parent.subQuestions[idx];
+        if (!sq) return;
+        const key = parentId;
+        if (!map.has(key)) {
+          map.set(key, {
+            _id: parent._id || parent.id,
+            questionTextBn: parent.questionTextBn || parent.questionText || "",
+            parentPassage: parent.questionTextBn || parent.questionTextEn || parent.questionText || "",
+            subQuestions: [],
+          });
+        }
+        map.get(key).subQuestions.push({
+          _id: `${parentId}-${idx}`,
+          label: sq.label,
+          questionTextBn: sq.questionTextBn || sq.questionTextEn || sq.questionText || sq.questionBn || "",
+          image: sq.image || parent.image || null,
+          options: sq.options || [],
+          explanation: sq.explanation || parent.explanation || "",
+          type: sq.type,
+        });
+        return;
+      }
+
+      const found = dbQuestions.find((q: any) => q._id === id || q.id === id);
+      if (!found) return;
+
+      if (found.subQuestions && Array.isArray(found.subQuestions) && found.subQuestions.length > 0) {
+        // full parent selected: include all subQuestions
+        map.set(found._id, {
+          _id: found._id,
+          questionTextBn: found.questionTextBn || found.questionText || "",
+          parentPassage: found.questionTextBn || found.questionTextEn || found.questionText || "",
+          subQuestions: (found.subQuestions || []).map((sq: any, idx: number) => ({
+            _id: `${found._id}-${idx}`,
+            label: sq.label,
+            questionTextBn: sq.questionTextBn || sq.questionTextEn || sq.questionText || sq.questionBn || "",
+            image: sq.image || found.image || null,
+            options: sq.options || [],
+            explanation: sq.explanation || found.explanation || "",
+            type: sq.type,
+          })),
+        });
+      } else {
+        // normal question
+        map.set(found._id || found.id, found);
+      }
+    });
+
+    return Array.from(map.values());
   }, [selectedIds, dbQuestions]);
+
+  const totalMarks = useMemo(() => {
+    if (!selectedIds || selectedIds.length === 0) return 0;
+    let sum = 0;
+    selectedQuestions.forEach((q: any) => {
+      const id = q._id || q.id;
+      const override = questionMarksMap[id];
+
+      if (q.subQuestions && Array.isArray(q.subQuestions) && q.subQuestions.length > 0) {
+        const marksForQuestion = typeof override !== 'undefined' ? override : (q.marks ?? 10);
+        const count = q.subQuestions.length;
+        const perSub = marksForQuestion / Math.max(1, count);
+        sum += perSub * count;
+      } else {
+        const marksForQuestion = typeof override !== 'undefined' ? override : (q.marks ?? 1);
+        sum += marksForQuestion;
+      }
+    });
+    if (Number.isInteger(sum)) return sum;
+    return Math.round(sum * 100) / 100;
+  }, [selectedQuestions, questionMarksMap]);
+
+  const selectedQuestionMarksArray = useMemo(() => {
+    return selectedQuestions.map((q:any) => {
+      const id = q._id || q.id;
+      const dbQ = dbQuestions.find((x:any) => (x._id || x.id) === id);
+      const defaultMarks = dbQ ? (dbQ.marks ?? (dbQ.subQuestions && dbQ.subQuestions.length > 0 ? 10 : 1)) : (q.subQuestions && q.subQuestions.length > 0 ? 10 : 1);
+      const marks = typeof questionMarksMap[id] !== 'undefined' ? questionMarksMap[id] : defaultMarks;
+      return { questionId: id, marks };
+    });
+  }, [selectedQuestions, questionMarksMap, dbQuestions]);
 
   return (
     <div className="space-y-6 font-bangla pb-24">
@@ -245,8 +336,36 @@ const AdminExamBuilder = () => {
               <div key={q._id} className="bg-muted/20 p-4 rounded-lg flex items-start gap-3">
                 <div className="pt-1"><Checkbox checked={selectedIds.includes(q._id)} onCheckedChange={() => toggleSelect(q._id)} /></div>
                 <div className="flex-1">
-                  <div className="flex items-center justify-between"><div className="font-medium">{q.questionTextBn || q.questionTextEn}</div></div>
-                  {q.options && (<div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">{q.options.map((opt:any,i:number)=>(<div key={i} className="px-3 py-2 rounded border border-border text-sm"><span className="font-medium">{String.fromCharCode(65+i)}.</span> {opt.text}</div>))}</div>)}
+                        {q.image && (
+                          <div className="w-full flex justify-center bg-gray-50 py-3 mb-3 border border-border rounded">
+                            <img src={q.image} alt="Question" className="max-w-full h-auto max-h-60 object-contain rounded" />
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between"><div className="font-medium">{q.questionTextBn || q.questionTextEn || q.questionText || q.questionBn}</div></div>
+
+                  {/* If this question has subQuestions (CQ), render them */}
+                  {q.subQuestions && Array.isArray(q.subQuestions) && q.subQuestions.length > 0 ? (
+                    <div className="mt-2 space-y-2">
+                      {(q.subQuestions || []).map((sq:any, idx:number) => (
+                        <div key={idx} className="border-l-2 border-success/30 pl-3">
+                          <div className="flex items-start gap-2">
+                            <div className="w-6 flex-none font-semibold text-foreground text-base leading-tight">{sq.label || (['ক','খ','গ','ঘ'][idx] || `${idx+1}.`)}</div>
+                            <div className="flex-1">
+                              <div className="text-foreground leading-relaxed text-sm">{sq.questionTextBn || sq.questionTextEn || sq.questionText || sq.questionBn}</div>
+                              {sq.image && (
+                                <div className="mt-2 mb-2 flex justify-center">
+                                  <img src={sq.image} alt="Sub-question" className="max-w-full h-auto max-h-48 object-contain rounded" />
+                                </div>
+                              )}
+                              {sq.type && <div className="text-xs text-muted-foreground mt-1">Type: {sq.type}</div>}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    q.options && (<div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">{q.options.map((opt:any,i:number)=>(<div key={i} className="px-3 py-2 rounded border border-border text-sm"><span className="font-medium">{String.fromCharCode(65+i)}.</span> {opt.text}</div>))}</div>)
+                  )}
                 </div>
               </div>
             ))}
@@ -268,7 +387,7 @@ const AdminExamBuilder = () => {
             <div className="text-sm text-center">
               Selected: <strong>{selectedIds.length}</strong>
               <span className="mx-3 inline-block" />
-              Total Marks: <strong>{selectedIds.length}</strong>
+              Total Marks: <strong>{totalMarks}</strong>
             </div>
           </div>
           <div className="w-full sm:w-auto flex justify-center sm:justify-end">
@@ -284,23 +403,85 @@ const AdminExamBuilder = () => {
             <DialogTitle>Preview Selected Questions ({selectedIds.length})</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            {selectedQuestions.map((q:any, i:number) => (
-              <div key={q._id} className="bg-muted/10 p-3 rounded-lg">
+            {selectedQuestions.map((q:any, i:number) => {
+              const id = q._id || q.id;
+              // default marks: prefer explicit override, else question.marks or CQ default
+              const defaultMarks = (() => {
+                const dbQ = dbQuestions.find((x:any) => (x._id || x.id) === id);
+                if (dbQ) return dbQ.marks ?? (dbQ.subQuestions && dbQ.subQuestions.length > 0 ? 10 : 1);
+                // for grouped preview entries constructed earlier, assume CQ parent => 10
+                return q.subQuestions && q.subQuestions.length > 0 ? 10 : 1;
+              })();
+
+              return (
+              <div key={id} className="bg-muted/10 p-3 rounded-lg">
+                {q.image && (
+                  <div className="w-full flex justify-center bg-gray-50 py-3 mb-3 border border-border rounded">
+                    <img src={q.image} alt="Question" className="max-w-full h-auto max-h-60 object-contain rounded" />
+                  </div>
+                )}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
-                    <div className="font-medium mb-1">{i+1}. {q.questionTextBn || q.questionTextEn}</div>
-                    {q.options && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-                        {q.options.map((opt:any, idx:number) => (
-                          <div key={idx} className="px-3 py-2 rounded border border-border bg-card text-sm"><span className="font-medium">{String.fromCharCode(65+idx)}.</span> {opt.text}</div>
-                        ))}
+                    {/* Grouped CQ parent with subQuestions */}
+                    {q.subQuestions && Array.isArray(q.subQuestions) ? (
+                      <div>
+                        <div className="font-medium mb-2">{i+1}. {q.parentPassage || q.questionTextBn || q.questionText}</div>
+                        <div className="mt-2 space-y-2">
+                          {q.subQuestions.map((sq:any, idx:number) => (
+                            <div key={sq._id} className="border-l-2 border-success/30 pl-3">
+                              <div className="flex items-start gap-2">
+                                <div className="w-6 flex-none font-semibold text-foreground text-base leading-tight">{sq.label || (['ক','খ','গ','ঘ'][idx] || `${idx+1}.`)}</div>
+                                <div className="flex-1">
+                                  <div className="text-foreground leading-relaxed text-sm">{sq.questionTextBn || sq.questionTextEn || sq.questionText || sq.questionBn}</div>
+                                  {sq.image && (
+                                    <div className="mt-2 mb-2 flex justify-center">
+                                      <img src={sq.image} alt="Sub-question" className="max-w-full h-auto max-h-48 object-contain rounded" />
+                                    </div>
+                                  )}
+                                  {sq.options && sq.options.length > 0 && (
+                                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                      {sq.options.map((opt:any, oi:number)=>(<div key={oi} className="px-3 py-2 rounded border border-border text-sm"><span className="font-medium">{String.fromCharCode(65+oi)}.</span> {opt.text}</div>))}
+                                    </div>
+                                  )}
+                                  {sq.explanation && <div className="mt-2 text-sm text-muted-foreground">Explanation: {sq.explanation}</div>}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="font-medium mb-1">{i+1}. {q.questionTextBn || q.questionTextEn || q.questionText || q.questionBn}</div>
+                        {q.options && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                            {q.options.map((opt:any, idx:number) => (
+                              <div key={idx} className="px-3 py-2 rounded border border-border bg-card text-sm"><span className="font-medium">{String.fromCharCode(65+idx)}.</span> {opt.text}</div>
+                            ))}
+                          </div>
+                        )}
+                        <div className="mt-2 text-sm text-muted-foreground">Explanation: {q.explanation || "-"}</div>
                       </div>
                     )}
-                    <div className="mt-2 text-sm text-muted-foreground">Explanation: {q.explanation || "-"}</div>
+                  </div>
+
+                  <div className="w-28 flex-none text-right">
+                    <div className="text-sm text-muted-foreground mb-1">Marks</div>
+                    <Input
+                      type="number"
+                      value={typeof questionMarksMap[id] !== 'undefined' ? questionMarksMap[id] : defaultMarks}
+                      onChange={(e:any) => {
+                        const val = Number(e.target.value || 0);
+                        setQuestionMarksMap((prev) => ({ ...prev, [id]: val }));
+                      }}
+                      className="w-full"
+                      min={0}
+                    />
                   </div>
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
           <div className="flex justify-end gap-2 mt-3">
             <Button variant="ghost" onClick={() => setPreviewOpen(false)}>Cancel</Button>
@@ -316,6 +497,7 @@ const AdminExamBuilder = () => {
         selectedQuestionIds={selectedIds}
           selectedSubjectId={selectedSubjectId}
           selectedChapterId={selectedChapterId}
+        selectedQuestionMarks={selectedQuestionMarksArray}
         onSuccess={handleExamCreationSuccess}
       />
         </>

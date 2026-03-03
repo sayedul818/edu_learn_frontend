@@ -6,6 +6,52 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Parse instruction text (e.g., "নিচের উদ্দীপকটি পড়ে ১ ও ২ সংখ্যক প্রশ্নের উত্তর দাও:")
+ * Returns an object with instruction and content
+ */
+export function parseInstructionAndContent(text: string): {
+  hasInstruction: boolean;
+  instruction: string;
+  content: string;
+} {
+  if (!text) {
+    return { hasInstruction: false, instruction: "", content: "" };
+  }
+
+  // Look for lines ending with colon (typical instruction pattern)
+  // Pattern: text ending with colon, followed by new content
+  const instructionPattern = /^([^:\n]+:)\s*\n(.+)$/ms;
+  const match = text.match(instructionPattern);
+  
+  if (match) {
+    return {
+      hasInstruction: true,
+      instruction: match[1].trim(),
+      content: match[2].trim()
+    };
+  }
+
+  // Alternative: check if first line ends with colon (even without explicit newline separation)
+  const colonIndex = text.indexOf(':');
+  if (colonIndex > 0 && colonIndex < text.length - 1) {
+    // Check if there's substantial content after the colon
+    const beforeColon = text.substring(0, colonIndex + 1);
+    const afterColon = text.substring(colonIndex + 1).trim();
+    
+    // Only treat as instruction if the line before colon is reasonably short (instruction-like)
+    if (beforeColon.length < 150 && afterColon.length > 10 && beforeColon.split('\n').length === 1) {
+      return {
+        hasInstruction: true,
+        instruction: beforeColon.trim(),
+        content: afterColon
+      };
+    }
+  }
+
+  return { hasInstruction: false, instruction: "", content: "" };
+}
+
+/**
  * Parse question text containing Roman numeral sub-points (i., ii., iii., etc.)
  * Returns an object with mainQuestion and subPoints array
  */

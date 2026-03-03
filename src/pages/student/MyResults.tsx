@@ -46,9 +46,9 @@ const MyResults = () => {
 
   // Stats
   const totalExams = myResults.length;
-  const avgScore = totalExams ? Math.round(myResults.reduce((a, r) => a + r.percentage, 0) / totalExams) : 0;
-  const best = myResults.reduce((max, r) => r.percentage > max ? r.percentage : max, 0);
-  const worst = myResults.reduce((min, r) => r.percentage < min ? r.percentage : min, 100);
+  const avgScore = totalExams ? (myResults.reduce((a, r) => a + Number(r.percentage || 0), 0) / totalExams) : 0;
+  const best = myResults.length ? myResults.reduce((max, r) => Number(r.percentage || 0) > max ? Number(r.percentage || 0) : max, 0) : 0;
+  const worst = myResults.length ? myResults.reduce((min, r) => Number(r.percentage || 0) < min ? Number(r.percentage || 0) : min, 100) : 0;
   const fastest = myResults.reduce((min, r) => r.timeTaken < min ? r.timeTaken : min, Infinity);
   const slowest = myResults.reduce((max, r) => r.timeTaken > max ? r.timeTaken : max, 0);
 
@@ -120,19 +120,19 @@ const MyResults = () => {
         </Card>
         <Card className="text-center">
           <CardContent className="py-6">
-            <div className="text-3xl font-bold text-success mb-1">{avgScore}%</div>
+            <div className="text-3xl font-bold text-success mb-1">{Number(avgScore || 0).toFixed(2)}%</div>
             <div className="text-sm text-muted-foreground">গড় স্কোর</div>
           </CardContent>
         </Card>
         <Card className="text-center">
           <CardContent className="py-6">
-            <div className="text-3xl font-bold text-emerald-600 mb-1">{best}%</div>
+            <div className="text-3xl font-bold text-emerald-600 mb-1">{Number(best || 0).toFixed(2)}%</div>
             <div className="text-sm text-muted-foreground">সর্বোচ্চ স্কোর</div>
           </CardContent>
         </Card>
         <Card className="text-center">
           <CardContent className="py-6">
-            <div className="text-3xl font-bold text-destructive mb-1">{worst}%</div>
+            <div className="text-3xl font-bold text-destructive mb-1">{Number(worst || 0).toFixed(2)}%</div>
             <div className="text-sm text-muted-foreground">সর্বনিম্ন স্কোর</div>
           </CardContent>
         </Card>
@@ -207,7 +207,7 @@ const MyResults = () => {
                       <td className="py-3 px-2">{subjectName || '-'}</td>
                       <td className="py-3 px-2 text-center">{r.score}/{r.totalMarks}</td>
                       <td className="py-3 px-2 text-center">
-                        <span className={`font-bold ${r.percentage >= 80 ? "text-success" : r.percentage >= 50 ? "text-warning" : "text-destructive"}`}>{r.percentage}%</span>
+                        <span className={`font-bold ${Number(r.percentage || 0) >= 80 ? "text-success" : Number(r.percentage || 0) >= 50 ? "text-warning" : "text-destructive"}`}>{Number(r.percentage || 0).toFixed(2)}%</span>
                       </td>
                       <td className="py-3 px-2 text-center">{Math.floor(r.timeTaken/60)}:{(r.timeTaken%60).toString().padStart(2,'0')} মিনিট</td>
                       <td className="py-3 px-2 text-center text-muted-foreground">{dateStr}</td>

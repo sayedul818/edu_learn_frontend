@@ -118,13 +118,51 @@ const ExamResult = () => {
           subjectId: dbExam.subjectId?._id || dbExam.subjectId,
         };
         
-        const transformedQuestions = (dbExam.questionIds || []).map((q: any) => ({
-          id: q._id,
-          questionText: q.questionTextBn || q.questionTextEn || "",
-          options: q.options || [],
-          correctAnswer: q.options?.find((opt: any) => opt.isCorrect)?.text || "",
-          explanation: q.explanation || "",
-        }));
+        const transformedQuestions = (dbExam.questionIds || []).map((q: any) => {
+          // If CQ parent with subQuestions, transform accordingly
+          if (q && q.subQuestions && Array.isArray(q.subQuestions) && q.subQuestions.length > 0) {
+            // determine parent total marks from exam.questionMarks, question.marks, or default 10
+            const parentTotalMarks = (dbExam.questionMarks && Array.isArray(dbExam.questionMarks))
+              ? (dbExam.questionMarks.find((m: any) => String(m.questionId) === String(q._id))?.marks ?? q.marks ?? 10)
+              : (q.marks ?? 10);
+
+            const count = q.subQuestions.length || 1;
+            const perSubMax = parentTotalMarks / Math.max(1, count);
+
+            return {
+              id: q._id,
+              questionText: q.questionTextBn || q.questionTextEn || q.questionText || "",
+              parentPassage: q.questionTextBn || q.questionTextEn || q.questionText || "",
+              image: q.image || null,
+              subQuestions: (q.subQuestions || []).map((sq: any, idx: number) => ({
+                id: `${q._id}-${idx}`,
+                dbId: sq._id || null,
+                image: sq.image || q.image || null,
+                questionText: sq.questionTextBn || sq.questionTextEn || sq.questionText || "",
+                options: sq.options || [],
+                correctAnswer: sq.options?.find((opt: any) => opt.isCorrect)?.text || "",
+                explanation: sq.explanation || q.explanation || "",
+                label: sq.label || (['ক','খ','গ','ঘ'][idx] || `${idx+1}.`),
+                type: sq.type || null,
+                // max mark for this sub-question (may be fractional)
+                maxMark: perSubMax,
+              })),
+              explanation: q.explanation || "",
+              // store parent total for reference
+              parentTotalMarks,
+            };
+          }
+
+          // Regular question
+          return {
+            id: q._id,
+            image: q.image || null,
+            questionText: q.questionTextBn || q.questionTextEn || q.questionText || "",
+            options: q.options || [],
+            correctAnswer: q.options?.find((opt: any) => opt.isCorrect)?.text || "",
+            explanation: q.explanation || "",
+          };
+        });
         
         setResolvedExam(transformedExam);
         setQuestions(transformedQuestions);
@@ -220,12 +258,14 @@ const ExamResult = () => {
     );
   }
 
+  const isPending = Boolean(result?.pendingEvaluation);
   const correct = questions.filter((q) => result.answers[q.id] === q.correctAnswer).length;
   const wrong = questions.filter((q) => result.answers[q.id] && result.answers[q.id] !== q.correctAnswer).length;
   const skipped = questions.length - correct - wrong;
 
-  const gradeColor = result.percentage >= 80 ? "text-success" : result.percentage >= 50 ? "text-warning" : "text-destructive";
-  const grade = result.percentage >= 90 ? "A+" : result.percentage >= 80 ? "A" : result.percentage >= 70 ? "B" : result.percentage >= 60 ? "C" : result.percentage >= 50 ? "D" : "F";
+  const safePercentage = Number(result?.percentage) || 0;
+  const gradeColor = safePercentage >= 80 ? "text-success" : safePercentage >= 50 ? "text-warning" : "text-destructive";
+  const grade = safePercentage >= 90 ? "A+" : safePercentage >= 80 ? "A" : safePercentage >= 70 ? "B" : safePercentage >= 60 ? "C" : safePercentage >= 50 ? "D" : "F";
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 font-bangla p-4">
@@ -236,10 +276,69 @@ const ExamResult = () => {
           <h1 className="text-3xl font-display font-bold mb-1">পরীক্ষা সম্পন্ন হয়েছে!</h1>
           <p className="text-muted-foreground mb-6 text-lg">{resolvedExam.title}</p>
 
-          <div className={`text-6xl font-display font-bold ${gradeColor} mb-2`}>{result.percentage}%</div>
-          <div className={`text-2xl font-bold ${gradeColor}`}>গ্রেড: {grade}</div>
+          {isPending ? (
+            <div className="space-y-2">
+              <div className="text-2xl font-bold text-warning">Under Review</div>
+              <div className="text-sm text-muted-foreground">Your submission is under manual evaluation. You will be notified when the result is published.</div>
+            </div>
+          ) : (
+            <>
+              <div className={`text-6xl font-display font-bold ${gradeColor} mb-2`}>{Number(safePercentage).toFixed(2)}%</div>
+              <div className={`text-2xl font-bold ${gradeColor}`}>গ্রেড: {grade}</div>
+            </>
+          )}
 
-          <div className="flex justify-center gap-8 mt-8 text-sm">
+            {/* Marks breakdown: compute MCQ / CQ breakdown using result and question metadata */}
+            {(() => {
+              // sum assigned CQ marks from result.cqMarks
+              const cqAssigned = questions.reduce((s: number, q: any) => {
+                if (!q.subQuestions || !Array.isArray(q.subQuestions)) return s;
+                return s + q.subQuestions.reduce((ss: number, sq: any, idx: number) => {
+                  const sidCandidates = [sq.id, sq.dbId, `${q.id}-${idx}`, `${q.id}-${idx}`];
+                  let val = undefined;
+                  if (result?.cqMarks) {
+                    for (const k of sidCandidates) {
+                      if (k && typeof result.cqMarks[k] !== 'undefined') { val = result.cqMarks[k]; break; }
+                    }
+                  }
+                  return ss + (typeof val !== 'undefined' && val !== null ? Number(val) : 0);
+                }, 0);
+              }, 0);
+
+              // sum max marks for CQ subquestions (we populated sq.maxMark earlier)
+              const cqMax = questions.reduce((s: number, q: any) => {
+                if (!q.subQuestions || !Array.isArray(q.subQuestions)) return s;
+                return s + q.subQuestions.reduce((ss: number, sq: any) => ss + (Number(sq.maxMark || 0)), 0);
+              }, 0);
+
+              const totalMax = Number(result?.totalMarks || resolvedExam?.totalMarks || (cqMax + questions.filter(q => !q.subQuestions).length * 1));
+              const mcqScore = Math.max(0, Number(result?.score || 0) - cqAssigned);
+              const mcqMax = Math.max(0, totalMax - cqMax);
+
+              return (
+                <div className="mt-6">
+                  <div className="max-w-3xl mx-auto p-4 border border-border rounded-lg bg-white">
+                    <div className="text-sm font-medium text-muted-foreground">Marks Breakdown</div>
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="p-3 rounded-md bg-muted/10 text-center">
+                        <div className="text-sm text-muted-foreground">MCQ Marks</div>
+                        <div className="text-lg font-semibold">{Number(mcqScore).toFixed(2)} / {Number(mcqMax).toFixed(2)}</div>
+                      </div>
+                      <div className="p-3 rounded-md bg-muted/10 text-center">
+                        <div className="text-sm text-muted-foreground">CQ Marks</div>
+                        <div className="text-lg font-semibold">{Number(cqAssigned).toFixed(2)} / {Number(cqMax).toFixed(2)}</div>
+                      </div>
+                      <div className="p-3 rounded-md bg-muted/10 text-center">
+                        <div className="text-sm text-muted-foreground">Total Marks</div>
+                        <div className="text-lg font-semibold">{Number(Number(result?.score || 0)).toFixed(2)} / {Number(totalMax).toFixed(2)}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div className="flex justify-center gap-8 mt-8 text-sm">
             <div className="flex flex-col items-center">
               <span className="text-green-600 dark:text-green-400 font-bold text-2xl">{correct}</span>
               <span className="text-muted-foreground mt-1">সঠিক</span>
@@ -274,11 +373,113 @@ const ExamResult = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           {questions.map((q, idx) => {
-            const userAns = result.answers[q.id];
+            // If this is a CQ parent with subQuestions, render grouped view
+            if (q.subQuestions && Array.isArray(q.subQuestions)) {
+              return (
+                <motion.div key={q.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }} className="rounded-xl border p-5 shadow-sm bg-white">
+                  <div className="mb-3">
+                    {/* parent image */}
+                    {q.image && (
+                      <div className="w-full flex justify-center bg-gray-50 py-3 mb-3 border border-border rounded">
+                        <img src={q.image} alt="Question" className="max-w-full h-auto max-h-60 object-contain rounded" />
+                      </div>
+                    )}
+                    {q.parentPassage ? (
+                      <div className="font-medium leading-relaxed whitespace-pre-line">{q.parentPassage}</div>
+                    ) : null}
+                  </div>
+                  <div className="space-y-4">
+                    {q.subQuestions.map((sq: any, sidx: number) => {
+                      const userAns = result.answers ? result.answers[sq.id] : undefined;
+                      const isCorrect = userAns === sq.correctAnswer;
+                      const isSkipped = !userAns;
+                      // compute assigned mark from result.cqMarks if present
+                      const assignedMarkRaw = (() => {
+                        if (!result?.cqMarks) return undefined;
+                        return result.cqMarks[sq.id] ?? result.cqMarks[sq.dbId] ?? result.cqMarks[`${q.id}-${sidx}`] ?? result.cqMarks[`${q.id}-${sidx}`];
+                      })();
+                      const assignedMark = typeof assignedMarkRaw !== 'undefined' && assignedMarkRaw !== null ? Number(assignedMarkRaw) : null;
+                      const maxMark = typeof sq.maxMark !== 'undefined' && sq.maxMark !== null ? Number(sq.maxMark) : null;
+                      return (
+                        <div key={sq.id} className={`rounded-lg border p-4 ${isCorrect ? 'border-green-500/30 bg-green-50/50' : isSkipped ? 'border-gray-300 bg-gray-50' : 'border-red-500/30 bg-red-50/50'}`}>
+                          <div className="flex items-start justify-between gap-3 mb-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-xs font-bold text-muted-foreground">উপ-প্রশ্ন {sidx+1}</span>
+                                {isCorrect && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">✓ সঠিক</span>}
+                                {!isCorrect && !isSkipped && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">✗ ভুল</span>}
+                                {isSkipped && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">বাদ</span>}
+                              </div>
+                              <div className="font-medium leading-relaxed">{sq.questionText}</div>
+                              {/* sub-question image (if any) */}
+                              {sq.image && (
+                                <div className="mt-2 mb-3 flex justify-center">
+                                  <img src={sq.image} alt="Sub-question" className="max-w-full h-auto max-h-48 object-contain rounded" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-none ml-4 flex items-center">
+                              {assignedMark !== null ? (
+                                <div className="flex items-center space-x-2">
+                                  <div className="px-3 py-1 rounded-full bg-success/10 text-success border border-success/30 font-semibold text-sm">{assignedMark}</div>
+                                  {maxMark !== null ? (
+                                    <div className="text-xs text-muted-foreground">/ {maxMark}</div>
+                                  ) : (
+                                    <div className="text-xs text-muted-foreground">নম্বর</div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="px-3 py-1 rounded-full bg-gray-50 text-gray-700 border border-border text-xs">{isPending ? 'অপেক্ষা' : (maxMark !== null ? `/ ${maxMark}` : '-')}</div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Options */}
+                          {sq.options && sq.options.length > 0 && (
+                            <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {sq.options.map((opt: any, i: number) => {
+                                const optionText = typeof opt === 'string' ? opt : opt.text;
+                                const isCorrectOption = (opt && opt.isCorrect) || optionText === sq.correctAnswer;
+                                const isUserAnswer = userAns === optionText;
+                                return (
+                                  <div key={i} className={`px-4 py-2.5 rounded-lg border text-sm ${isCorrectOption ? 'border-green-500 bg-green-50 font-medium' : isUserAnswer && !isCorrectOption ? 'border-red-500 bg-red-50' : 'border-border bg-card'}`}>
+                                    <div className="flex items-center justify-between">
+                                      <span><span className="font-bold text-muted-foreground mr-2">{String.fromCharCode(65 + i)}.</span>{optionText}</span>
+                                      {isCorrectOption && <CheckCircle className="h-4 w-4 text-green-600" />}
+                                      {isUserAnswer && !isCorrectOption && <XCircle className="h-4 w-4 text-red-600" />}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
+                            <div className="text-sm">
+                              {isSkipped ? <span className="italic">আপনি উত্তর দেননি</span> : <><span className="font-medium">আপনার উত্তর:</span> <span className="font-bold">{userAns}</span></>}
+                              {!isCorrect && !isSkipped && <div className="text-green-700 mt-1"><span className="font-medium">সঠিক উত্তর:</span> <span className="font-bold">{sq.correctAnswer}</span></div>}
+                            </div>
+                            {sq.explanation && (
+                              <Button size="sm" variant="outline" onClick={() => setExpandedQuestion(`${sq.id}`)} className="text-xs">বিস্তারিত</Button>
+                            )}
+                          </div>
+                          {expandedQuestion === sq.id && sq.explanation && (
+                            <div className="mt-3 p-3 bg-blue-50 border rounded">{sq.explanation}</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              );
+            }
+
+            // Regular question
+            const userAns = result.answers ? result.answers[q.id] : undefined;
             const isCorrect = userAns === q.correctAnswer;
             const isSkipped = !userAns;
             const parsed = parseQuestionWithSubPoints(q.questionText);
-            
+
             return (
               <motion.div 
                 key={q.id} 
@@ -314,6 +515,12 @@ const ExamResult = () => {
                         </span>
                       )}
                     </div>
+                    {/* question image for regular question */}
+                    {q.image && (
+                      <div className="w-full flex justify-center mb-3">
+                        <img src={q.image} alt="Question" className="max-w-full h-auto max-h-60 object-contain rounded" />
+                      </div>
+                    )}
                     {parsed.hasSubPoints ? (
                       <div className="text-foreground font-medium leading-relaxed font-bangla">
                         {parsed.mainQuestion && <p className="mb-3">{parsed.mainQuestion}</p>}

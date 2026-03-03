@@ -198,7 +198,7 @@ const AdminUsers = () => {
       const id = activeUser?.id;
       if (!id) return;
       await usersAPI.changeRole(id, role);
-      setUsers(users.map((u) => u.id === id ? { ...u, role } : u));
+      setUsers(users.map((u) => u.id === id ? { ...u, role: role as "student" | "teacher" } : u));
       toast({ title: 'Role changed' });
       setShowRole(false);
       setActiveUser(null);
@@ -207,7 +207,7 @@ const AdminUsers = () => {
       toast({ title: 'Failed to change role', description: err?.message });
     }
   };
-
+  
   const openReset = (id: string) => {
     const user = users.find((u) => u.id === id);
     if (!user) return;
