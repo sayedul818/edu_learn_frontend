@@ -265,3 +265,12 @@ export const usersAPI = {
   resetPassword: (id: string, password: string) => fetchAPI(`/users/${id}/reset-password`, { method: 'PATCH', body: { password } }),
   delete: (id: string) => fetchAPI(`/users/${id}`, { method: 'DELETE' }),
 };
+
+// ============ ADMIN REPORTS API ============
+export const adminReportsAPI = {
+  students: (params?: { page?: number; limit?: number; q?: string }) => {
+    const qs = params ? `?${new URLSearchParams(Object.entries(params).reduce((acc, [k,v]) => { if (v !== undefined && v !== null) acc[k]=String(v); return acc; }, {} as Record<string,string>)).toString()}` : '';
+    return fetchAPI(`/admin/reports/students${qs}`);
+  },
+  studentDetail: (id: string) => fetchAPI(`/admin/reports/students/${id}`),
+};

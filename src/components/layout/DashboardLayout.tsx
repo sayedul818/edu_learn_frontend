@@ -40,6 +40,7 @@ const adminNav: NavItem[] = [
   { label: "Exam", href: "/admin/exams/builder", icon: <ClipboardList className="h-5 w-5" /> },
   { label: "All Exams", href: "/admin/exams", icon: <ClipboardList className="h-5 w-5" /> },
     { label: "Leaderboard", href: "/admin/leaderboard", icon: <Trophy className="h-5 w-5" /> },
+    { label: "Student Reports", href: "/admin/student-reports", icon: <BarChart3 className="h-5 w-5" /> },
   { label: "Analytics", href: "/admin/analytics", icon: <BarChart3 className="h-5 w-5" /> },
   { label: "Settings", href: "/admin/settings", icon: <Settings className="h-5 w-5" /> },
 ];
