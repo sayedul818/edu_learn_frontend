@@ -1045,7 +1045,8 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
             {resultQuestions.map((question: any, index: number) => {
             const studentAnswer = selectedResult?.answers?.[question._id];
             const isMultipleChoice = question.questionType === 'MCQ';
-            const correctAnswer = isMultipleChoice ? question.correctAnswer : null;
+            // derive correct answer from option marked `isCorrect` (questions from API may not include a `correctAnswer` property)
+            const correctAnswer = isMultipleChoice ? (question.options?.find((o: any) => o && o.isCorrect)?.text || null) : null;
             
             return (
               <div key={question._id} className="bg-muted/20 p-4 rounded-lg border">
@@ -1058,9 +1059,15 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 my-3">
                     {question.options.map((opt: any, optIdx: number) => {
                       const optionLetter = String.fromCharCode(65 + optIdx);
-                      const isStudentAnswer = studentAnswer === optionLetter;
-                      const isCorrect = correctAnswer === optionLetter;
-                      
+                      const optText = typeof opt === 'string' ? opt : opt.text;
+                      // studentAnswer may be stored as the option letter (A/B/C) or as the full option text — accept both
+                      const normalizedStudent = (studentAnswer || '').toString().trim();
+                      const normalizedOptText = (optText || '').toString().trim();
+                      const normalizedCorrect = (correctAnswer || '').toString().trim();
+                      const isStudentAnswer = normalizedStudent === optionLetter || normalizedStudent === normalizedOptText;
+                      // correctAnswer may be stored as letter or text; accept both
+                      const isCorrect = normalizedCorrect === optionLetter || normalizedCorrect === normalizedOptText;
+
                       let bgColor = 'bg-card';
                       if (isStudentAnswer && isCorrect) bgColor = 'bg-success/20 border-success';
                       else if (isStudentAnswer) bgColor = 'bg-destructive/20 border-destructive';
@@ -1071,7 +1078,7 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
                           key={optIdx} 
                           className={`p-2 rounded border transition ${bgColor}`}
                         >
-                          <span className="font-medium">{optionLetter}.</span> {opt.text}
+                          <span className="font-medium">{optionLetter}.</span> {optText}
                           {isStudentAnswer && isCorrect && <span className="ml-2 text-success">✓</span>}
                           {isStudentAnswer && !isCorrect && <span className="ml-2 text-destructive">✗</span>}
                           {!isStudentAnswer && isCorrect && <span className="ml-2 text-yellow-600">( সঠিক )</span>}
@@ -1126,15 +1133,7 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
                   </div>
                 )}
 
-                {/* Correct Answer */}
-                {question.explanation && (
-                  <div className="mt-3">
-                    <div className="text-sm font-medium text-muted-foreground mb-1">ব্যাখ্যা:</div>
-                    <div className="bg-success/10 p-3 rounded border border-success/30">
-                      {question.explanation}
-                    </div>
-                  </div>
-                )}
+                {/* Explanation removed from admin answer sheet modal as requested */}
 
                 {/* Grading inputs or display for CQ subQuestions */}
                 {question.subQuestions && Array.isArray(question.subQuestions) && (

@@ -4,6 +4,7 @@ export const examResultsAPI = {
   getMine: () => fetchAPI('/exam-results/mine'),
   getByExam: (examId: string) => fetchAPI(`/exam-results/exam/${examId}`),
   grade: (resultId: string, data: any) => fetchAPI(`/exam-results/${resultId}/grade`, { method: 'PUT', body: data }),
+  // regrade endpoints removed
 };
 // Resolve API base URL:
 // - If `VITE_API_URL` is provided (e.g., in production on Vercel), use it.

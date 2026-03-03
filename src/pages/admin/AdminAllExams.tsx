@@ -276,6 +276,7 @@ const AdminAllExams = () => {
                     <Button size="sm" onClick={() => toggleStatus(exam)}>{exam.status === "live" ? "Unpublish" : "Publish"}</Button>
                     <Button size="sm" variant="outline" onClick={() => openEdit(exam)}>Edit</Button>
                     <Button size="sm" variant="destructive" onClick={() => deleteExam(exam._id)}>Delete</Button>
+                    {/* Regrade feature removed */}
                     <Dialog> 
                       <DialogTrigger asChild>
                         <Button size="sm" variant="ghost">Preview</Button>

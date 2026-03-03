@@ -312,8 +312,19 @@ const ExamResult = () => {
               }, 0);
 
               const totalMax = Number(result?.totalMarks || resolvedExam?.totalMarks || (cqMax + questions.filter(q => !q.subQuestions).length * 1));
-              const mcqScore = Math.max(0, Number(result?.score || 0) - cqAssigned);
               const mcqMax = Math.max(0, totalMax - cqMax);
+              // number of MCQ questions
+              const mcqCount = questions.filter(q => !q.subQuestions).length;
+              // compute MCQ score from current correct answers to reflect live changes (admin edits)
+              const mcqCorrectCount = questions.filter(q => !q.subQuestions && result.answers[q.id] === q.correctAnswer).length;
+              const perMcqMark = mcqCount > 0 ? (mcqMax / mcqCount) : 0;
+              const mcqScoreComputed = Math.max(0, mcqCorrectCount * perMcqMark);
+              // fallback to stored result.score-derived MCQ if no answers present
+              const mcqScoreFromResult = Math.max(0, Number(result?.score || 0) - cqAssigned);
+              const mcqScore = Number.isFinite(mcqScoreComputed) && mcqCount > 0 ? mcqScoreComputed : mcqScoreFromResult;
+
+              // total displayed score = computed MCQ + assigned CQ marks
+              const displayedTotal = Number(mcqScore) + Number(cqAssigned);
 
               return (
                 <div className="mt-6">
@@ -330,7 +341,7 @@ const ExamResult = () => {
                       </div>
                       <div className="p-3 rounded-md bg-muted/10 text-center">
                         <div className="text-sm text-muted-foreground">Total Marks</div>
-                        <div className="text-lg font-semibold">{Number(Number(result?.score || 0)).toFixed(2)} / {Number(totalMax).toFixed(2)}</div>
+                        <div className="text-lg font-semibold">{Number(displayedTotal).toFixed(2)} / {Number(totalMax).toFixed(2)}</div>
                       </div>
                     </div>
                   </div>
