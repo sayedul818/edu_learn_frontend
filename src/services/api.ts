@@ -17,6 +17,7 @@ const API_URL = (() => {
   if (import.meta.env.DEV) return 'http://localhost:5000/api';
   return 'https://learn-edu-backend.vercel.app/api';
 })();
+export { API_URL };
 
 interface FetchOptions extends RequestInit {
   body?: any;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { adminReportsAPI } from '@/services/api';
+import { adminReportsAPI, API_URL } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -10,16 +10,21 @@ const AdminStudentReports = () => {
   const [data, setData] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [selected, setSelected] = useState<any | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  
 
   const load = async (p = 1) => {
     try {
       setLoading(true);
+      setError(null);
+      // (diagnostic URL removed from UI)
       const res = await adminReportsAPI.students({ page: p, limit: 50 });
       setData(res.data || []);
       setTotal(res.total || 0);
       setPage(res.page || p);
     } catch (err) {
       console.error('Failed to load student reports', err);
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
@@ -29,10 +34,12 @@ const AdminStudentReports = () => {
 
   const openDetail = async (id: string) => {
     try {
+      setError(null);
       const res = await adminReportsAPI.studentDetail(id);
       setSelected(res);
     } catch (err) {
       console.error('Failed to load student detail', err);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -46,6 +53,14 @@ const AdminStudentReports = () => {
       <Card>
         <CardHeader><CardTitle className="text-lg">Students Summary</CardTitle></CardHeader>
         <CardContent>
+          {error && (
+            <div className="mb-3 p-3 rounded-md bg-destructive/10 text-destructive">
+              <div className="font-medium">Failed to load reports</div>
+              <div className="text-sm mt-1">{error}</div>
+              
+            </div>
+          )}
+          
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
