@@ -97,3 +97,25 @@ export function parseQuestionWithSubPoints(text: string): {
     subPoints: subPoints
   };
 }
+
+/**
+ * Convert percentage to grade letter.
+ * Ranges (inclusive lower bound):
+ * 80-100 => A+
+ * 70-79  => A
+ * 60-69  => A-
+ * 50-59  => B
+ * 40-49  => C
+ * 33-39  => D
+ * <33    => F
+ */
+export function percentageToGrade(p: number | string | null | undefined): string {
+  const n = Number(p) || 0;
+  if (n >= 80 && n <= 100) return 'A+';
+  if (n >= 70 && n < 80) return 'A';
+  if (n >= 60 && n < 70) return 'A-';
+  if (n >= 50 && n < 60) return 'B';
+  if (n >= 40 && n < 50) return 'C';
+  if (n >= 33 && n < 40) return 'D';
+  return 'F';
+}

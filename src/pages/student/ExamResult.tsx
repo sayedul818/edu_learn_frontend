@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { CheckCircle, XCircle, ArrowLeft, RotateCcw, Trophy, ChevronDown, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { parseQuestionWithSubPoints } from "@/lib/utils";
+import { parseQuestionWithSubPoints, percentageToGrade } from "@/lib/utils";
 
 const ExamResult = () => {
   const { examId } = useParams();
@@ -264,8 +264,19 @@ const ExamResult = () => {
   const skipped = questions.length - correct - wrong;
 
   const safePercentage = Number(result?.percentage) || 0;
-  const gradeColor = safePercentage >= 80 ? "text-success" : safePercentage >= 50 ? "text-warning" : "text-destructive";
-  const grade = safePercentage >= 90 ? "A+" : safePercentage >= 80 ? "A" : safePercentage >= 70 ? "B" : safePercentage >= 60 ? "C" : safePercentage >= 50 ? "D" : "F";
+  const grade = percentageToGrade(safePercentage);
+  // map grade to color
+  const gradeColor = (() => {
+    switch (grade) {
+      case 'A+': return 'text-success';
+      case 'A':
+      case 'A-': return 'text-success';
+      case 'B': return 'text-warning';
+      case 'C': return 'text-yellow-500';
+      case 'D': return 'text-orange-500';
+      default: return 'text-destructive';
+    }
+  })();
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 font-bangla p-4">

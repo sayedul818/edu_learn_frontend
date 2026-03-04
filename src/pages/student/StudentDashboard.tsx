@@ -17,6 +17,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import { percentageToGrade } from "@/lib/utils";
 
 const COLORS = ["#10B981", "#2563EB", "#F59E0B"];
 
@@ -132,7 +133,7 @@ const StudentDashboard = () => {
   const stats = [
     { label: "Total Exams Given", value: totalGiven, icon: <ClipboardList className="h-5 w-5" /> },
     { label: "Upcoming Exams", value: upcomingExams.length, icon: <Clock className="h-5 w-5" /> },
-    { label: "Average Score", value: `${avgScore}%`, icon: <BarChart3 className="h-5 w-5" /> },
+    { label: "Average Score", value: `${avgScore}% (${percentageToGrade(avgScore)})`, icon: <BarChart3 className="h-5 w-5" /> },
     { label: "Pending Results", value: pendingResults, icon: <BookOpen className="h-5 w-5" /> },
     { label: "Current Streak", value: `${currentStreak} days`, icon: <TrendingUp className="h-5 w-5" /> },
   ];
@@ -141,7 +142,7 @@ const StudentDashboard = () => {
     ...results.map((r) => ({
       id: r._id || r.id,
       date: r.submittedAt ? new Date(r.submittedAt) : null,
-      text: `You submitted "${r.examTitle || 'an exam'}" (${Number(r.percentage || 0).toFixed(0)}%)`,
+      text: `You submitted "${r.examTitle || 'an exam'}" (${Number(r.percentage || 0).toFixed(0)}% • ${percentageToGrade(r.percentage)})`,
     })),
   ].sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0));
 

@@ -327,6 +327,8 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
   };
 
   const [isEditingGrade, setIsEditingGrade] = useState(false);
+  const [gradeTotalMarks, setGradeTotalMarks] = useState<number | undefined>(undefined);
+  const [gradeScore, setGradeScore] = useState<number | undefined>(undefined);
 
   // when selectedResult changes, initialize gradingMarks and reset edit mode
   useEffect(() => {
@@ -336,6 +338,8 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
       Object.keys(selectedResult.cqMarks).forEach(k => { initialMarks[k] = Number(selectedResult.cqMarks[k]) || 0; });
     }
     setGradingMarks((prev) => ({ ...initialMarks, ...prev }));
+    setGradeTotalMarks(selectedResult.totalMarks ?? selectedResult?.examId?.totalMarks ?? undefined);
+    setGradeScore(selectedResult.score ?? undefined);
     setIsEditingGrade(false);
   }, [selectedResult]);
 
@@ -1040,6 +1044,27 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
             স্কোর: {selectedResult?.score}/{selectedResult?.totalMarks} ({selectedResult?.percentage?.toFixed(2)}%)
           </DialogDescription>
         </DialogHeader>
+        {(selectedResult?.pendingEvaluation || isEditingGrade) && (
+          <div className="mb-3 flex items-center gap-3">
+            <Label className="whitespace-nowrap">Total Marks</Label>
+            <Input
+              type="number"
+              value={gradeTotalMarks ?? ''}
+              onChange={(e) => setGradeTotalMarks(e.target.value === '' ? undefined : Number(e.target.value))}
+              className="w-36"
+              min={0}
+            />
+            <Label className="whitespace-nowrap">Obtained Score</Label>
+            <Input
+              type="number"
+              value={gradeScore ?? ''}
+              onChange={(e) => setGradeScore(e.target.value === '' ? undefined : Number(e.target.value))}
+              className="w-28"
+              min={0}
+            />
+            <div className="text-sm text-muted-foreground">Set a custom total marks for this result (optional)</div>
+          </div>
+        )}
 
         <div className="space-y-6">
             {resultQuestions.map((question: any, index: number) => {
@@ -1187,11 +1212,22 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
           {selectedResult?.pendingEvaluation && (
             <Button onClick={async () => {
               try {
-                const resp = await examResultsAPI.grade(selectedResult._id, { cqMarks: gradingMarks });
+                const payload: any = { cqMarks: gradingMarks };
+                if (gradeTotalMarks != null) payload.totalMarks = gradeTotalMarks;
+                if (gradeScore != null) payload.score = gradeScore;
+                const resp = await examResultsAPI.grade(selectedResult._id, payload);
                 const updated = resp.data || resp;
                 toast({ title: 'Grades saved', description: 'Result has been evaluated' });
                 setSelectedResult(updated);
                 setExamResults(prev => prev.map(r => r._id === updated._id ? updated : r));
+                // clear local caches that may hold stale examResults
+                try {
+                  Object.keys(localStorage).forEach(k => {
+                    if (k === 'examResults' || k.startsWith('examResults_') || k.startsWith('lastExamResult_') || k === 'lastExamResult') {
+                      localStorage.removeItem(k);
+                    }
+                  });
+                } catch (e) { /* ignore */ }
                 setAnswerSheetOpen(false);
               } catch (err) {
                 console.error('Failed to save grades', err);
@@ -1207,14 +1243,25 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
                 <Button onClick={() => setIsEditingGrade(true)} type="button">Edit Grades</Button>
               ) : (
                 <>
-                  <Button variant="ghost" onClick={() => { setIsEditingGrade(false); setGradingMarks(selectedResult.cqMarks || {}); }} type="button">Cancel</Button>
+                  <Button variant="ghost" onClick={() => { setIsEditingGrade(false); setGradingMarks(selectedResult.cqMarks || {}); setGradeScore(selectedResult.score ?? undefined); }} type="button">Cancel</Button>
                   <Button onClick={async () => {
                     try {
-                      const resp = await examResultsAPI.grade(selectedResult._id, { cqMarks: gradingMarks });
+                      const payload: any = { cqMarks: gradingMarks };
+                      if (gradeTotalMarks != null) payload.totalMarks = gradeTotalMarks;
+                      if (gradeScore != null) payload.score = gradeScore;
+                      const resp = await examResultsAPI.grade(selectedResult._id, payload);
                       const updated = resp.data || resp;
                       toast({ title: 'Grades updated', description: 'Result grades updated' });
                       setSelectedResult(updated);
                       setExamResults(prev => prev.map(r => r._id === updated._id ? updated : r));
+                      // clear local caches that may hold stale examResults
+                      try {
+                        Object.keys(localStorage).forEach(k => {
+                          if (k === 'examResults' || k.startsWith('examResults_') || k.startsWith('lastExamResult_') || k === 'lastExamResult') {
+                            localStorage.removeItem(k);
+                          }
+                        });
+                      } catch (e) { /* ignore */ }
                       setIsEditingGrade(false);
                     } catch (err) {
                       console.error('Failed to update grades', err);
