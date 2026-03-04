@@ -18,11 +18,6 @@ const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const mockCreds: Record<string, { email: string; password: string; label: string }> = {
-    student: { email: 'student@demo.test', password: 'Student123!', label: 'Student' },
-    teacher: { email: 'teacher@demo.test', password: 'Teacher123!', label: 'Teacher' },
-    admin: { email: 'admin@local.test', password: 'ChangeMe123!', label: 'Administrator' },
-  };
 
   const validate = () => {
     const errs: Record<string, string> = {};
@@ -55,22 +50,6 @@ const Login = () => {
     }
   };
 
-  const handleQuickSignIn = async (key: keyof typeof mockCreds) => {
-    const cred = mockCreds[key];
-    setEmail(cred.email);
-    setPassword(cred.password);
-    setFieldErrors({});
-    setApiError(null);
-    try {
-      await login(cred.email, cred.password);
-      toast({ title: `Signed in as ${cred.label}`, variant: 'default' });
-      navigate('/dashboard');
-    } catch (err: any) {
-      const msg = err?.message || 'Login failed';
-      setApiError(msg);
-      toast({ title: 'Login failed', description: msg, variant: 'destructive' });
-    }
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
@@ -90,11 +69,6 @@ const Login = () => {
           {/* Single unified login form for all roles (use credentials to authenticate) */}
 
           <form className="space-y-4" onSubmit={handleSubmit}>
-            <div className="flex gap-2 mb-2">
-              <button type="button" onClick={() => handleQuickSignIn('student')} className="flex-1 py-2 rounded-lg text-sm font-medium bg-muted text-muted-foreground">Sign in as Student</button>
-              <button type="button" onClick={() => handleQuickSignIn('teacher')} className="flex-1 py-2 rounded-lg text-sm font-medium bg-muted text-muted-foreground">Sign in as Teacher</button>
-              <button type="button" onClick={() => handleQuickSignIn('admin')} className="flex-1 py-2 rounded-lg text-sm font-medium bg-destructive/10 text-destructive">Sign in as Admin</button>
-            </div>
             <div>
               <Label htmlFor="email">Email {fieldErrors.email && <AlertCircle className="inline-block ml-2 text-destructive" />}</Label>
               <Input id="email" type="email" placeholder="you@example.com" className="mt-1" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -122,9 +96,7 @@ const Login = () => {
 
           {/* keep field-level inline errors, general API errors are shown as toasts */}
 
-          <p className="text-xs text-muted-foreground text-center mt-4">
-            Demo: Select any role and click Sign In (use registered credentials to login)
-          </p>
+          
 
           <p className="text-center text-sm text-muted-foreground mt-6">
             Don't have an account?{" "}
