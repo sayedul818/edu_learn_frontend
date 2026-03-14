@@ -26,10 +26,12 @@ const studentNav: NavItem[] = [
 
 const teacherNav: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
-  { label: "Questions", href: "/teacher/questions", icon: <FileText className="h-5 w-5" /> },
-  { label: "Create Question", href: "/teacher/create-question", icon: <PlusCircle className="h-5 w-5" /> },
-  { label: "Exams", href: "/teacher/exams", icon: <ClipboardList className="h-5 w-5" /> },
-  { label: "Student Reports", href: "/teacher/reports", icon: <BarChart3 className="h-5 w-5" /> },
+  { label: "Questions", href: "/admin/questions", icon: <FileText className="h-5 w-5" /> },
+  { label: "Exam", href: "/admin/exams/builder", icon: <ClipboardList className="h-5 w-5" /> },
+  { label: "All Exams", href: "/admin/exams", icon: <ClipboardList className="h-5 w-5" /> },
+  { label: "Leaderboard", href: "/admin/leaderboard", icon: <Trophy className="h-5 w-5" /> },
+  { label: "Analytics", href: "/admin/analytics", icon: <BarChart3 className="h-5 w-5" /> },
+  { label: "Settings", href: "/admin/settings", icon: <Settings className="h-5 w-5" /> },
 ];
 
 const adminNav: NavItem[] = [

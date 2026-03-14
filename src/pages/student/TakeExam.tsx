@@ -7,7 +7,7 @@ import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Clock, ChevronLeft, ChevronRight, Flag, AlertTriangle } from "lucide-react";
-import { parseQuestionWithSubPoints } from "@/lib/utils";
+import { parseQuestionWithSubPoints, renderMathToHtml, renderRichOrMathHtml } from "@/lib/utils";
 
 const TakeExam = () => {
   const { examId } = useParams();
@@ -422,7 +422,7 @@ const TakeExam = () => {
 
                   {qq.parentPassage ? (
                     <div className="mb-4 rounded-lg bg-card border border-border text-foreground p-4 leading-relaxed text-sm">
-                      <p className="whitespace-pre-line">{qq.parentPassage}</p>
+                      <div className="whitespace-pre-line" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(qq.parentPassage) }} />
                     </div>
                   ) : null}
 
@@ -438,7 +438,7 @@ const TakeExam = () => {
                                 <img src={sq.image} alt="Sub-question" className="max-w-full h-auto max-h-48 object-contain rounded" />
                               </div>
                             )}
-                            <div className="mb-2">{sq.questionText}</div>
+                            <div className="mb-2"><span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.questionText) }} /></div>
                             {sq.options && (
                               <div className="space-y-2">
                                 {sq.options.map((opt: any, oi: number) => {
@@ -453,7 +453,7 @@ const TakeExam = () => {
                                       className={`w-full text-left p-3 rounded-xl border text-sm ${isSelected ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border hover:border-primary/50 hover:bg-muted/50'} ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
                                     >
                                       <span className="font-bold mr-3">{String.fromCharCode(65 + oi)}</span>
-                                      {optText}
+                                      <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(optText) }} />
                                     </button>
                                   );
                                 })}
@@ -478,18 +478,18 @@ const TakeExam = () => {
                               </div>
                               {parsed.hasSubPoints ? (
                                 <div className="text-lg font-medium mb-6">
-                                  {parsed.mainQuestion && <p className="mb-3">{parsed.mainQuestion}</p>}
+                                  {parsed.mainQuestion && <p className="mb-3" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(parsed.mainQuestion) }} />}
                                   <div className="ml-4 space-y-2">
                                     {parsed.subPoints.map((point: any, i: number) => (
                                       <div key={i} className="flex gap-2">
                                         <span className="font-semibold min-w-[2.5rem] text-base">{['i.', 'ii.', 'iii.', 'iv.', 'v.'][i]}</span>
-                                        <span className="text-base">{point}</span>
+                                        <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(point) }} />
                                       </div>
                                     ))}
                                   </div>
                                 </div>
                               ) : (
-                                <p className="text-lg font-medium mb-6">{qq.questionText}</p>
+                                <p className="text-lg font-medium mb-6" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(qq.questionText) }} />
                               )}
                             </>
                           );
@@ -497,19 +497,19 @@ const TakeExam = () => {
                         if (parsed.hasSubPoints) {
                       return (
                         <div className="text-lg font-medium mb-6">
-                          {parsed.mainQuestion && <p className="mb-3">{parsed.mainQuestion}</p>}
+                          {parsed.mainQuestion && <p className="mb-3" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(parsed.mainQuestion) }} />}
                           <div className="ml-4 space-y-2">
-                            {parsed.subPoints.map((point: any, i: number) => (
-                              <div key={i} className="flex gap-2">
-                                <span className="font-semibold min-w-[2.5rem] text-base">{['i.', 'ii.', 'iii.', 'iv.', 'v.'][i]}</span>
-                                <span className="text-base">{point}</span>
-                              </div>
-                            ))}
+                                {parsed.subPoints.map((point: any, i: number) => (
+                                      <div key={i} className="flex gap-2">
+                                        <span className="font-semibold min-w-[2.5rem] text-base">{['i.', 'ii.', 'iii.', 'iv.', 'v.'][i]}</span>
+                                        <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(point) }} />
+                                      </div>
+                                    ))}
                           </div>
                         </div>
                       );
                     }
-                    return <p className="text-lg font-medium mb-6">{qq.questionText}</p>;
+                    return <p className="text-lg font-medium mb-6" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(qq.questionText) }} />;
                   })()}
 
                   {/* Render options for MCQ / option-based questions */}
@@ -527,7 +527,7 @@ const TakeExam = () => {
                             className={`w-full text-left p-3 rounded-xl border text-sm ${isSelected ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border hover:border-primary/50 hover:bg-muted/50'} ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
                           >
                             <span className="font-bold mr-3">{String.fromCharCode(65 + oi)}</span>
-                            {optText}
+                            <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(optText) }} />
                           </button>
                         );
                       })}

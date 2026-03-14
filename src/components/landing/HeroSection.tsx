@@ -2,7 +2,8 @@ import { motion } from "framer-motion";
 import { ArrowRight, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import heroDashboard from "@/assets/hero-dashboard.png";
+import studentPanelOverview from "@/assets/student-panel-overview.svg";
+import teacherPanelOverview from "@/assets/teacher-panel-overview.svg";
 
 const HeroSection = () => {
   return (
@@ -72,18 +73,35 @@ const HeroSection = () => {
         </div>
 
         <motion.div
-          className="max-w-5xl mx-auto"
+          className="max-w-6xl mx-auto"
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.4 }}
         >
-          <div className="relative rounded-2xl overflow-hidden shadow-card-hover border border-border">
-            <img
-              src={heroDashboard}
-              alt="ExamPro Dashboard showing student analytics and exam performance"
-              className="w-full h-auto"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-background/20 to-transparent" />
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="relative rounded-2xl overflow-hidden shadow-card-hover border border-border bg-card">
+              <div className="px-5 py-4 border-b border-border">
+                <p className="text-sm font-semibold text-foreground">Student Panel Overview</p>
+              </div>
+              <img
+                src={studentPanelOverview}
+                alt="Student panel overview with progress trends and exam performance insights"
+                className="w-full h-auto"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-background/20 to-transparent pointer-events-none" />
+            </div>
+
+            <div className="relative rounded-2xl overflow-hidden shadow-card-hover border border-border bg-card">
+              <div className="px-5 py-4 border-b border-border">
+                <p className="text-sm font-semibold text-foreground">Teacher Panel Overview</p>
+              </div>
+              <img
+                src={teacherPanelOverview}
+                alt="Teacher panel overview with class analytics and performance management tools"
+                className="w-full h-auto"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-background/20 to-transparent pointer-events-none" />
+            </div>
           </div>
         </motion.div>
       </div>

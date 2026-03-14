@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { CheckCircle, XCircle, ArrowLeft, RotateCcw, Trophy, ChevronDown, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { parseQuestionWithSubPoints, percentageToGrade } from "@/lib/utils";
+import { parseQuestionWithSubPoints, percentageToGrade, renderMathToHtml, renderRichOrMathHtml } from "@/lib/utils";
 
 const ExamResult = () => {
   const { examId } = useParams();
@@ -407,7 +407,7 @@ const ExamResult = () => {
                       </div>
                     )}
                     {q.parentPassage ? (
-                      <div className="font-medium leading-relaxed whitespace-pre-line">{q.parentPassage}</div>
+                      <div className="font-medium leading-relaxed whitespace-pre-line" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(q.parentPassage) }} />
                     ) : null}
                   </div>
                   <div className="space-y-4">
@@ -432,7 +432,7 @@ const ExamResult = () => {
                                 {!isCorrect && !isSkipped && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">✗ ভুল</span>}
                                 {isSkipped && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">বাদ</span>}
                               </div>
-                              <div className="font-medium leading-relaxed">{sq.questionText}</div>
+                              <div className="font-medium leading-relaxed" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.questionText) }} />
                               {/* sub-question image (if any) */}
                               {sq.image && (
                                 <div className="mt-2 mb-3 flex justify-center">
@@ -466,7 +466,10 @@ const ExamResult = () => {
                                 return (
                                   <div key={i} className={`px-4 py-2.5 rounded-lg border text-sm ${isCorrectOption ? 'border-green-500 bg-green-50 font-medium' : isUserAnswer && !isCorrectOption ? 'border-red-500 bg-red-50' : 'border-border bg-card'}`}>
                                     <div className="flex items-center justify-between">
-                                      <span><span className="font-bold text-muted-foreground mr-2">{String.fromCharCode(65 + i)}.</span>{optionText}</span>
+                                      <span>
+                                        <span className="font-bold text-muted-foreground mr-2">{String.fromCharCode(65 + i)}.</span>
+                                        <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(optionText) }} />
+                                      </span>
                                       {isCorrectOption && <CheckCircle className="h-4 w-4 text-green-600" />}
                                       {isUserAnswer && !isCorrectOption && <XCircle className="h-4 w-4 text-red-600" />}
                                     </div>
@@ -478,15 +481,15 @@ const ExamResult = () => {
 
                           <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
                             <div className="text-sm">
-                              {isSkipped ? <span className="italic">আপনি উত্তর দেননি</span> : <><span className="font-medium">আপনার উত্তর:</span> <span className="font-bold">{userAns}</span></>}
-                              {!isCorrect && !isSkipped && <div className="text-green-700 mt-1"><span className="font-medium">সঠিক উত্তর:</span> <span className="font-bold">{sq.correctAnswer}</span></div>}
+                                {isSkipped ? <span className="italic">আপনি উত্তর দেননি</span> : <><span className="font-medium">আপনার উত্তর:</span> <span className="font-bold" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(userAns) }} /></>}
+                                  {!isCorrect && !isSkipped && <div className="text-green-700 mt-1"><span className="font-medium">সঠিক উত্তর:</span> <span className="font-bold" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.correctAnswer) }} /></div>}
                             </div>
                             {sq.explanation && (
                               <Button size="sm" variant="outline" onClick={() => setExpandedQuestion(`${sq.id}`)} className="text-xs">বিস্তারিত</Button>
                             )}
                           </div>
                           {expandedQuestion === sq.id && sq.explanation && (
-                            <div className="mt-3 p-3 bg-blue-50 border rounded">{sq.explanation}</div>
+                            <div className="mt-3 p-3 bg-blue-50 border rounded" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.explanation) }} />
                           )}
                         </div>
                       );
@@ -545,18 +548,18 @@ const ExamResult = () => {
                     )}
                     {parsed.hasSubPoints ? (
                       <div className="text-foreground font-medium leading-relaxed font-bangla">
-                        {parsed.mainQuestion && <p className="mb-3">{parsed.mainQuestion}</p>}
+                        {parsed.mainQuestion && <p className="mb-3" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(parsed.mainQuestion) }} />}
                         <div className="ml-4 space-y-2">
                           {parsed.subPoints.map((point, i) => (
                             <div key={i} className="flex gap-2">
                               <span className="font-semibold min-w-[2.5rem] text-sm">{['i.', 'ii.', 'iii.', 'iv.', 'v.', 'vi.', 'vii.', 'viii.', 'ix.', 'x.'][i]}</span>
-                              <span className="text-sm">{point}</span>
+                              <span className="text-sm" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(point) }} />
                             </div>
                           ))}
                         </div>
                       </div>
                     ) : (
-                      <p className="text-foreground font-medium leading-relaxed font-bangla">{q.questionText}</p>
+                      <p className="text-foreground font-medium leading-relaxed font-bangla" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(q.questionText) }} />
                     )}
                   </div>
                 </div>
@@ -583,7 +586,7 @@ const ExamResult = () => {
                           <div className="flex items-center justify-between">
                             <span>
                               <span className="font-bold text-muted-foreground mr-2">{String.fromCharCode(65 + i)}.</span>
-                              {optionText}
+                              <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(optionText) }} />
                             </span>
                             {isCorrectOption && (
                               <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0 ml-2" />
@@ -609,11 +612,11 @@ const ExamResult = () => {
                       ) : (
                         <>
                           <p className={`font-bangla ${isCorrect ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}`}>
-                            <span className="font-medium">আপনার উত্তর:</span> <span className="font-bold">{userAns}</span>
+                            <span className="font-medium">আপনার উত্তর:</span> <span className="font-bold" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(userAns) }} />
                           </p>
                           {!isCorrect && (
                             <p className="text-green-700 dark:text-green-400 font-bangla">
-                              <span className="font-medium">সঠিক উত্তর:</span> <span className="font-bold">{q.correctAnswer}</span>
+                              <span className="font-medium">সঠিক উত্তর:</span> <span className="font-bold" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(q.correctAnswer) }} />
                             </p>
                           )}
                         </>
@@ -655,7 +658,7 @@ const ExamResult = () => {
                     >
                       <div className="mt-3 p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl">
                         <p className="text-sm font-bold text-blue-900 dark:text-blue-300 mb-2 font-bangla">ব্যাখ্যা:</p>
-                        <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed font-bangla">{q.explanation}</p>
+                        <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed font-bangla" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(q.explanation) }} />
                       </div>
                     </motion.div>
                   )}

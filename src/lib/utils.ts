@@ -1,5 +1,7 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import katex from "katex/dist/katex.js";
+import "katex/dist/katex.min.css";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -15,6 +17,13 @@ export function parseInstructionAndContent(text: string): {
   content: string;
 } {
   if (!text) {
+    return { hasInstruction: false, instruction: "", content: "" };
+  }
+
+  // Rich-text editor content may include HTML attributes with ':' characters.
+  // Do not run instruction parsing on HTML, or tags like style="text-decoration: overline"
+  // get split and rendered as broken literal text.
+  if (/<\/?[a-z][\s\S]*>/i.test(text)) {
     return { hasInstruction: false, instruction: "", content: "" };
   }
 
@@ -62,6 +71,11 @@ export function parseQuestionWithSubPoints(text: string): {
 } {
   if (!text) {
     return { hasSubPoints: false, mainQuestion: "", subPoints: [] };
+  }
+
+  // Rich HTML should be rendered as-is; parsing for roman sub-points can break HTML tags/content.
+  if (/<\/?[a-z][\s\S]*>/i.test(text)) {
+    return { hasSubPoints: false, mainQuestion: text, subPoints: [] };
   }
 
   // Pattern to match Roman numerals: i., ii., iii., iv., v., vi., vii., viii., ix., x. (case-insensitive)
@@ -118,4 +132,74 @@ export function percentageToGrade(p: number | string | null | undefined): string
   if (n >= 40 && n < 50) return 'C';
   if (n >= 33 && n < 40) return 'D';
   return 'F';
+}
+
+// Render text that may contain LaTeX math delimiters \(...\) or $$...$$ to HTML using KaTeX.
+// If KaTeX is not available or rendering fails, fall back to escaped plain text.
+export function renderMathToHtml(input: string | null | undefined): string {
+  const txt = input ?? "";
+  const normalizedTxt = txt
+    .replace(/\\\\\(/g, "\\(")
+    .replace(/\\\\\)/g, "\\)")
+    .replace(/\\\\\[/g, "\\[")
+    .replace(/\\\\\]/g, "\\]")
+    .replace(/\\\\([a-zA-Z]+)/g, "\\$1");
+  // quick escape for HTML
+  const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  try {
+    // Scan for display $$..$$, inline \(...\) and bare LaTeX commands like \bar{A}
+    const parts: string[] = [];
+    const pattern = /(\$\$([\s\S]+?)\$\$|\\\\(([\s\S]+?)\\\\)|\\[a-zA-Z]+(?:\{[^}]*\})?)/g;
+    let lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = pattern.exec(normalizedTxt)) !== null) {
+      if (m.index > lastIndex) parts.push(escapeHtml(normalizedTxt.slice(lastIndex, m.index)));
+      try {
+        if (m[2]) {
+          // $$...$$ display math
+          parts.push(katex.renderToString(m[2].trim(), { throwOnError: false, displayMode: true }));
+        } else if (m[3]) {
+          // \(...\) inline math
+          parts.push(katex.renderToString(m[3].trim(), { throwOnError: false, displayMode: false }));
+        } else {
+          // bare command like \bar{A} or \frac{1}{2}
+          const cmd = m[0];
+          parts.push(katex.renderToString(cmd.trim(), { throwOnError: false, displayMode: false }));
+        }
+      } catch (e) {
+        parts.push(escapeHtml(m[0]));
+      }
+      lastIndex = pattern.lastIndex;
+    }
+    if (lastIndex < normalizedTxt.length) parts.push(escapeHtml(normalizedTxt.slice(lastIndex)));
+    return parts.join('');
+  } catch (e) {
+    // katex failed - return escaped text preserving LaTeX delimiters
+    return escapeHtml(normalizedTxt);
+  }
+}
+
+// Render rich HTML when content comes from the admin editor; otherwise render plain/math text.
+export function renderRichOrMathHtml(input: string | null | undefined): string {
+  const txt = input ?? "";
+  const hasHtml = /<\/?[a-z][\s\S]*>/i.test(txt);
+  if (!hasHtml) return renderMathToHtml(txt);
+
+  const sanitized = txt
+    .replace(/\sstyle=(['"])(.*?)\1/gi, (_match, quote, styleValue) => {
+      const cleaned = String(styleValue)
+        .split(";")
+        .map((rule) => rule.trim())
+        .filter(Boolean)
+        .filter((rule) => {
+          const property = rule.split(":")[0]?.trim().toLowerCase();
+          return property !== "color" && property !== "background" && property !== "background-color";
+        })
+        .join("; ");
+
+      return cleaned ? ` style=${quote}${cleaned}${quote}` : "";
+    })
+    .replace(/<font\b[^>]*color=(['"]).*?\1[^>]*>/gi, (match) => match.replace(/\scolor=(['"]).*?\1/gi, ""));
+
+  return sanitized;
 }

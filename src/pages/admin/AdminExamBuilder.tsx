@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { BookOpen, ChevronRight, ChevronDown } from "lucide-react";
 import ExamCreationModal from "@/components/admin/ExamCreationModal";
+import { renderRichOrMathHtml } from "@/lib/utils";
 
 const ITEMS_PER_PAGE = 8;
 
@@ -150,6 +151,7 @@ const AdminExamBuilder = () => {
         if (!map.has(key)) {
           map.set(key, {
             _id: parent._id || parent.id,
+            image: parent.image || null,
             questionTextBn: parent.questionTextBn || parent.questionText || "",
             parentPassage: parent.questionTextBn || parent.questionTextEn || parent.questionText || "",
             subQuestions: [],
@@ -159,7 +161,7 @@ const AdminExamBuilder = () => {
           _id: `${parentId}-${idx}`,
           label: sq.label,
           questionTextBn: sq.questionTextBn || sq.questionTextEn || sq.questionText || sq.questionBn || "",
-          image: sq.image || parent.image || null,
+          image: sq.image || null,
           options: sq.options || [],
           explanation: sq.explanation || parent.explanation || "",
           type: sq.type,
@@ -174,13 +176,14 @@ const AdminExamBuilder = () => {
         // full parent selected: include all subQuestions
         map.set(found._id, {
           _id: found._id,
+          image: found.image || null,
           questionTextBn: found.questionTextBn || found.questionText || "",
           parentPassage: found.questionTextBn || found.questionTextEn || found.questionText || "",
           subQuestions: (found.subQuestions || []).map((sq: any, idx: number) => ({
             _id: `${found._id}-${idx}`,
             label: sq.label,
             questionTextBn: sq.questionTextBn || sq.questionTextEn || sq.questionText || sq.questionBn || "",
-            image: sq.image || found.image || null,
+            image: sq.image || null,
             options: sq.options || [],
             explanation: sq.explanation || found.explanation || "",
             type: sq.type,
@@ -226,6 +229,19 @@ const AdminExamBuilder = () => {
     });
   }, [selectedQuestions, questionMarksMap, dbQuestions]);
 
+  const renderQuestionHeader = (index: number) => (
+    <span className="text-xs font-bold text-muted-foreground whitespace-nowrap">প্রশ্ন {index + 1}</span>
+  );
+
+  const renderStem = (question: any) => {
+    const text = question.parentPassage || question.questionTextBn || question.questionTextEn || question.questionText || question.questionBn || "";
+    return text ? (
+      <div className="rounded-lg bg-card border border-border text-foreground p-4 leading-relaxed text-sm">
+        <div className="whitespace-pre-line" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(text) }} />
+      </div>
+    ) : null;
+  };
+
   return (
     <div className="space-y-6 font-bangla pb-24">
       <div>
@@ -236,7 +252,7 @@ const AdminExamBuilder = () => {
       {loading ? (
         <BeautifulLoader message="Loading data from database..." className="py-10" />
       ) : (
-        <>
+        <div>
           <div className="flex flex-col sm:flex-row gap-3">
             <select 
               value={selectedClassId} 
@@ -332,16 +348,29 @@ const AdminExamBuilder = () => {
                 Showing questions for <strong>{subjects.find(s=>s._id===selectedSubjectId)?.name}</strong> / <strong>{chapters.find(c=>c._id===selectedChapterId)?.name}</strong>
               </div>
           <div className="grid grid-cols-1 gap-3">
-            {visible.map((q:any) => (
+            {visible.map((q:any, idx:number) => (
               <div key={q._id} className="bg-muted/20 p-4 rounded-lg flex items-start gap-3">
                 <div className="pt-1"><Checkbox checked={selectedIds.includes(q._id)} onCheckedChange={() => toggleSelect(q._id)} /></div>
                 <div className="flex-1">
-                        {q.image && (
-                          <div className="w-full flex justify-center bg-gray-50 py-3 mb-3 border border-border rounded">
-                            <img src={q.image} alt="Question" className="max-w-full h-auto max-h-60 object-contain rounded" />
-                          </div>
-                        )}
-                        <div className="flex items-center justify-between"><div className="font-medium">{q.questionTextBn || q.questionTextEn || q.questionText || q.questionBn}</div></div>
+                  {q.image ? (
+                    <div className="space-y-4">
+                      <div className="flex flex-col lg:flex-row gap-4 items-start">
+                        <div className="w-full lg:w-40 pt-1 lg:flex-none">{renderQuestionHeader(idx)}</div>
+                        <div className="w-full lg:flex-1 bg-gray-50 border border-border rounded-lg p-3 flex justify-center max-w-4xl mx-auto">
+                          <img src={q.image} alt="Question" className="max-w-full h-auto max-h-60 object-contain rounded" />
+                        </div>
+                        <div className="hidden lg:block lg:w-40 lg:flex-none" aria-hidden="true" />
+                      </div>
+                      {renderStem(q)}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-2">
+                        {renderQuestionHeader(idx)}
+                        <div className="flex-1 min-w-0" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(q.questionTextBn || q.questionTextEn || q.questionText || q.questionBn || "") }} />
+                      </div>
+                    </div>
+                  )}
 
                   {/* If this question has subQuestions (CQ), render them */}
                   {q.subQuestions && Array.isArray(q.subQuestions) && q.subQuestions.length > 0 ? (
@@ -351,7 +380,7 @@ const AdminExamBuilder = () => {
                           <div className="flex items-start gap-2">
                             <div className="w-6 flex-none font-semibold text-foreground text-base leading-tight">{sq.label || (['ক','খ','গ','ঘ'][idx] || `${idx+1}.`)}</div>
                             <div className="flex-1">
-                              <div className="text-foreground leading-relaxed text-sm">{sq.questionTextBn || sq.questionTextEn || sq.questionText || sq.questionBn}</div>
+                              <div className="text-foreground leading-relaxed text-sm" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.questionTextBn || sq.questionTextEn || sq.questionText || sq.questionBn) }} />
                               {sq.image && (
                                 <div className="mt-2 mb-2 flex justify-center">
                                   <img src={sq.image} alt="Sub-question" className="max-w-full h-auto max-h-48 object-contain rounded" />
@@ -364,7 +393,7 @@ const AdminExamBuilder = () => {
                       ))}
                     </div>
                   ) : (
-                    q.options && (<div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">{q.options.map((opt:any,i:number)=>(<div key={i} className="px-3 py-2 rounded border border-border text-sm"><span className="font-medium">{String.fromCharCode(65+i)}.</span> {opt.text}</div>))}</div>)
+                    q.options && (<div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">{q.options.map((opt:any,i:number)=>(<div key={i} className="px-3 py-2 rounded border border-border text-sm"><span className="font-medium">{String.fromCharCode(65+i)}.</span> <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(opt.text || opt) }} /></div>))}</div>)
                   )}
                 </div>
               </div>
@@ -415,24 +444,30 @@ const AdminExamBuilder = () => {
 
               return (
               <div key={id} className="bg-muted/10 p-3 rounded-lg">
-                {q.image && (
-                  <div className="w-full flex justify-center bg-gray-50 py-3 mb-3 border border-border rounded">
-                    <img src={q.image} alt="Question" className="max-w-full h-auto max-h-60 object-contain rounded" />
-                  </div>
-                )}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
                     {/* Grouped CQ parent with subQuestions */}
                     {q.subQuestions && Array.isArray(q.subQuestions) ? (
-                      <div>
-                        <div className="font-medium mb-2">{i+1}. {q.parentPassage || q.questionTextBn || q.questionText}</div>
+                      <div className="space-y-4">
+                        {q.image ? (
+                          <div className="flex flex-col lg:flex-row gap-4 items-start">
+                            <div className="w-full lg:w-40 pt-1 lg:flex-none">{renderQuestionHeader(i)}</div>
+                            <div className="w-full lg:flex-1 bg-gray-50 border border-border rounded-lg p-3 flex justify-center max-w-4xl mx-auto">
+                              <img src={q.image} alt="Question" className="max-w-full h-auto max-h-60 object-contain rounded" />
+                            </div>
+                            <div className="hidden lg:block lg:w-40 lg:flex-none" aria-hidden="true" />
+                          </div>
+                        ) : (
+                          <div className="flex items-start gap-2">{renderQuestionHeader(i)}<div className="flex-1 min-w-0" /></div>
+                        )}
+                        {renderStem(q)}
                         <div className="mt-2 space-y-2">
                           {q.subQuestions.map((sq:any, idx:number) => (
                             <div key={sq._id} className="border-l-2 border-success/30 pl-3">
                               <div className="flex items-start gap-2">
                                 <div className="w-6 flex-none font-semibold text-foreground text-base leading-tight">{sq.label || (['ক','খ','গ','ঘ'][idx] || `${idx+1}.`)}</div>
                                 <div className="flex-1">
-                                  <div className="text-foreground leading-relaxed text-sm">{sq.questionTextBn || sq.questionTextEn || sq.questionText || sq.questionBn}</div>
+                                  <div className="text-foreground leading-relaxed text-sm" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.questionTextBn || sq.questionTextEn || sq.questionText || sq.questionBn) }} />
                                   {sq.image && (
                                     <div className="mt-2 mb-2 flex justify-center">
                                       <img src={sq.image} alt="Sub-question" className="max-w-full h-auto max-h-48 object-contain rounded" />
@@ -440,10 +475,10 @@ const AdminExamBuilder = () => {
                                   )}
                                   {sq.options && sq.options.length > 0 && (
                                     <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                      {sq.options.map((opt:any, oi:number)=>(<div key={oi} className="px-3 py-2 rounded border border-border text-sm"><span className="font-medium">{String.fromCharCode(65+oi)}.</span> {opt.text}</div>))}
+                                      {sq.options.map((opt:any, oi:number)=>(<div key={oi} className="px-3 py-2 rounded border border-border text-sm"><span className="font-medium">{String.fromCharCode(65+oi)}.</span> <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(opt.text || opt) }} /></div>))}
                                     </div>
                                   )}
-                                  {sq.explanation && <div className="mt-2 text-sm text-muted-foreground">Explanation: {sq.explanation}</div>}
+                                  {sq.explanation && <div className="mt-2 text-sm text-muted-foreground">Explanation: <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.explanation) }} /></div>}
                                 </div>
                               </div>
                             </div>
@@ -451,16 +486,27 @@ const AdminExamBuilder = () => {
                         </div>
                       </div>
                     ) : (
-                      <div>
-                        <div className="font-medium mb-1">{i+1}. {q.questionTextBn || q.questionTextEn || q.questionText || q.questionBn}</div>
+                      <div className="space-y-4">
+                        {q.image ? (
+                          <div className="flex flex-col lg:flex-row gap-4 items-start">
+                            <div className="w-full lg:w-40 pt-1 lg:flex-none">{renderQuestionHeader(i)}</div>
+                            <div className="w-full lg:flex-1 bg-gray-50 border border-border rounded-lg p-3 flex justify-center max-w-4xl mx-auto">
+                              <img src={q.image} alt="Question" className="max-w-full h-auto max-h-60 object-contain rounded" />
+                            </div>
+                            <div className="hidden lg:block lg:w-40 lg:flex-none" aria-hidden="true" />
+                          </div>
+                        ) : (
+                          <div className="flex items-start gap-2"><span className="text-xs font-bold text-muted-foreground whitespace-nowrap">প্রশ্ন {i + 1}</span><div className="flex-1 min-w-0" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(q.questionTextBn || q.questionTextEn || q.questionText || q.questionBn) }} /></div>
+                        )}
+                        {q.image && renderStem(q)}
                         {q.options && (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
                             {q.options.map((opt:any, idx:number) => (
-                              <div key={idx} className="px-3 py-2 rounded border border-border bg-card text-sm"><span className="font-medium">{String.fromCharCode(65+idx)}.</span> {opt.text}</div>
+                              <div key={idx} className="px-3 py-2 rounded border border-border bg-card text-sm"><span className="font-medium">{String.fromCharCode(65+idx)}.</span> <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(opt.text || opt) }} /></div>
                             ))}
                           </div>
                         )}
-                        <div className="mt-2 text-sm text-muted-foreground">Explanation: {q.explanation || "-"}</div>
+                        <div className="mt-2 text-sm text-muted-foreground">Explanation: <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(q.explanation || "-") }} /></div>
                       </div>
                     )}
                   </div>
@@ -500,7 +546,7 @@ const AdminExamBuilder = () => {
         selectedQuestionMarks={selectedQuestionMarksArray}
         onSuccess={handleExamCreationSuccess}
       />
-        </>
+        </div>
       )}
     </div>
   );

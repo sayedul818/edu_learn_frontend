@@ -58,7 +58,7 @@ const TeacherQuestions = () => {
                   if (parsed.hasSubPoints) {
                     return (
                       <div className="text-sm font-medium">
-                        {parsed.mainQuestion && <p className="mb-1">{parsed.mainQuestion}</p>}
+                        {parsed.mainQuestion && <p className="mb-1" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(parsed.mainQuestion) }} />}
                         <div className="ml-3 space-y-0.5">
                           {parsed.subPoints.map((point, i) => (
                             <div key={i} className="flex gap-2 text-xs">

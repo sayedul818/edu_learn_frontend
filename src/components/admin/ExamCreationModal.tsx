@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { examsAPI, subjectsAPI, chaptersAPI, topicsAPI, classesAPI, groupsAPI, usersAPI, examResultsAPI, questionsAPI } from "@/services/api";
+import { renderMathToHtml } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Save, Settings, BarChart3, FileEdit, Eye, Clock, CheckCircle, AlertCircle } from "lucide-react";
 
@@ -1076,7 +1077,7 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
             return (
               <div key={question._id} className="bg-muted/20 p-4 rounded-lg border">
                 <div className="font-semibold mb-2 text-base">
-                  প্রশ্ন {index + 1}: {question.questionTextBn || question.questionTextEn}
+                  প্রশ্ন {index + 1}: <span dangerouslySetInnerHTML={{ __html: renderMathToHtml(question.questionTextBn || question.questionTextEn) }} />
                 </div>
 
                 {/* Options for MCQ */}
@@ -1103,7 +1104,7 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
                           key={optIdx} 
                           className={`p-2 rounded border transition ${bgColor}`}
                         >
-                          <span className="font-medium">{optionLetter}.</span> {optText}
+                          <span className="font-medium">{optionLetter}.</span> <span dangerouslySetInnerHTML={{ __html: renderMathToHtml(optText) }} />
                           {isStudentAnswer && isCorrect && <span className="ml-2 text-success">✓</span>}
                           {isStudentAnswer && !isCorrect && <span className="ml-2 text-destructive">✗</span>}
                           {!isStudentAnswer && isCorrect && <span className="ml-2 text-yellow-600">( সঠিক )</span>}
@@ -1118,7 +1119,7 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
                   <div className="mt-3">
                     <div className="text-sm font-medium text-muted-foreground mb-1">শিক্ষার্থীর উত্তর:</div>
                     <div className="bg-card p-3 rounded border">
-                      {studentAnswer || "কোনো উত্তর দেওয়া হয়নি"}
+                      <div dangerouslySetInnerHTML={{ __html: renderMathToHtml(studentAnswer || "কোনো উত্তর দেওয়া হয়নি") }} />
                     </div>
 
                     {/* Attachments (if any) */}
@@ -1172,7 +1173,7 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
                           return (
                             <div key={qid} className="flex items-center gap-3">
                               <div className="w-8 font-semibold">{sq.label || (['ক','খ','গ','ঘ'][sidx] || `${sidx+1}.`)}</div>
-                              <div className="flex-1">{sq.questionTextBn || sq.questionTextEn || sq.questionText || sq.questionBn}</div>
+                              <div className="flex-1"><span dangerouslySetInnerHTML={{ __html: renderMathToHtml(sq.questionTextBn || sq.questionTextEn || sq.questionText || sq.questionBn) }} /></div>
                               <Input
                                 type="number"
                                 value={gradingMarks[qid] ?? assigned}
@@ -1187,7 +1188,7 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
                         return (
                           <div key={qid} className="flex items-center gap-3">
                             <div className="w-8 font-semibold">{sq.label || (['ক','খ','গ','ঘ'][sidx] || `${sidx+1}.`)}</div>
-                            <div className="flex-1">{sq.questionTextBn || sq.questionTextEn || sq.questionText || sq.questionBn}</div>
+                            <div className="flex-1"><span dangerouslySetInnerHTML={{ __html: renderMathToHtml(sq.questionTextBn || sq.questionTextEn || sq.questionText || sq.questionBn) }} /></div>
                             <div className="flex items-center space-x-2">
                               <div className="px-3 py-1 rounded-full bg-success/10 text-success border border-success/30 font-semibold text-sm">{assigned}</div>
                               <div className="text-xs text-muted-foreground">marks</div>

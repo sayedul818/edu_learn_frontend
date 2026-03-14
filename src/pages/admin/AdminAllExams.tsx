@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
-import { parseQuestionWithSubPoints } from "@/lib/utils";
+import { parseQuestionWithSubPoints, renderMathToHtml, renderRichOrMathHtml } from "@/lib/utils";
 import ExamCreationModal from "@/components/admin/ExamCreationModal";
 
 type ExamQuestion = {
@@ -226,6 +226,19 @@ const AdminAllExams = () => {
     setEditOpen(true);
   };
 
+  const renderQuestionHeader = (index: number) => (
+    <span className="text-xs font-bold text-muted-foreground whitespace-nowrap">প্রশ্ন {index + 1}</span>
+  );
+
+  const renderStem = (question: any) => {
+    const text = question.parentPassage || question.questionTextBn || question.questionTextEn || question.questionText || "";
+    return text ? (
+      <div className="rounded-lg bg-card border border-border text-foreground p-4 leading-relaxed text-sm">
+        <div className="whitespace-pre-line" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(text) }} />
+      </div>
+    ) : null;
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -370,17 +383,23 @@ const AdminAllExams = () => {
                               if (q.subQuestions && Array.isArray(q.subQuestions)) {
                                 return (
                                   <div key={q._id || i} className="p-3 border rounded-lg bg-card">
-                                    {/* parent image */}
-                                    {q.image && (
-                                      <div className="w-full flex justify-center bg-gray-50 py-3 mb-3 border border-border rounded">
-                                        <img src={q.image} alt="Question" className="max-w-full h-auto max-h-60 object-contain rounded" />
+                                    {q.image ? (
+                                      <div className="space-y-4 mb-3">
+                                        <div className="flex flex-col lg:flex-row gap-4 items-start">
+                                          <div className="w-full lg:w-40 pt-1 lg:flex-none">{renderQuestionHeader(i)}</div>
+                                          <div className="w-full lg:flex-1 bg-gray-50 border border-border rounded-lg p-3 flex justify-center max-w-4xl mx-auto">
+                                            <img src={q.image} alt="Question" className="max-w-full h-auto max-h-60 object-contain rounded" />
+                                          </div>
+                                          <div className="hidden lg:block lg:w-40 lg:flex-none" aria-hidden="true" />
+                                        </div>
+                                        {renderStem(q)}
+                                      </div>
+                                    ) : (
+                                      <div className="mb-3">
+                                        <div className="flex items-start gap-2 mb-3">{renderQuestionHeader(i)}<div className="flex-1 min-w-0" /></div>
+                                        {renderStem(q)}
                                       </div>
                                     )}
-                                    {q.parentPassage ? (
-                                      <div className="mb-3 rounded-lg bg-card border border-border text-foreground p-3 leading-relaxed text-sm">
-                                        <p className="whitespace-pre-line">{q.parentPassage}</p>
-                                      </div>
-                                    ) : null}
 
                                     <div className="space-y-2">
                                       {q.subQuestions.map((sq:any, idx:number) => (
@@ -388,7 +407,7 @@ const AdminAllExams = () => {
                                           <div className="flex items-start gap-2">
                                             <div className="w-6 flex-none font-semibold text-foreground text-base leading-tight">{sq.label || (['ক','খ','গ','ঘ'][idx] || `${idx+1}.`)}</div>
                                             <div className="flex-1">
-                                                    <div className="text-foreground leading-relaxed text-sm">{sq.questionTextBn || sq.questionTextEn || sq.questionText || sq.questionBn}</div>
+                                                    <div className="text-foreground leading-relaxed text-sm" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.questionTextBn || sq.questionTextEn || sq.questionText || sq.questionBn) }} />
                                                     {sq.image && (
                                                       <div className="mt-2 mb-2 flex justify-center">
                                                         <img src={sq.image} alt="Sub-question" className="max-w-full h-auto max-h-48 object-contain rounded" />
@@ -396,10 +415,13 @@ const AdminAllExams = () => {
                                                     )}
                                               {sq.options && sq.options.length > 0 && (
                                                 <ul className="mt-2 list-decimal list-inside text-sm">
-                                                  {sq.options.map((opt:any, oidx:number)=>(<li key={oidx}>{typeof opt === "string" ? opt : opt.text}</li>))}
+                                                  {sq.options.map((opt:any, oidx:number)=>{
+                                                    const t = typeof opt === "string" ? opt : opt.text;
+                                                    return (<li key={oidx} dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(t) }} />);
+                                                  })}
                                                 </ul>
                                               )}
-                                              {sq.explanation && <p className="text-xs text-muted-foreground mt-2">{sq.explanation}</p>}
+                                              {sq.explanation && <p className="text-xs text-muted-foreground mt-2" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.explanation) }} />}
                                             </div>
                                           </div>
                                         </div>
@@ -414,26 +436,35 @@ const AdminAllExams = () => {
                               const parsed = parseQuestionWithSubPoints(questionText);
                               return (
                                 <div key={q._id || i} className="p-3 border rounded-lg bg-card">
-                                  {/* question image */}
-                                  {q.image && (
-                                    <div className="w-full flex justify-center bg-gray-50 py-3 mb-3 border border-border rounded">
-                                      <img src={q.image} alt="Question" className="max-w-full h-auto max-h-60 object-contain rounded" />
-                                    </div>
-                                  )}
-                                  {parsed.hasSubPoints ? (
-                                    <div className="font-medium">
-                                      {parsed.mainQuestion && <p className="mb-2">{parsed.mainQuestion}</p>}
-                                      <div className="ml-4 space-y-1">
-                                        {parsed.subPoints.map((point, idx) => (
-                                          <div key={idx} className="flex gap-2 text-sm">
-                                            <span className="font-semibold min-w-[2rem]">{['i.', 'ii.', 'iii.', 'iv.', 'v.', 'vi.', 'vii.', 'viii.', 'ix.', 'x.'][idx]}</span>
-                                            <span>{point}</span>
-                                          </div>
-                                        ))}
+                                  {q.image ? (
+                                    <div className="space-y-4 mb-3">
+                                      <div className="flex flex-col lg:flex-row gap-4 items-start">
+                                        <div className="w-full lg:w-40 pt-1 lg:flex-none">{renderQuestionHeader(i)}</div>
+                                        <div className="w-full lg:flex-1 bg-gray-50 border border-border rounded-lg p-3 flex justify-center max-w-4xl mx-auto">
+                                          <img src={q.image} alt="Question" className="max-w-full h-auto max-h-60 object-contain rounded" />
+                                        </div>
+                                        <div className="hidden lg:block lg:w-40 lg:flex-none" aria-hidden="true" />
                                       </div>
                                     </div>
-                                  ) : (
-                                    <p className="font-medium">{questionText}</p>
+                                  ) : null}
+                                  {parsed.hasSubPoints ? (
+                                    <div className="font-medium">
+                                      {!q.image && <div className="mb-2">{renderQuestionHeader(i)}</div>}
+                                      {parsed.mainQuestion && <p className="mb-2" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(parsed.mainQuestion) }} />}
+                                      <div className="ml-4 space-y-1">
+                                        {parsed.subPoints.map((point, idx) => (
+                                                    <div key={idx} className="flex gap-2 text-sm">
+                                                      <span className="font-semibold min-w-[2rem]">{['i.', 'ii.', 'iii.', 'iv.', 'v.', 'vi.', 'vii.', 'viii.', 'ix.', 'x.'][idx]}</span>
+                                                      <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(point) }} />
+                                                    </div>
+                                                  ))}
+                                      </div>
+                                    </div>
+                                    ) : (
+                                    <div className="space-y-3">
+                                      {!q.image && <div>{renderQuestionHeader(i)}</div>}
+                                      <p className="font-medium" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(questionText) }} />
+                                    </div>
                                   )}
 
                                   {q?.options && q.options.length > 0 && (
@@ -442,13 +473,14 @@ const AdminAllExams = () => {
                                         const text = typeof opt === 'string' ? opt : opt.text;
                                         return (
                                           <div key={idx} className="px-3 py-2 rounded border border-border bg-card text-sm">
-                                            <span className="font-medium mr-2">{String.fromCharCode(65+idx)}.</span>{text}
+                                            <span className="font-medium mr-2">{String.fromCharCode(65+idx)}.</span>
+                                            <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(text) }} />
                                           </div>
                                         );
                                       })}
                                     </div>
                                   )}
-                                  {q?.explanation && <p className="text-xs text-muted-foreground mt-2">{q.explanation}</p>}
+                                  {q?.explanation && <p className="text-xs text-muted-foreground mt-2" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(q.explanation) }} />}
                                 </div>
                               );
                             })}

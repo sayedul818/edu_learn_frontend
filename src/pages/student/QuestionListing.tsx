@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { useToast } from "@/hooks/use-toast";
-import { parseQuestionWithSubPoints, parseInstructionAndContent } from "@/lib/utils";
+import { parseQuestionWithSubPoints, parseInstructionAndContent, renderMathToHtml, renderRichOrMathHtml } from "@/lib/utils";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -379,6 +379,95 @@ const QuestionListing = () => {
           {questions.map((item, idx) => {
             const q: any = item.isSubQuestion ? item.parentQuestion : item;
             const isSubQuestionDisplay = !!item.isSubQuestion;
+            const questionIndex = startIdx + idx + 1;
+            const hasSubQuestions = q.subQuestions && Array.isArray(q.subQuestions) && q.subQuestions.length > 0;
+
+            const renderQuestionHeader = () => (
+              <span className="text-xs font-bold text-muted-foreground whitespace-nowrap">
+                {isSubQuestionDisplay ? `Sub-Question ${questionIndex}` : `প্রশ্ন ${questionIndex}`}
+              </span>
+            );
+
+            const renderQuestionStem = () => {
+              if (isSubQuestionDisplay) {
+                const sq = item.subQuestion;
+                return (
+                  <div className="text-foreground leading-relaxed text-sm">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <div className="font-semibold">{sq.label || 'ক'}</div>
+                      <div dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.questionTextBn || sq.questionTextEn) }} />
+                      {sq.type && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200">
+                          {sq.type}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+
+              if (hasSubQuestions) {
+                const passage = q.questionTextBn || q.questionTextEn || q.questionText || '';
+                return passage ? (
+                  <div className="rounded-lg bg-card border border-border text-foreground p-4 leading-relaxed text-sm">
+                    <div className="whitespace-pre-line" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(passage) }} />
+                  </div>
+                ) : null;
+              }
+
+              const questionText = q.questionTextBn || q.questionTextEn || q.questionText;
+              const instructionData = parseInstructionAndContent(questionText);
+              if (instructionData.hasInstruction) {
+                return (
+                  <div>
+                    <p className="mb-3 text-foreground font-semibold" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(instructionData.instruction) }} />
+                    <div className="mt-3 p-3 rounded-lg bg-card border border-border text-foreground leading-relaxed text-sm whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(instructionData.content) }} />
+                  </div>
+                );
+              }
+
+              const parsed = parseQuestionWithSubPoints(questionText);
+              if (parsed.hasSubPoints && parsed.subPoints.length > 0) {
+                return (
+                  <div>
+                    {parsed.mainQuestion && <p className="mb-2 text-foreground font-medium" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(parsed.mainQuestion) }} />}
+                    <div className="ml-4 space-y-1">
+                      {parsed.subPoints.map((point, i) => (
+                        <div key={i} className="flex gap-2">
+                          <span className="font-semibold min-w-[2rem]">{['i.', 'ii.', 'iii.', 'iv.', 'v.', 'vi.', 'vii.', 'viii.', 'ix.', 'x.'][i]}</span>
+                          <span className="text-foreground leading-relaxed" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(point) }} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+
+              return <p className="text-foreground font-medium leading-relaxed" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(questionText) }} />;
+            };
+
+            const renderSubQuestionRow = () => {
+              if (!hasSubQuestions || isSubQuestionDisplay) return null;
+              return (
+                <div className="space-y-3">
+                  {q.subQuestions.map((sq: any, i: number) => (
+                    <div key={i} className="border-l-2 border-success/30 pl-3">
+                      <div className="flex items-start gap-2">
+                        <div className="w-6 flex-none font-semibold text-foreground text-base leading-tight">{sq.label || (['ক','খ','গ','ঘ','ঙ'][i] || `${i+1}.`)}</div>
+                        <div className="flex-1 flex flex-wrap items-center gap-2">
+                          <div className="text-foreground leading-relaxed text-sm" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.questionTextBn || sq.questionTextEn) }} />
+                          {sq.type && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200">
+                              {sq.type}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            };
 
             return (
             <motion.div
@@ -388,24 +477,11 @@ const QuestionListing = () => {
               transition={{ delay: idx * 0.05 }}
               className="bg-muted/30 rounded-xl border border-border shadow-sm overflow-hidden"
             >
-              {/* Question Image (if exists) */}
-              {q.image && (
-                <div className="w-full flex justify-center bg-gray-50 py-4 border-b">
-                  <img 
-                    src={q.image} 
-                    alt="Question" 
-                    className="max-w-full h-auto max-h-96 object-contain rounded" 
-                  />
-                </div>
-              )}
-              
               <div className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs font-bold text-muted-foreground">
-                      {isSubQuestionDisplay ? `Sub-Question ${startIdx + idx + 1}` : `প্রশ্ন ${startIdx + idx + 1}`}
-                    </span>
+                    {!q.image && renderQuestionHeader()}
                     {q.examTypeId && (
                       <span className="px-2 py-0.5 bg-purple/10 text-purple text-[10px] font-bold rounded-full">
                         {typeof q.examTypeId === 'object' 
@@ -414,109 +490,33 @@ const QuestionListing = () => {
                       </span>
                     )}
                   </div>
-                  {(() => {
-                    if (isSubQuestionDisplay) {
-                      const sq = item.subQuestion;
-                      return (
-                        <div className="text-foreground leading-relaxed text-sm">
-                          <div className="flex flex-wrap items-center gap-2 mb-2">
-                            <div className="font-semibold">{sq.label || 'ক'}</div>
-                            <div>{sq.questionTextBn || sq.questionTextEn}</div>
-                            {sq.type && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200">
-                                {sq.type}
-                              </span>
-                            )}
-                          </div>
+                  {q.image ? (
+                    <div className="space-y-4">
+                      <div className="flex flex-col lg:flex-row gap-4 items-start">
+                        <div className="w-full lg:w-40 pt-1 lg:flex-none">
+                          {renderQuestionHeader()}
                         </div>
-                      );
-                    }
-
-                    const hasSubQuestions = q.subQuestions && Array.isArray(q.subQuestions) && q.subQuestions.length > 0;
-                    if (hasSubQuestions) {
-                      const passage = q.questionTextBn || q.questionTextEn || q.questionText || '';
-                      return (
-                        <div>
-                          {passage ? (
-                            <div className="mb-4 rounded-lg bg-card border border-border text-foreground p-4 leading-relaxed text-sm">
-                              <p className="whitespace-pre-line">{passage}</p>
-                            </div>
-                          ) : null}
-
-                          <div className="space-y-3">
-                            {q.subQuestions.map((sq: any, i: number) => (
-                              <div key={i} className="border-l-2 border-success/30 pl-3">
-                                <div className="flex items-start gap-2">
-                                  <div className="w-6 flex-none font-semibold text-foreground text-base leading-tight">{sq.label || (['ক','খ','গ','ঘ','ঙ'][i] || `${i+1}.`)}</div>
-                                  <div className="flex-1 flex flex-wrap items-center gap-2">
-                                    <div className="text-foreground leading-relaxed text-sm">{sq.questionTextBn || sq.questionTextEn}</div>
-                                    {sq.type && (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200">
-                                        {sq.type}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+                        <div className="w-full lg:flex-1 bg-gray-50 border border-border rounded-lg p-3 flex justify-center max-w-4xl mx-auto">
+                          <img src={q.image} alt="Question" className="max-w-full h-auto max-h-96 object-contain rounded" />
                         </div>
-                      );
-                    }
-
-                    return (
-                      <>
-                        {(() => {
-                          const questionText = q.questionTextBn || q.questionTextEn || q.questionText;
-                          
-                          // First, check for instruction pattern (e.g., "নিচের উদ্দীপকটি পড়ে ১ ও ২ সংখ্যক প্রশ্নের উত্তর দাও:")
-                          const instructionData = parseInstructionAndContent(questionText);
-                          if (instructionData.hasInstruction) {
-                            return (
-                              <div>
-                                <p className="mb-3 text-foreground font-semibold">{instructionData.instruction}</p>
-                                <div className="mt-3 p-3 rounded-lg bg-card border border-border text-foreground leading-relaxed text-sm whitespace-pre-wrap">
-                                  {instructionData.content}
-                                </div>
-                              </div>
-                            );
-                          }
-                          
-                          // Then check for Roman numeral pattern
-                          const parsed = parseQuestionWithSubPoints(questionText);
-                          if (parsed.hasSubPoints && parsed.subPoints.length > 0) {
-                            return (
-                              <div>
-                                {parsed.mainQuestion && <p className="mb-2 text-foreground font-medium">{parsed.mainQuestion}</p>}
-                                <div className="ml-4 space-y-1">
-                                  {parsed.subPoints.map((point, i) => (
-                                    <div key={i} className="flex gap-2">
-                                      <span className="font-semibold min-w-[2rem]">{['i.', 'ii.', 'iii.', 'iv.', 'v.', 'vi.', 'vii.', 'viii.', 'ix.', 'x.'][i]}</span>
-                                      <span className="text-foreground leading-relaxed">{point}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            );
-                          }
-                          
-                          // Default: plain text
-                          return (
-                            <p className="text-foreground font-medium leading-relaxed">
-                              {questionText}
-                            </p>
-                          );
-                        })()}
-                      </>
-                    );
-                  })()}
+                        <div className="hidden lg:block lg:w-40 lg:flex-none" aria-hidden="true" />
+                      </div>
+                      <div>{renderQuestionStem()}</div>
+                      {renderSubQuestionRow()}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {renderQuestionStem()}
+                      {renderSubQuestionRow()}
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Options */}
               {q.options && Array.isArray(q.options) && !isSubQuestionDisplay && (
                 <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {q.options.map((opt, i) => (
+                      {q.options.map((opt, i) => (
                     <div
                       key={i}
                       className="px-4 py-2.5 rounded-lg border border-border bg-card text-sm hover:border-success/50 hover:bg-success/5 transition-all cursor-pointer"
@@ -524,7 +524,7 @@ const QuestionListing = () => {
                       <span className="font-bold text-muted-foreground mr-2">
                         {String.fromCharCode(2453 + i)}.
                       </span>
-                      {typeof opt === 'string' ? opt : opt.text || opt}
+                      <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(typeof opt === 'string' ? opt : opt.text || opt) }} />
                     </div>
                   ))}
                 </div>
@@ -571,7 +571,7 @@ const QuestionListing = () => {
                         <div>
                           <p className="text-xs font-bold text-success mb-1">✓ সঠিক উত্তর</p>
                           <p className="text-sm text-foreground">
-                            {q.options?.find((opt: any) => opt.isCorrect)?.text || "N/A"}
+                            <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(q.options?.find((opt: any) => opt.isCorrect)?.text || "N/A") }} />
                           </p>
                         </div>
                       )}
@@ -579,7 +579,7 @@ const QuestionListing = () => {
                       {isSubQuestionDisplay ? (
                         <div>
                           <p className="text-xs font-bold text-success mb-1">✓ উত্তর</p>
-                          <p className="text-sm text-foreground">{item.subQuestion.answerBn || item.subQuestion.answer || "N/A"}</p>
+                          <p className="text-sm text-foreground" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(item.subQuestion.answerBn || item.subQuestion.answer || "N/A") }} />
                         </div>
                       ) : (
                         <>
@@ -597,7 +597,7 @@ const QuestionListing = () => {
                                             {sq.type}
                                           </span>
                                         )}
-                                        <span className="text-muted-foreground">{sq.answer || sq.answerBn || sq.answerEn || 'N/A'}</span>
+                                        <span className="text-muted-foreground" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.answer || sq.answerBn || sq.answerEn || 'N/A') }} />
                                       </div>
                                     </div>
                                   </div>
@@ -611,7 +611,7 @@ const QuestionListing = () => {
                       {q.explanation && (
                         <div>
                           <p className="text-xs font-bold text-muted-foreground mb-1">📝 ব্যাখ্যা</p>
-                          <p className="text-sm text-muted-foreground leading-relaxed">{q.explanation}</p>
+                          <p className="text-sm text-muted-foreground leading-relaxed" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(q.explanation) }} />
                         </div>
                       )}
                     </div>
