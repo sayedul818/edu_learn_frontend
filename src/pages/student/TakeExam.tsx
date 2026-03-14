@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,13 +14,22 @@ const TakeExam = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const userId = user?.id || (user as any)?._id || "anon";
+  const examDraftKey = examId ? `examDraft_${userId}_${examId}` : null;
+  const startedAtRef = useRef<string>(new Date().toISOString());
+
+  type UploadedFileEntry = {
+    name: string;
+    type: string;
+    dataUrl: string;
+  };
 
   const [exam, setExam] = useState<any>(null);
   const [questions, setQuestions] = useState<any[]>([]);
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [flagged, setFlagged] = useState<Set<string>>(new Set());
-  const [uploadedFiles, setUploadedFiles] = useState<Record<string, File[]>>({});
+  const [uploadedFiles, setUploadedFiles] = useState<Record<string, UploadedFileEntry[]>>({});
   const [timeLeft, setTimeLeft] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -44,17 +53,51 @@ const TakeExam = () => {
     return fallback;
   };
 
+  const restoreDraftState = useCallback((questionCount: number, defaultTimeLeft: number) => {
+    if (!examDraftKey) return false;
+
+    try {
+      const raw = localStorage.getItem(examDraftKey);
+      if (!raw) return false;
+
+      const draft = JSON.parse(raw);
+      if (!draft || draft.submitted) return false;
+
+      const updatedAtMs = draft.updatedAt ? new Date(draft.updatedAt).getTime() : Date.now();
+      const elapsedSec = Math.max(0, Math.floor((Date.now() - updatedAtMs) / 1000));
+      const savedTimeLeft = Number(draft.timeLeft);
+      const restoredTimeLeft = Number.isFinite(savedTimeLeft)
+        ? Math.max(0, savedTimeLeft - elapsedSec)
+        : defaultTimeLeft;
+
+      const safeAnswers = draft.answers && typeof draft.answers === "object" ? draft.answers : {};
+      const safeFlagged = Array.isArray(draft.flagged) ? draft.flagged : [];
+      const safeUploads = draft.uploadedFiles && typeof draft.uploadedFiles === "object" ? draft.uploadedFiles : {};
+      const savedQ = Number(draft.currentQ);
+      const clampedQ = Number.isFinite(savedQ)
+        ? Math.min(Math.max(0, savedQ), Math.max(0, questionCount - 1))
+        : 0;
+
+      if (draft.startedAt) startedAtRef.current = String(draft.startedAt);
+
+      setAnswers(safeAnswers);
+      setFlagged(new Set(safeFlagged));
+      setUploadedFiles(safeUploads);
+      setCurrentQ(clampedQ);
+      setTimeLeft(restoredTimeLeft);
+
+      return true;
+    } catch (e) {
+      console.error("Failed to restore exam draft", e);
+      return false;
+    }
+  }, [examDraftKey]);
+
   // Load exam data on mount
   useEffect(() => {
     if (!examId) {
       setIsLoading(false);
       return;
-    }
-
-    try {
-      sessionStorage.setItem(`examInProgress_${examId}`, JSON.stringify({ startedAt: new Date().toISOString() }));
-    } catch (e) {
-      console.error("Failed to mark exam in progress", e);
     }
 
     loadExam();
@@ -70,9 +113,20 @@ const TakeExam = () => {
       
       if (selfExamData) {
         const parsed = JSON.parse(selfExamData);
+        const loadedQuestions = parsed.questions || [];
+        const defaultTimeLeft = (parsed.exam?.duration || 0) * 60;
+
         setExam(parsed.exam);
-        setQuestions(parsed.questions || []);
-        setTimeLeft((parsed.exam?.duration || 0) * 60);
+        setQuestions(loadedQuestions);
+
+        const restored = restoreDraftState(loadedQuestions.length, defaultTimeLeft);
+        if (!restored) {
+          setAnswers({});
+          setFlagged(new Set());
+          setUploadedFiles({});
+          setCurrentQ(0);
+          setTimeLeft(defaultTimeLeft);
+        }
       } else {
         // Try to load from database API
         const response = await examsAPI.get(examId);
@@ -158,9 +212,19 @@ const TakeExam = () => {
 
         const orderedQuestions = transformedExam.shuffleQuestions ? shuffleArray(transformedQuestions) : transformedQuestions;
 
+        const defaultTimeLeft = (dbExam.duration || 0) * 60;
+
         setExam(transformedExam);
         setQuestions(orderedQuestions);
-        setTimeLeft((dbExam.duration || 0) * 60);
+
+        const restored = restoreDraftState(orderedQuestions.length, defaultTimeLeft);
+        if (!restored) {
+          setAnswers({});
+          setFlagged(new Set());
+          setUploadedFiles({});
+          setCurrentQ(0);
+          setTimeLeft(defaultTimeLeft);
+        }
       }
     } catch (err) {
       console.error("Failed to load exam:", err);
@@ -181,7 +245,14 @@ const TakeExam = () => {
     reader.readAsDataURL(file);
   });
 
-  const handleFileSelect = (qid: string, files?: File[] | null) => {
+  const dataUrlToFile = async (dataUrl: string, fileName: string, mimeType?: string) => {
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+    const finalType = mimeType || blob.type || "application/octet-stream";
+    return new File([blob], fileName, { type: finalType });
+  };
+
+  const handleFileSelect = async (qid: string, files?: File[] | null) => {
     if (!files || files.length === 0) {
       setUploadedFiles((s) => ({ ...s, [qid]: [] }));
       return;
@@ -204,7 +275,23 @@ const TakeExam = () => {
     }
 
     if (validFiles.length === 0) return;
-    setUploadedFiles((s) => ({ ...s, [qid]: validFiles }));
+
+    const entries: UploadedFileEntry[] = [];
+    for (const file of validFiles) {
+      try {
+        const dataUrl = await fileToDataUrl(file);
+        entries.push({
+          name: file.name,
+          type: file.type || "application/octet-stream",
+          dataUrl,
+        });
+      } catch (e) {
+        console.error("Failed to prepare selected file", e);
+      }
+    }
+
+    if (entries.length === 0) return;
+    setUploadedFiles((s) => ({ ...s, [qid]: entries }));
   };
 
   useEffect(() => {
@@ -219,10 +306,36 @@ const TakeExam = () => {
   }, [exam, submitted]);
 
   useEffect(() => {
-    if (questions.length > 0) {
-      setCurrentQ(0);
-    }
+    if (questions.length === 0) return;
+    setCurrentQ((prev) => (prev >= 0 && prev < questions.length ? prev : 0));
   }, [questions.length]);
+
+  useEffect(() => {
+    if (!examId || !exam || isLoading || submitted || !examDraftKey) return;
+
+    const draft = {
+      examId,
+      userId,
+      startedAt: startedAtRef.current,
+      updatedAt: new Date().toISOString(),
+      currentQ,
+      answers,
+      flagged: Array.from(flagged),
+      uploadedFiles,
+      timeLeft,
+      submitted: false,
+    };
+
+    try {
+      localStorage.setItem(examDraftKey, JSON.stringify(draft));
+      sessionStorage.setItem(
+        `examInProgress_${examId}`,
+        JSON.stringify({ startedAt: startedAtRef.current, updatedAt: draft.updatedAt })
+      );
+    } catch (e) {
+      console.error("Failed to persist exam draft", e);
+    }
+  }, [examId, exam, isLoading, submitted, examDraftKey, userId, currentQ, answers, flagged, uploadedFiles, timeLeft]);
 
   const handleSubmit = useCallback(async () => {
     if (submitted) return;
@@ -280,18 +393,19 @@ const TakeExam = () => {
 
         for (const f of files) {
           try {
+            const fileObj = await dataUrlToFile(f.dataUrl, f.name, f.type);
             // attempt Cloudinary upload
             try {
-              const url = await uploadFileToCloudinary(f);
+              const url = await uploadFileToCloudinary(fileObj);
               uploadedEntries.push({ name: f.name, type: f.type, url });
               continue;
             } catch (uploadErr) {
               console.warn('Cloudinary upload failed, falling back to data-URL', uploadErr);
-              const dataUrl = await fileToDataUrl(f);
-              uploadedEntries.push({ name: f.name, type: f.type, dataUrl });
+              uploadedEntries.push({ name: f.name, type: f.type, dataUrl: f.dataUrl });
             }
           } catch (e) {
             console.error('Failed to prepare attachment for', qid, e);
+            uploadedEntries.push({ name: f.name, type: f.type, dataUrl: f.dataUrl });
           }
         }
 
@@ -364,6 +478,9 @@ const TakeExam = () => {
 
     try {
       sessionStorage.removeItem(`examInProgress_${examId}`);
+      if (examDraftKey) {
+        localStorage.removeItem(examDraftKey);
+      }
     } catch (e) {
       console.error("Failed to clear exam in progress", e);
     }
@@ -377,7 +494,7 @@ const TakeExam = () => {
     }
     // For auto-evaluated exams, go to the result page
     navigate(`/exam-result/${examId}`);
-  }, [answers, exam, questions, submitted, timeLeft, examId, navigate, uploadedFiles, user, toast]);
+  }, [answers, exam, questions, submitted, timeLeft, examId, navigate, uploadedFiles, user, toast, examDraftKey]);
 
   // Auto-submit when time runs out
   useEffect(() => {
