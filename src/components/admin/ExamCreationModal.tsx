@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { examsAPI, subjectsAPI, chaptersAPI, topicsAPI, classesAPI, groupsAPI, usersAPI, examResultsAPI, questionsAPI } from "@/services/api";
 import { renderMathToHtml } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Settings, BarChart3, FileEdit, Eye, Clock, CheckCircle, AlertCircle } from "lucide-react";
+import { Save, Settings, BarChart3, FileEdit, Eye, Clock, CheckCircle, AlertCircle, Brush, Eraser, Palette } from "lucide-react";
 
 type ExamCreationModalProps = {
   open: boolean;
@@ -172,6 +172,17 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
   const [answerSheetOpen, setAnswerSheetOpen] = useState(false);
   const [resultQuestions, setResultQuestions] = useState<any[]>([]);
   const [gradingMarks, setGradingMarks] = useState<Record<string, number>>({});
+  const [feedbackAttachments, setFeedbackAttachments] = useState<Record<string, any[]>>({});
+  const [imageEditorOpen, setImageEditorOpen] = useState(false);
+  const [editingAttachmentKey, setEditingAttachmentKey] = useState<string | null>(null);
+  const [editingAttachmentIndex, setEditingAttachmentIndex] = useState<number>(0);
+  const [editingAttachment, setEditingAttachment] = useState<any>(null);
+  const [brushColor, setBrushColor] = useState<string>('#ef4444');
+  const [brushSize, setBrushSize] = useState<number>(4);
+  const [isEraser, setIsEraser] = useState<boolean>(false);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const isDrawingRef = useRef<boolean>(false);
+  const [isSavingFeedbackImage, setIsSavingFeedbackImage] = useState<boolean>(false);
 
   const effectiveQuestionIds = useMemo(() => {
     if (selectedQuestionIds.length > 0) return selectedQuestionIds;
@@ -300,6 +311,7 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
         }
       });
       setGradingMarks(initialMarks);
+      setFeedbackAttachments(result?.feedbackAttachments && typeof result.feedbackAttachments === 'object' ? result.feedbackAttachments : {});
       setAnswerSheetOpen(true);
     } catch (err) {
       console.error('Failed to load questions:', err);
@@ -341,6 +353,7 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
     setGradingMarks((prev) => ({ ...initialMarks, ...prev }));
     setGradeTotalMarks(selectedResult.totalMarks ?? selectedResult?.examId?.totalMarks ?? undefined);
     setGradeScore(selectedResult.score ?? undefined);
+    setFeedbackAttachments(selectedResult?.feedbackAttachments && typeof selectedResult.feedbackAttachments === 'object' ? selectedResult.feedbackAttachments : {});
     setIsEditingGrade(false);
   }, [selectedResult]);
 
@@ -397,6 +410,211 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
       toast({ title: 'Failed to open attachment', variant: 'destructive' });
     }
   };
+
+  const getFeedbackOrOriginalAttachment = (key: string, idx: number, originalAtt: any) => {
+    const edits = feedbackAttachments[key];
+    if (Array.isArray(edits) && edits[idx]) return edits[idx];
+    return originalAtt;
+  };
+
+  const sanitizeFeedbackAttachments = (raw: Record<string, any[]>) => {
+    const out: Record<string, any[]> = {};
+    Object.entries(raw || {}).forEach(([k, arr]) => {
+      if (!Array.isArray(arr)) return;
+      // Preserve array positions so edited attachment index keeps matching original index.
+      const withExplicitNulls = Array.from({ length: arr.length }, (_, i) => arr[i] ?? null);
+      const cleanedList = withExplicitNulls.map((att: any) => {
+        if (!att) return null;
+        const cleaned: any = {
+          name: att?.name,
+          type: att?.type,
+          edited: !!att?.edited,
+          originalName: att?.originalName,
+        };
+        if (att?.url) {
+          cleaned.url = att.url;
+        } else if (att?.dataUrl) {
+          // Keep base64 only as fallback when no hosted URL exists.
+          cleaned.dataUrl = att.dataUrl;
+        }
+        return cleaned;
+      });
+
+      // Persist only keys that contain at least one edited attachment.
+      if (cleanedList.some(Boolean)) {
+        out[k] = cleanedList;
+      }
+    });
+    return out;
+  };
+
+  const startEditAttachment = (key: string, idx: number, att: any) => {
+    const sourceAtt = getFeedbackOrOriginalAttachment(key, idx, att);
+    if (!(sourceAtt?.type && String(sourceAtt.type).startsWith('image/')) && !/\.(jpg|jpeg|png|gif|webp)$/i.test(sourceAtt?.name || '')) {
+      toast({ title: 'Only image files can be edited', variant: 'destructive' });
+      return;
+    }
+    setEditingAttachmentKey(key);
+    setEditingAttachmentIndex(idx);
+    setEditingAttachment(sourceAtt);
+    setImageEditorOpen(true);
+  };
+
+  const drawPoint = (x: number, y: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.lineWidth = brushSize;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.globalCompositeOperation = isEraser ? 'destination-out' : 'source-over';
+    ctx.strokeStyle = brushColor;
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  };
+
+  const getCanvasCoords = (evt: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+      x: (evt.clientX - rect.left) * scaleX,
+      y: (evt.clientY - rect.top) * scaleY,
+    };
+  };
+
+  const stopDrawing = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    isDrawingRef.current = false;
+    ctx.beginPath();
+  };
+
+  // Helper: resolve an image src to a dataUrl, fetching remote URLs as blob
+  // to avoid canvas CORS taint when calling toDataURL() later.
+  const resolveImageSrc = async (src: string): Promise<string> => {
+    if (!src || src.startsWith('data:')) return src;
+    try {
+      const resp = await fetch(src, { mode: 'cors' });
+      if (!resp.ok) throw new Error('fetch failed');
+      const blob = await resp.blob();
+      return await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      // CORS fetch failed — return original; canvas will be tainted but at least visible
+      return src;
+    }
+  };
+
+  const drawSrcToCanvas = async (src: string) => {
+    const resolvedSrc = await resolveImageSrc(src);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const img = new Image();
+    img.onload = () => {
+      const maxW = 1000;
+      const ratio = img.naturalWidth > maxW ? maxW / img.naturalWidth : 1;
+      canvas.width = Math.max(1, Math.floor(img.naturalWidth * ratio));
+      canvas.height = Math.max(1, Math.floor(img.naturalHeight * ratio));
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    };
+    img.onerror = () => {
+      const c = canvasRef.current;
+      if (!c) return;
+      const cx = c.getContext('2d');
+      if (!cx) return;
+      c.width = 600; c.height = 300;
+      cx.fillStyle = '#f5f5f5';
+      cx.fillRect(0, 0, 600, 300);
+      cx.fillStyle = '#888';
+      cx.font = '16px sans-serif';
+      cx.textAlign = 'center';
+      cx.fillText('Image could not be loaded.', 300, 150);
+    };
+    img.src = resolvedSrc;
+  };
+
+  const clearEditedCanvas = () => {
+    const src = editingAttachment?.dataUrl || editingAttachment?.url;
+    if (!src) return;
+    drawSrcToCanvas(src);
+  };
+
+  const saveEditedAttachment = async () => {
+    if (!editingAttachmentKey || editingAttachmentIndex < 0) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    try {
+      setIsSavingFeedbackImage(true);
+      const dataUrl = canvas.toDataURL('image/png');
+      const editedNameBase = (editingAttachment?.name || `feedback-${editingAttachmentIndex + 1}`).replace(/\.[^/.]+$/, '');
+      const editedAttachment: any = {
+        name: `${editedNameBase}-feedback.png`,
+        type: 'image/png',
+        dataUrl,
+        edited: true,
+        originalName: editingAttachment?.name,
+      };
+
+      try {
+        const { uploadFileToCloudinary } = await import('@/services/cloudinary');
+        const resp = await fetch(dataUrl);
+        const blob = await resp.blob();
+        const file = new File([blob], editedAttachment.name, { type: 'image/png' });
+        const url = await uploadFileToCloudinary(file);
+        editedAttachment.url = url;
+        // Prefer URL storage to keep grade-save payload small.
+        delete editedAttachment.dataUrl;
+      } catch (uploadErr) {
+        // fallback keeps dataUrl, which is already set above
+        console.warn('Feedback image upload failed, storing dataUrl fallback', uploadErr);
+      }
+
+      setFeedbackAttachments((prev) => {
+        const current = Array.isArray(prev[editingAttachmentKey]) ? [...prev[editingAttachmentKey]] : [];
+        current[editingAttachmentIndex] = editedAttachment;
+        return { ...prev, [editingAttachmentKey]: current };
+      });
+
+      setImageEditorOpen(false);
+      toast({ title: 'Edited image saved', description: 'Click Save Grades / Save Changes to publish for student feedback.' });
+    } catch (err) {
+      console.error('Failed to save edited image', err);
+      toast({ title: 'Failed to save edited image', variant: 'destructive' });
+    } finally {
+      setIsSavingFeedbackImage(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!imageEditorOpen || !editingAttachment) return;
+    const src = editingAttachment.dataUrl || editingAttachment.url;
+    if (!src) return;
+
+    // Delay slightly so the Dialog has time to mount the canvas element
+    // before we try to draw (canvasRef.current would be null otherwise).
+    const timer = setTimeout(() => {
+      drawSrcToCanvas(src);
+    }, 60);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageEditorOpen, editingAttachment]);
 
   // Format time (submission time)
   const formatTime = (date: string | Date) => {
@@ -1146,20 +1364,27 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
                     <div className="space-y-2">
                       {questionAttachments.map(({ key, items }) =>
                         items.map((att: any, idx: number) => {
-                          const isImage = att.type && att.type.startsWith('image/');
-                          const isPdf = att.type === 'application/pdf' || (att.name && att.name.toLowerCase().endsWith('.pdf'));
+                          const displayAtt = getFeedbackOrOriginalAttachment(key, idx, att);
+                          const isImage = displayAtt.type && displayAtt.type.startsWith('image/');
+                          const isPdf = displayAtt.type === 'application/pdf' || (displayAtt.name && displayAtt.name.toLowerCase().endsWith('.pdf'));
                           return (
                             <div key={`${key}-${idx}`} className="p-2 border rounded bg-card">
                               <div className="flex items-center justify-between">
-                                <div className="text-sm font-medium">{att.name || `File ${idx + 1}`}</div>
+                                <div className="text-sm font-medium flex items-center gap-2">
+                                  <span>{displayAtt.name || `File ${idx + 1}`}</span>
+                                  {displayAtt?.edited && <span className="text-xs px-2 py-0.5 rounded bg-success/15 text-success border border-success/25">Edited</span>}
+                                </div>
                                 <div className="flex items-center gap-3">
-                                  <button type="button" onClick={() => openAttachment(att)} className="text-sm text-primary hover:underline">Open</button>
-                                  <a href={att.dataUrl || att.url} download={att.name || `attachment-${idx + 1}`} className="text-sm text-muted-foreground hover:underline">Download</a>
+                                  {isImage && (
+                                    <button type="button" onClick={() => startEditAttachment(key, idx, att)} className="text-sm text-amber-600 hover:underline">Edit</button>
+                                  )}
+                                  <button type="button" onClick={() => openAttachment(displayAtt)} className="text-sm text-primary hover:underline">Open</button>
+                                  <a href={displayAtt.dataUrl || displayAtt.url} download={displayAtt.name || `attachment-${idx + 1}`} className="text-sm text-muted-foreground hover:underline">Download</a>
                                 </div>
                               </div>
-                              {isImage && (att.dataUrl || att.url) ? (
+                              {isImage && (displayAtt.dataUrl || displayAtt.url) ? (
                                 <div className="mt-2">
-                                  <img src={att.dataUrl || att.url} alt={att.name || `File ${idx + 1}`} className="max-h-64 w-auto rounded border" />
+                                  <img src={displayAtt.dataUrl || displayAtt.url} alt={displayAtt.name || `File ${idx + 1}`} className="max-h-64 w-auto rounded border" />
                                 </div>
                               ) : isPdf ? (
                                 <div className="mt-1">
@@ -1228,7 +1453,7 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
           {selectedResult?.pendingEvaluation && (
             <Button onClick={async () => {
               try {
-                const payload: any = { cqMarks: gradingMarks };
+                const payload: any = { cqMarks: gradingMarks, feedbackAttachments: sanitizeFeedbackAttachments(feedbackAttachments) };
                 if (gradeTotalMarks != null) payload.totalMarks = gradeTotalMarks;
                 if (gradeScore != null) payload.score = gradeScore;
                 const resp = await examResultsAPI.grade(selectedResult._id, payload);
@@ -1247,7 +1472,7 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
                 setAnswerSheetOpen(false);
               } catch (err) {
                 console.error('Failed to save grades', err);
-                toast({ title: 'Failed to save grades', variant: 'destructive' });
+                toast({ title: 'Failed to save grades', description: (err as Error)?.message || 'Request failed', variant: 'destructive' });
               }
             }}>Save Grades</Button>
           )}
@@ -1262,7 +1487,7 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
                   <Button variant="ghost" onClick={() => { setIsEditingGrade(false); setGradingMarks(selectedResult.cqMarks || {}); setGradeScore(selectedResult.score ?? undefined); }} type="button">Cancel</Button>
                   <Button onClick={async () => {
                     try {
-                      const payload: any = { cqMarks: gradingMarks };
+                      const payload: any = { cqMarks: gradingMarks, feedbackAttachments: sanitizeFeedbackAttachments(feedbackAttachments) };
                       if (gradeTotalMarks != null) payload.totalMarks = gradeTotalMarks;
                       if (gradeScore != null) payload.score = gradeScore;
                       const resp = await examResultsAPI.grade(selectedResult._id, payload);
@@ -1281,13 +1506,92 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
                       setIsEditingGrade(false);
                     } catch (err) {
                       console.error('Failed to update grades', err);
-                      toast({ title: 'Failed to update grades', variant: 'destructive' });
+                      toast({ title: 'Failed to update grades', description: (err as Error)?.message || 'Request failed', variant: 'destructive' });
                     }
                   }}>Save Changes</Button>
                 </>
               )}
             </>
           )}
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    {/* Attachment Image Editor */}
+    <Dialog open={imageEditorOpen} onOpenChange={(v) => { if (!isSavingFeedbackImage) setImageEditorOpen(v); }}>
+      <DialogContent className="w-full sm:max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-lg">Edit Feedback Image</DialogTitle>
+          <DialogDescription>
+            Draw annotations on the student image. Save it, then click Save Grades / Save Changes to publish for student feedback.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3 p-3 rounded border bg-muted/20">
+            <div className="flex items-center gap-2">
+              <Palette className="h-4 w-4" />
+              <input
+                type="color"
+                value={brushColor}
+                disabled={isEraser}
+                onChange={(e) => setBrushColor(e.target.value)}
+                className="h-9 w-12 p-1 border rounded bg-card"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Brush className="h-4 w-4" />
+              <Input
+                type="range"
+                min={1}
+                max={24}
+                step={1}
+                value={brushSize}
+                onChange={(e) => setBrushSize(Number(e.target.value) || 1)}
+                className="w-40"
+              />
+              <span className="text-xs text-muted-foreground w-8">{brushSize}</span>
+            </div>
+
+            <Button type="button" variant={isEraser ? 'default' : 'outline'} onClick={() => setIsEraser((v) => !v)}>
+              <Eraser className="h-4 w-4 mr-1" />
+              {isEraser ? 'Eraser On' : 'Eraser'}
+            </Button>
+
+            <Button type="button" variant="outline" onClick={clearEditedCanvas}>Reset</Button>
+          </div>
+
+          <div className="overflow-auto border rounded bg-white">
+            <canvas
+              ref={canvasRef}
+              className="max-w-full h-auto cursor-crosshair"
+              onMouseDown={(e: any) => {
+                isDrawingRef.current = true;
+                const { x, y } = getCanvasCoords(e);
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+              }}
+              onMouseMove={(e: any) => {
+                if (!isDrawingRef.current) return;
+                const { x, y } = getCanvasCoords(e);
+                drawPoint(x, y);
+              }}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setImageEditorOpen(false)} disabled={isSavingFeedbackImage}>Cancel</Button>
+            <Button onClick={saveEditedAttachment} disabled={isSavingFeedbackImage}>
+              {isSavingFeedbackImage ? 'Saving...' : 'Save Edited Image'}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

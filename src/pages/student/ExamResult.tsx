@@ -24,6 +24,7 @@ const ExamResult = () => {
   const [loading, setLoading] = useState(true);
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
   const [resultAttachments, setResultAttachments] = useState<Record<string, any[]>>({});
+  const [feedbackAttachments, setFeedbackAttachments] = useState<Record<string, any[]>>({});
 
   // ----- ImageSlider component (defined inside to keep it scoped) -----
   const ImageSlider = ({ images }: { images: any[] }) => {
@@ -83,6 +84,7 @@ const ExamResult = () => {
   useEffect(() => {
     if (!result || !examId) return;
     const map: Record<string, any[]> = {};
+    const feedbackMap: Record<string, any[]> = {};
 
     const normalizeAttachmentKey = (rawKey: string) => {
       // Group child attachment keys (e.g. parentId-0) under the parent CQ id.
@@ -100,9 +102,22 @@ const ExamResult = () => {
       map[key].push(...list);
     };
 
+    const pushFeedbackAttachments = (rawKey: string, value: any) => {
+      const key = normalizeAttachmentKey(rawKey);
+      const list = Array.isArray(value) ? value : [value];
+      if (!feedbackMap[key]) feedbackMap[key] = [];
+      feedbackMap[key].push(...list);
+    };
+
     if (result.attachments && typeof result.attachments === 'object') {
       Object.entries(result.attachments).forEach(([k, a]: any) => {
         pushAttachments(k, a);
+      });
+    }
+
+    if (result.feedbackAttachments && typeof result.feedbackAttachments === 'object') {
+      Object.entries(result.feedbackAttachments).forEach(([k, a]: any) => {
+        pushFeedbackAttachments(k, a);
       });
     }
 
@@ -121,6 +136,7 @@ const ExamResult = () => {
     }
 
     setResultAttachments(map);
+    setFeedbackAttachments(feedbackMap);
   }, [result, examId, user, questions]);
 
   const loadResultData = async () => {
@@ -594,13 +610,17 @@ const ExamResult = () => {
                   </div>
                     {/* Uploaded images/files — shown once per CQ parent question */}
                     {(() => {
-                      const qAtts = resultAttachments[q.id] || [];
-                      if (!qAtts.length) return null;
+                        const qFeedbackAtts = feedbackAttachments[q.id] || [];
+                        const qOriginalAtts = resultAttachments[q.id] || [];
+                        const mergedCount = Math.max(qFeedbackAtts.length, qOriginalAtts.length);
+                        const qAtts = Array.from({ length: mergedCount }, (_, i) => qFeedbackAtts[i] || qOriginalAtts[i]).filter(Boolean);
+                        if (!qAtts.length) return null;
+                        const hasTeacherEdits = qFeedbackAtts.some(Boolean);
                       return (
                         <div className="mt-5 pt-4 border-t border-border">
                           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-3">
                             <Paperclip className="h-4 w-4" />
-                            <span>আপলোড করা উত্তর ({qAtts.length} টি ফাইল)</span>
+                              <span>{hasTeacherEdits ? `শিক্ষকের ফিডব্যাক ছবি (${qAtts.length} টি ফাইল)` : `আপলোড করা উত্তর (${qAtts.length} টি ফাইল)`}</span>
                           </div>
                           <ImageSlider images={qAtts} />
                         </div>
