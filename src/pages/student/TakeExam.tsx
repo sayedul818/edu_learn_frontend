@@ -123,7 +123,7 @@ const TakeExam = () => {
                 return {
                   id: `${q._id}-${i}`,
                   dbId: sq._id || null,
-                  image: sq.image || q.image || null,
+                  image: sq.image || null,
                   questionText: text,
                   options,
                   correctAnswer: (normalizedOptions.find((opt: any) => opt.isCorrect)?.text) || (sq.answer || sq.answerBn || sq.answerEn) || "",
