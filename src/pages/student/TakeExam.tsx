@@ -340,6 +340,7 @@ const TakeExam = () => {
   const handleSubmit = useCallback(async () => {
     if (submitted) return;
     setSubmitted(true);
+    setShowConfirm(false);
     // Mark exam as completed (user-scoped)
     try {
       const uid = user?.id || (user as any)?._id || 'anon';
@@ -518,6 +519,14 @@ const TakeExam = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-4">
+      {submitted && (
+        <div className="fixed inset-0 z-[70] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md">
+            <BeautifulLoader message="পরীক্ষা সাবমিট হচ্ছে... অনুগ্রহ করে অপেক্ষা করুন" className="w-full" />
+          </div>
+        </div>
+      )}
+
       {/* Timer bar */}
       <div className={`flex items-center justify-between p-4 rounded-xl ${isUrgent ? "bg-destructive/10 border border-destructive/30" : "bg-card border border-border"}`}>
         <div>
@@ -731,8 +740,12 @@ const TakeExam = () => {
 
       {/* Submit button */}
       <div className="flex justify-center pb-8">
-        <Button className="w-full max-w-md bg-success hover:bg-success/90 text-white font-bold text-base py-6 rounded-xl transition-all hover:scale-[1.02]" onClick={() => setShowConfirm(true)}>
-          Submit Exam
+        <Button
+          disabled={submitted}
+          className="w-full max-w-md bg-success hover:bg-success/90 text-white font-bold text-base py-6 rounded-xl transition-all hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed"
+          onClick={() => setShowConfirm(true)}
+        >
+          {submitted ? "Submitting..." : "Submit Exam"}
         </Button>
       </div>
 
@@ -748,8 +761,8 @@ const TakeExam = () => {
                 {answeredCount < questions.length && " Unanswered questions will be marked as skipped."}
               </p>
               <div className="flex gap-3">
-                <Button variant="outline" className="flex-1" onClick={() => setShowConfirm(false)}>Go Back</Button>
-                <Button className="flex-1" onClick={handleSubmit}>Submit</Button>
+                <Button variant="outline" className="flex-1" onClick={() => setShowConfirm(false)} disabled={submitted}>Go Back</Button>
+                <Button className="flex-1" onClick={handleSubmit} disabled={submitted}>{submitted ? "Submitting..." : "Submit"}</Button>
               </div>
             </CardContent>
           </Card>
