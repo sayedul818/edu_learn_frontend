@@ -6,7 +6,7 @@ import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { examsAPI, examResultsAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { CheckCircle, XCircle, ArrowLeft, RotateCcw, Trophy, ChevronDown, ChevronUp } from "lucide-react";
+import { CheckCircle, XCircle, ArrowLeft, RotateCcw, Trophy, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Paperclip } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { parseQuestionWithSubPoints, percentageToGrade, renderMathToHtml, renderRichOrMathHtml } from "@/lib/utils";
 
@@ -23,10 +23,105 @@ const ExamResult = () => {
   const [subjectHistory, setSubjectHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
+  const [resultAttachments, setResultAttachments] = useState<Record<string, any[]>>({});
+
+  // ----- ImageSlider component (defined inside to keep it scoped) -----
+  const ImageSlider = ({ images }: { images: any[] }) => {
+    const [idx, setIdx] = useState(0);
+    if (!images.length) return null;
+    const img = images[Math.min(idx, images.length - 1)];
+    const imgUrl = img?.dataUrl || img?.url || '';
+    const isImage = (img?.type && img.type.startsWith('image/')) || /\.(jpg|jpeg|png|gif|webp)$/i.test(img?.name || '');
+    const isPdf = img?.type === 'application/pdf' || /\.pdf$/i.test(img?.name || '');
+    return (
+      <div className="rounded-xl border border-border overflow-hidden bg-black/5 dark:bg-white/5">
+        {images.length > 1 && (
+          <div className="flex items-center justify-between px-3 py-1.5 bg-muted/40 border-b border-border text-sm">
+            <button
+              onClick={() => setIdx(i => Math.max(0, i - 1))}
+              disabled={idx === 0}
+              className="p-1 rounded hover:bg-muted disabled:opacity-40"
+            ><ChevronLeft className="h-4 w-4" /></button>
+            <span className="text-xs text-muted-foreground font-medium">{img?.name || `ছবি ${idx + 1}`} &nbsp;({idx + 1}/{images.length})</span>
+            <button
+              onClick={() => setIdx(i => Math.min(images.length - 1, i + 1))}
+              disabled={idx === images.length - 1}
+              className="p-1 rounded hover:bg-muted disabled:opacity-40"
+            ><ChevronRight className="h-4 w-4" /></button>
+          </div>
+        )}
+        {isImage && imgUrl ? (
+          <div className="flex justify-center p-2">
+            <img
+              src={imgUrl}
+              alt={img?.name || `ছবি ${idx + 1}`}
+              className="max-h-80 w-auto max-w-full object-contain rounded"
+            />
+          </div>
+        ) : isPdf ? (
+          <div className="p-3 text-sm text-muted-foreground flex items-center gap-2">
+            <Paperclip className="h-4 w-4" />
+            <span>{img?.name || 'PDF ফাইল'}</span>
+            <a href={imgUrl} download={img?.name || 'file.pdf'} className="ml-auto text-primary hover:underline text-xs">Download</a>
+          </div>
+        ) : (
+          <div className="p-3 text-sm text-muted-foreground flex items-center gap-2">
+            <Paperclip className="h-4 w-4" />
+            <span>{img?.name || `ফাইল ${idx + 1}`}</span>
+            {imgUrl && <a href={imgUrl} download={img?.name} className="ml-auto text-primary hover:underline text-xs">Download</a>}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   useEffect(() => {
     loadResultData();
   }, [examId, user]);
+
+  // Load attachments: merge result.attachments (backend URLs) with localStorage dataURLs
+  useEffect(() => {
+    if (!result || !examId) return;
+    const map: Record<string, any[]> = {};
+
+    const normalizeAttachmentKey = (rawKey: string) => {
+      // Group child attachment keys (e.g. parentId-0) under the parent CQ id.
+      const key = String(rawKey);
+      const parent = questions.find(
+        (q: any) => q.subQuestions && Array.isArray(q.subQuestions) && (String(q.id) === key || key.startsWith(`${String(q.id)}-`))
+      );
+      return parent ? String(parent.id) : key;
+    };
+
+    const pushAttachments = (rawKey: string, value: any) => {
+      const key = normalizeAttachmentKey(rawKey);
+      const list = Array.isArray(value) ? value : [value];
+      if (!map[key]) map[key] = [];
+      map[key].push(...list);
+    };
+
+    if (result.attachments && typeof result.attachments === 'object') {
+      Object.entries(result.attachments).forEach(([k, a]: any) => {
+        pushAttachments(k, a);
+      });
+    }
+
+    // merge localStorage fallback (dataURLs saved by TakeExam)
+    try {
+      const uid = user?.id || (user as any)?._id || 'anon';
+      const stored = localStorage.getItem(`examAttachments_${uid}_${examId}`);
+      if (stored) {
+        const local = JSON.parse(stored) as Record<string, any>;
+        Object.entries(local).forEach(([k, a]: any) => {
+          pushAttachments(k, a);
+        });
+      }
+    } catch (_e) {
+      // ignore parse/storage errors
+    }
+
+    setResultAttachments(map);
+  }, [result, examId, user, questions]);
 
   const loadResultData = async () => {
     try {
@@ -137,7 +232,8 @@ const ExamResult = () => {
               subQuestions: (q.subQuestions || []).map((sq: any, idx: number) => ({
                 id: `${q._id}-${idx}`,
                 dbId: sq._id || null,
-                image: sq.image || q.image || null,
+                // Keep child image scoped to child only; avoid repeating parent image for every child.
+                image: sq.image || null,
                 questionText: sq.questionTextBn || sq.questionTextEn || sq.questionText || "",
                 options: sq.options || [],
                 correctAnswer: sq.options?.find((opt: any) => opt.isCorrect)?.text || "",
@@ -259,8 +355,9 @@ const ExamResult = () => {
   }
 
   const isPending = Boolean(result?.pendingEvaluation);
-  const correct = questions.filter((q) => result.answers[q.id] === q.correctAnswer).length;
-  const wrong = questions.filter((q) => result.answers[q.id] && result.answers[q.id] !== q.correctAnswer).length;
+  const answers = result?.answers || {};
+  const correct = questions.filter((q) => !q.subQuestions && answers[q.id] === q.correctAnswer).length;
+  const wrong = questions.filter((q) => !q.subQuestions && answers[q.id] && answers[q.id] !== q.correctAnswer).length;
   const skipped = questions.length - correct - wrong;
 
   const safePercentage = Number(result?.percentage) || 0;
@@ -398,7 +495,7 @@ const ExamResult = () => {
             // If this is a CQ parent with subQuestions, render grouped view
             if (q.subQuestions && Array.isArray(q.subQuestions)) {
               return (
-                <motion.div key={q.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }} className="rounded-xl border p-5 shadow-sm bg-white">
+                <motion.div key={q.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }} className="rounded-xl border p-5 shadow-sm bg-white dark:bg-card">
                   <div className="mb-3">
                     {/* parent image */}
                     {q.image && (
@@ -412,7 +509,7 @@ const ExamResult = () => {
                   </div>
                   <div className="space-y-4">
                     {q.subQuestions.map((sq: any, sidx: number) => {
-                      const userAns = result.answers ? result.answers[sq.id] : undefined;
+                      const userAns = answers[sq.id];
                       const isCorrect = userAns === sq.correctAnswer;
                       const isSkipped = !userAns;
                       // compute assigned mark from result.cqMarks if present
@@ -495,12 +592,26 @@ const ExamResult = () => {
                       );
                     })}
                   </div>
-                </motion.div>
-              );
-            }
+                    {/* Uploaded images/files — shown once per CQ parent question */}
+                    {(() => {
+                      const qAtts = resultAttachments[q.id] || [];
+                      if (!qAtts.length) return null;
+                      return (
+                        <div className="mt-5 pt-4 border-t border-border">
+                          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-3">
+                            <Paperclip className="h-4 w-4" />
+                            <span>আপলোড করা উত্তর ({qAtts.length} টি ফাইল)</span>
+                          </div>
+                          <ImageSlider images={qAtts} />
+                        </div>
+                      );
+                    })()}
+                  </motion.div>
+                );
+              }
 
             // Regular question
-            const userAns = result.answers ? result.answers[q.id] : undefined;
+            const userAns = answers[q.id];
             const isCorrect = userAns === q.correctAnswer;
             const isSkipped = !userAns;
             const parsed = parseQuestionWithSubPoints(q.questionText);

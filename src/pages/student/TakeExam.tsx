@@ -20,7 +20,7 @@ const TakeExam = () => {
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [flagged, setFlagged] = useState<Set<string>>(new Set());
-  const [uploadedFiles, setUploadedFiles] = useState<Record<string, File | null>>({});
+  const [uploadedFiles, setUploadedFiles] = useState<Record<string, File[]>>({});
   const [timeLeft, setTimeLeft] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -181,22 +181,30 @@ const TakeExam = () => {
     reader.readAsDataURL(file);
   });
 
-  const handleFileSelect = (qid: string, file?: File | null) => {
-    if (!file) {
-      setUploadedFiles((s) => ({ ...s, [qid]: null }));
+  const handleFileSelect = (qid: string, files?: File[] | null) => {
+    if (!files || files.length === 0) {
+      setUploadedFiles((s) => ({ ...s, [qid]: [] }));
       return;
     }
+
     const allowed = ["image/jpeg", "image/png", "application/pdf"];
     const maxBytes = 10 * 1024 * 1024; // 10MB
-    if (!allowed.includes(file.type)) {
-      toast({ title: "Unsupported file format", description: "Only JPG, PNG and PDF are allowed", variant: "destructive" });
-      return;
+    const validFiles: File[] = [];
+
+    for (const file of files) {
+      if (!allowed.includes(file.type)) {
+        toast({ title: "Unsupported file format", description: `${file.name}: only JPG, PNG and PDF are allowed`, variant: "destructive" });
+        continue;
+      }
+      if (file.size > maxBytes) {
+        toast({ title: "File too large", description: `${file.name}: max file size is 10MB`, variant: "destructive" });
+        continue;
+      }
+      validFiles.push(file);
     }
-    if (file.size > maxBytes) {
-      toast({ title: "File too large", description: "Max file size is 10MB", variant: "destructive" });
-      return;
-    }
-    setUploadedFiles((s) => ({ ...s, [qid]: file }));
+
+    if (validFiles.length === 0) return;
+    setUploadedFiles((s) => ({ ...s, [qid]: validFiles }));
   };
 
   useEffect(() => {
@@ -260,27 +268,35 @@ const TakeExam = () => {
     };
 
     // Build attachments: upload files to Cloudinary if available, else fall back to data-URL
-    let attachmentsPayload: Record<string, { name: string; type: string; url?: string; dataUrl?: string }> = {};
+    let attachmentsPayload: Record<string, { name: string; type: string; url?: string; dataUrl?: string } | Array<{ name: string; type: string; url?: string; dataUrl?: string }>> = {};
     try {
       // import helper lazily to avoid loading when not needed
       const { uploadFileToCloudinary } = await import('@/services/cloudinary');
       for (const qid of Object.keys(uploadedFiles)) {
-        const f = uploadedFiles[qid];
-        if (!f) continue;
-        try {
-          // attempt Cloudinary upload
+        const files = uploadedFiles[qid] || [];
+        if (!files.length) continue;
+
+        const uploadedEntries: Array<{ name: string; type: string; url?: string; dataUrl?: string }> = [];
+
+        for (const f of files) {
           try {
-            const url = await uploadFileToCloudinary(f);
-            attachmentsPayload[qid] = { name: f.name, type: f.type, url };
-            continue;
-          } catch (uploadErr) {
-            console.warn('Cloudinary upload failed, falling back to data-URL', uploadErr);
-            const dataUrl = await fileToDataUrl(f);
-            attachmentsPayload[qid] = { name: f.name, type: f.type, dataUrl };
+            // attempt Cloudinary upload
+            try {
+              const url = await uploadFileToCloudinary(f);
+              uploadedEntries.push({ name: f.name, type: f.type, url });
+              continue;
+            } catch (uploadErr) {
+              console.warn('Cloudinary upload failed, falling back to data-URL', uploadErr);
+              const dataUrl = await fileToDataUrl(f);
+              uploadedEntries.push({ name: f.name, type: f.type, dataUrl });
+            }
+          } catch (e) {
+            console.error('Failed to prepare attachment for', qid, e);
           }
-        } catch (e) {
-          console.error('Failed to prepare attachment for', qid, e);
         }
+
+        if (uploadedEntries.length === 1) attachmentsPayload[qid] = uploadedEntries[0];
+        else if (uploadedEntries.length > 1) attachmentsPayload[qid] = uploadedEntries;
       }
     } catch (e) {
       console.error('Failed preparing attachments', e);
@@ -542,17 +558,32 @@ const TakeExam = () => {
                   <input
                     type="file"
                     accept=".jpg,.jpeg,.png,.pdf"
+                    multiple
                     onChange={async (e) => {
-                      const f = e.target.files?.[0] || null;
-                      handleFileSelect(qq.id, f || undefined);
+                      const files = Array.from(e.target.files || []);
+                      handleFileSelect(qq.id, files);
                     }}
                     className="block w-full text-sm"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">Supported formats: JPG, PNG, PDF • Max file size: 10MB</p>
-                  {uploadedFiles[qq.id] && (
-                    <div className="mt-2 flex items-center justify-between bg-muted/10 p-2 rounded">
-                      <div className="text-sm">{uploadedFiles[qq.id]?.name}</div>
-                      <button className="text-xs text-destructive" onClick={() => handleFileSelect(qq.id, null)}>Remove</button>
+                  <p className="text-xs text-muted-foreground mt-1">Supported formats: JPG, PNG, PDF • Max file size: 10MB each • You can select multiple files</p>
+                  {(uploadedFiles[qq.id] || []).length > 0 && (
+                    <div className="mt-2 space-y-2">
+                      {(uploadedFiles[qq.id] || []).map((file, fileIdx) => (
+                        <div key={`${file.name}-${fileIdx}`} className="flex items-center justify-between bg-muted/10 p-2 rounded">
+                          <div className="text-sm truncate pr-2">{file.name}</div>
+                          <button
+                            className="text-xs text-destructive"
+                            onClick={() => {
+                              const next = [...(uploadedFiles[qq.id] || [])];
+                              next.splice(fileIdx, 1);
+                              setUploadedFiles((s) => ({ ...s, [qq.id]: next }));
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                      <button className="text-xs text-destructive" onClick={() => handleFileSelect(qq.id, [])}>Remove all</button>
                     </div>
                   )}
                 </div>

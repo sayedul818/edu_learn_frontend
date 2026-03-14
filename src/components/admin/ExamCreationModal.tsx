@@ -1070,9 +1070,21 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
         <div className="space-y-6">
             {resultQuestions.map((question: any, index: number) => {
             const studentAnswer = selectedResult?.answers?.[question._id];
-            const isMultipleChoice = question.questionType === 'MCQ';
+            // A question is MCQ only if it has no subQuestions AND its questionType is explicitly 'MCQ'.
+            // CQ questions may have questionType defaulted to 'MCQ' in the DB, so we check subQuestions first.
+            const hasCQSubquestions = Boolean(question.subQuestions && Array.isArray(question.subQuestions) && question.subQuestions.length > 0);
+            const isMultipleChoice = !hasCQSubquestions && question.questionType === 'MCQ';
             // derive correct answer from option marked `isCorrect` (questions from API may not include a `correctAnswer` property)
             const correctAnswer = isMultipleChoice ? (question.options?.find((o: any) => o && o.isCorrect)?.text || null) : null;
+            // Gather attachments belonging to this question
+            const questionAttachments: Array<{ key: string; items: any[] }> = [];
+            if (selectedResult?.attachments && typeof selectedResult.attachments === 'object') {
+              Object.entries(selectedResult.attachments).forEach(([k, a]: any) => {
+                if (String(k).startsWith(String(question._id))) {
+                  questionAttachments.push({ key: k, items: Array.isArray(a) ? a : [a] });
+                }
+              });
+            }
             
             return (
               <div key={question._id} className="bg-muted/20 p-4 rounded-lg border">
@@ -1114,55 +1126,58 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
                   </div>
                 )}
 
-                {/* Student Answer for Written Questions */}
-                {!isMultipleChoice && (
+                {/* Student Answer for Written Questions (non-CQ-parent, non-MCQ) */}
+                {!isMultipleChoice && !hasCQSubquestions && (
                   <div className="mt-3">
                     <div className="text-sm font-medium text-muted-foreground mb-1">শিক্ষার্থীর উত্তর:</div>
                     <div className="bg-card p-3 rounded border">
                       <div dangerouslySetInnerHTML={{ __html: renderMathToHtml(studentAnswer || "কোনো উত্তর দেওয়া হয়নি") }} />
                     </div>
+                  </div>
+                )}
 
-                    {/* Attachments (if any) */}
-                    {selectedResult?.attachments && Object.keys(selectedResult.attachments || {}).length > 0 && (
-                      <div className="mt-3">
-                        <div className="text-sm font-medium text-muted-foreground mb-1">Uploaded files:</div>
-                        <div className="space-y-2">
-                          {Object.entries(selectedResult.attachments).map(([k, a]: any) => {
-                            // if attachment key belongs to this question (parent or sub), show it
-                            if (!String(k).startsWith(question._id)) return null;
-                            const att = a as any;
-                            const isImage = att.type && att.type.startsWith('image/');
-                            return (
-                              <div key={k} className="p-2 border rounded bg-card">
-                                <div className="flex items-center justify-between">
-                                  <div className="text-sm">{att.name}</div>
-                                        <div className="flex items-center gap-3">
-                                          <button type="button" onClick={() => openAttachment(att)} className="text-sm text-primary">Open</button>
-                                          <a href={att.dataUrl || att.url} download={att.name} className="text-sm text-muted-foreground">Download</a>
-                                        </div>
+                {/* Uploaded files — shown for all question types whenever the student attached files */}
+                {questionAttachments.length > 0 && (
+                  <div className="mt-3 p-3 rounded-lg border border-primary/20 bg-primary/5">
+                    <div className="text-sm font-medium mb-2 flex items-center gap-2">
+                      <span>📎</span>
+                      <span>শিক্ষার্থীর আপলোড করা ফাইল ({questionAttachments.reduce((n, g) => n + g.items.length, 0)} টি)</span>
+                    </div>
+                    <div className="space-y-2">
+                      {questionAttachments.map(({ key, items }) =>
+                        items.map((att: any, idx: number) => {
+                          const isImage = att.type && att.type.startsWith('image/');
+                          const isPdf = att.type === 'application/pdf' || (att.name && att.name.toLowerCase().endsWith('.pdf'));
+                          return (
+                            <div key={`${key}-${idx}`} className="p-2 border rounded bg-card">
+                              <div className="flex items-center justify-between">
+                                <div className="text-sm font-medium">{att.name || `File ${idx + 1}`}</div>
+                                <div className="flex items-center gap-3">
+                                  <button type="button" onClick={() => openAttachment(att)} className="text-sm text-primary hover:underline">Open</button>
+                                  <a href={att.dataUrl || att.url} download={att.name || `attachment-${idx + 1}`} className="text-sm text-muted-foreground hover:underline">Download</a>
                                 </div>
-                                {isImage ? (
-                                  <div className="mt-2">
-                                    <img src={att.dataUrl || att.url} alt={att.name} className="max-h-48 w-auto rounded" />
-                                  </div>
-                                ) : (att.type === 'application/pdf' || (att.name && att.name.toLowerCase().endsWith('.pdf'))) ? (
-                                  <div className="mt-2">
-                                    <p className="text-sm text-muted-foreground">PDF file — click Open to view or Download to save locally.</p>
-                                  </div>
-                                ) : null}
                               </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
+                              {isImage && (att.dataUrl || att.url) ? (
+                                <div className="mt-2">
+                                  <img src={att.dataUrl || att.url} alt={att.name || `File ${idx + 1}`} className="max-h-64 w-auto rounded border" />
+                                </div>
+                              ) : isPdf ? (
+                                <div className="mt-1">
+                                  <p className="text-xs text-muted-foreground">PDF ফাইল — Open বা Download করুন।</p>
+                                </div>
+                              ) : null}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
                   </div>
                 )}
 
                 {/* Explanation removed from admin answer sheet modal as requested */}
 
                 {/* Grading inputs or display for CQ subQuestions */}
-                {question.subQuestions && Array.isArray(question.subQuestions) && (
+                {hasCQSubquestions && (
                   <div className="mt-3">
                     <div className="text-sm font-medium text-muted-foreground mb-2">Sub-question marks</div>
                     <div className="space-y-2">
