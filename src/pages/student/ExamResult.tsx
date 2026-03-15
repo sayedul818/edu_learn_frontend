@@ -6,7 +6,7 @@ import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { examsAPI, examResultsAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { CheckCircle, XCircle, ArrowLeft, RotateCcw, Trophy, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Paperclip } from "lucide-react";
+import { CheckCircle, XCircle, ArrowLeft, RotateCcw, Trophy, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Paperclip, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { parseQuestionWithSubPoints, percentageToGrade, renderMathToHtml, renderRichOrMathHtml } from "@/lib/utils";
 
@@ -26,52 +26,150 @@ const ExamResult = () => {
   const [resultAttachments, setResultAttachments] = useState<Record<string, any[]>>({});
   const [feedbackAttachments, setFeedbackAttachments] = useState<Record<string, any[]>>({});
 
-  // ----- ImageSlider component (defined inside to keep it scoped) -----
-  const ImageSlider = ({ images }: { images: any[] }) => {
+  // ----- FeedbackImageSlider: beautiful animated slider with lightbox -----
+  const FeedbackImageSlider = ({ images, isTeacherFeedback = false }: { images: any[]; isTeacherFeedback?: boolean }) => {
     const [idx, setIdx] = useState(0);
+    const [lightbox, setLightbox] = useState(false);
     if (!images.length) return null;
-    const img = images[Math.min(idx, images.length - 1)];
+    const safeIdx = Math.min(idx, images.length - 1);
+    const img = images[safeIdx];
     const imgUrl = img?.dataUrl || img?.url || '';
     const isImage = (img?.type && img.type.startsWith('image/')) || /\.(jpg|jpeg|png|gif|webp)$/i.test(img?.name || '');
     const isPdf = img?.type === 'application/pdf' || /\.pdf$/i.test(img?.name || '');
     return (
-      <div className="rounded-xl border border-border overflow-hidden bg-black/5 dark:bg-white/5">
-        {images.length > 1 && (
-          <div className="flex items-center justify-between px-3 py-1.5 bg-muted/40 border-b border-border text-sm">
-            <button
-              onClick={() => setIdx(i => Math.max(0, i - 1))}
-              disabled={idx === 0}
-              className="p-1 rounded hover:bg-muted disabled:opacity-40"
-            ><ChevronLeft className="h-4 w-4" /></button>
-            <span className="text-xs text-muted-foreground font-medium">{img?.name || `ছবি ${idx + 1}`} &nbsp;({idx + 1}/{images.length})</span>
-            <button
-              onClick={() => setIdx(i => Math.min(images.length - 1, i + 1))}
-              disabled={idx === images.length - 1}
-              className="p-1 rounded hover:bg-muted disabled:opacity-40"
-            ><ChevronRight className="h-4 w-4" /></button>
+      <div className="mt-4 rounded-xl overflow-hidden border border-indigo-100 dark:border-indigo-900/40 shadow-sm">
+        {/* Header */}
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/40 dark:to-purple-950/40 border-b border-indigo-100 dark:border-indigo-900/30">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+            <span className="text-sm font-bold text-indigo-700 dark:text-indigo-300 font-bangla">
+              {isTeacherFeedback ? 'শিক্ষকের ফিডব্যাক' : 'আপলোড করা উত্তর'}
+            </span>
+          </div>
+          {images.length > 1 && (
+            <span className="ml-auto text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/50 px-2 py-0.5 rounded-full">
+              {safeIdx + 1} / {images.length}
+            </span>
+          )}
+        </div>
+        {/* Image area */}
+        <div className="relative bg-slate-50 dark:bg-slate-900/50 min-h-[180px] flex items-center justify-center">
+          <AnimatePresence mode="wait">
+            {isImage && imgUrl ? (
+              <motion.div
+                key={safeIdx}
+                initial={{ opacity: 0, x: 16 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -16 }}
+                transition={{ duration: 0.2 }}
+                className="flex justify-center items-center w-full p-3"
+              >
+                <img
+                  src={imgUrl}
+                  alt={img?.name || `ছবি ${safeIdx + 1}`}
+                  className="max-h-80 w-auto max-w-full object-contain rounded-lg cursor-zoom-in hover:brightness-95 transition-all shadow-sm"
+                  onClick={() => setLightbox(true)}
+                />
+              </motion.div>
+            ) : isPdf ? (
+              <motion.div key={safeIdx} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3 p-5 w-full">
+                <Paperclip className="h-5 w-5 text-indigo-500 flex-shrink-0" />
+                <span className="text-sm font-medium flex-1 font-bangla">{img?.name || 'PDF ফাইল'}</span>
+                {imgUrl && <a href={imgUrl} download={img?.name || 'file.pdf'} className="text-xs text-indigo-600 hover:underline">Download</a>}
+              </motion.div>
+            ) : (
+              <motion.div key={safeIdx} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3 p-5 w-full">
+                <Paperclip className="h-5 w-5 text-indigo-500 flex-shrink-0" />
+                <span className="text-sm font-medium flex-1 font-bangla">{img?.name || `ফাইল ${safeIdx + 1}`}</span>
+                {imgUrl && <a href={imgUrl} download={img?.name} className="text-xs text-indigo-600 hover:underline">Download</a>}
+              </motion.div>
+            )}
+          </AnimatePresence>
+          {/* Prev / Next arrows */}
+          {images.length > 1 && (
+            <>
+              <button
+                onClick={() => setIdx(i => Math.max(0, i - 1))}
+                disabled={safeIdx === 0}
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white dark:bg-slate-800 border border-border shadow-md flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-30 transition-all z-10"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setIdx(i => Math.min(images.length - 1, i + 1))}
+                disabled={safeIdx === images.length - 1}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white dark:bg-slate-800 border border-border shadow-md flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-30 transition-all z-10"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </>
+          )}
+        </div>
+        {/* Footer: filename + dot indicators */}
+        {(img?.name || images.length > 1) && (
+          <div className="px-4 py-2 flex items-center gap-3 bg-slate-50 dark:bg-slate-900/30 border-t border-slate-100 dark:border-slate-800">
+            {img?.name && <span className="text-xs text-muted-foreground truncate flex-1 font-bangla">{img.name}</span>}
+            {images.length > 1 && (
+              <div className="flex items-center gap-1 ml-auto">
+                {images.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setIdx(i)}
+                    className={`h-1.5 rounded-full transition-all duration-200 ${i === safeIdx ? 'w-5 bg-indigo-500' : 'w-1.5 bg-indigo-200 dark:bg-indigo-700 hover:bg-indigo-400'}`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
-        {isImage && imgUrl ? (
-          <div className="flex justify-center p-2">
-            <img
-              src={imgUrl}
-              alt={img?.name || `ছবি ${idx + 1}`}
-              className="max-h-80 w-auto max-w-full object-contain rounded"
-            />
-          </div>
-        ) : isPdf ? (
-          <div className="p-3 text-sm text-muted-foreground flex items-center gap-2">
-            <Paperclip className="h-4 w-4" />
-            <span>{img?.name || 'PDF ফাইল'}</span>
-            <a href={imgUrl} download={img?.name || 'file.pdf'} className="ml-auto text-primary hover:underline text-xs">Download</a>
-          </div>
-        ) : (
-          <div className="p-3 text-sm text-muted-foreground flex items-center gap-2">
-            <Paperclip className="h-4 w-4" />
-            <span>{img?.name || `ফাইল ${idx + 1}`}</span>
-            {imgUrl && <a href={imgUrl} download={img?.name} className="ml-auto text-primary hover:underline text-xs">Download</a>}
-          </div>
-        )}
+        {/* Lightbox */}
+        <AnimatePresence>
+          {lightbox && isImage && imgUrl && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4"
+              onClick={() => setLightbox(false)}
+            >
+              <motion.img
+                initial={{ scale: 0.85, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.85, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                src={imgUrl}
+                alt={img?.name || 'ছবি'}
+                className="max-h-[90vh] max-w-[90vw] object-contain rounded-xl shadow-2xl"
+                onClick={e => e.stopPropagation()}
+              />
+              <button
+                className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center text-white transition-colors border border-white/20"
+                onClick={() => setLightbox(false)}
+              >
+                <X className="h-5 w-5" />
+              </button>
+              {images.length > 1 && (
+                <div className="absolute bottom-6 flex items-center gap-3">
+                  <button
+                    onClick={e => { e.stopPropagation(); setIdx(i => Math.max(0, i - 1)); }}
+                    disabled={safeIdx === 0}
+                    className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center text-white disabled:opacity-30 transition-colors"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <span className="text-white text-sm font-medium px-2">{safeIdx + 1} / {images.length}</span>
+                  <button
+                    onClick={e => { e.stopPropagation(); setIdx(i => Math.min(images.length - 1, i + 1)); }}
+                    disabled={safeIdx === images.length - 1}
+                    className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center text-white disabled:opacity-30 transition-colors"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     );
   };
@@ -508,129 +606,186 @@ const ExamResult = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           {questions.map((q, idx) => {
-            // If this is a CQ parent with subQuestions, render grouped view
-            if (q.subQuestions && Array.isArray(q.subQuestions)) {
+            // ── CQ parent with sub-questions ──────────────────────────────
+            if (q.subQuestions && Array.isArray(q.subQuestions) && q.subQuestions.length > 0) {
+              // Aggregate assigned marks for the header total
+              const totalCQAssigned = q.subQuestions.reduce((sum: number, sq: any, sidx: number) => {
+                if (!result?.cqMarks) return sum;
+                const val = result.cqMarks[sq.id] ?? result.cqMarks[sq.dbId] ?? result.cqMarks[`${q.id}-${sidx}`];
+                return sum + (typeof val !== 'undefined' && val !== null ? Number(val) : 0);
+              }, 0);
+              const parentTotalMax = q.parentTotalMarks ?? q.subQuestions.reduce((s: number, sq: any) => s + (Number(sq.maxMark) || 0), 0);
+              const hasCQMarks = result?.cqMarks && q.subQuestions.some((sq: any, sidx: number) =>
+                typeof (result.cqMarks[sq.id] ?? result.cqMarks[sq.dbId] ?? result.cqMarks[`${q.id}-${sidx}`]) !== 'undefined'
+              );
+              // Attachments (teacher feedback + original uploads merged)
+              const qFeedbackAtts = feedbackAttachments[q.id] || [];
+              const qOriginalAtts = resultAttachments[q.id] || [];
+              const mergedCount = Math.max(qFeedbackAtts.length, qOriginalAtts.length);
+              const qAtts = Array.from({ length: mergedCount }, (_, i) => qFeedbackAtts[i] || qOriginalAtts[i]).filter(Boolean);
+              const hasTeacherFeedback = qFeedbackAtts.some(Boolean);
+
               return (
-                <motion.div key={q.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }} className="rounded-xl border p-5 shadow-sm bg-white dark:bg-card">
-                  <div className="mb-3">
-                    {/* parent image */}
-                    {q.image && (
-                      <div className="w-full flex justify-center bg-gray-50 py-3 mb-3 border border-border rounded">
-                        <img src={q.image} alt="Question" className="max-w-full h-auto max-h-60 object-contain rounded" />
+                <motion.div
+                  key={q.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.03 }}
+                  className="rounded-2xl overflow-hidden shadow-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-card"
+                >
+                  {/* ── Header bar ── */}
+                  <div className="bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <span className="bg-white/20 text-white text-xs font-bold px-2.5 py-0.5 rounded-full font-bangla">সৃজনশীল</span>
+                      <span className="text-white font-bold text-sm font-bangla">প্রশ্ন {idx + 1}</span>
+                    </div>
+                    {hasCQMarks ? (
+                      <div className="flex items-center gap-1.5 bg-white/15 px-3 py-1 rounded-full">
+                        <span className="text-white font-bold text-sm tabular-nums">{Number(totalCQAssigned).toFixed(0)}</span>
+                        <span className="text-white/70 text-xs font-bangla">/ {Number(parentTotalMax).toFixed(0)} নম্বর</span>
                       </div>
+                    ) : (
+                      <span className="text-white/80 text-xs bg-white/10 px-2.5 py-1 rounded-full font-bangla">
+                        {isPending ? 'মূল্যায়ন বাকি' : `মোট ${Number(parentTotalMax).toFixed(0)} নম্বর`}
+                      </span>
                     )}
-                    {q.parentPassage ? (
-                      <div className="font-medium leading-relaxed whitespace-pre-line" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(q.parentPassage) }} />
-                    ) : null}
                   </div>
-                  <div className="space-y-4">
+
+                  {/* ── Parent passage ── */}
+                  {q.parentPassage && (
+                    <div className="px-5 py-4 bg-slate-50 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-800">
+                      {q.image && (
+                        <div className="w-full flex justify-center mb-3">
+                          <img src={q.image} alt="প্রশ্নের ছবি" className="max-w-full h-auto max-h-60 object-contain rounded-lg border border-border" />
+                        </div>
+                      )}
+                      <div className="flex gap-3">
+                        <div className="w-1 flex-shrink-0 rounded-full bg-gradient-to-b from-violet-400 to-indigo-400 self-stretch min-h-[1rem]" />
+                        <div className="font-medium leading-relaxed text-foreground font-bangla text-sm" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(q.parentPassage) }} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Sub-questions ── */}
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
                     {q.subQuestions.map((sq: any, sidx: number) => {
                       const userAns = answers[sq.id];
-                      const isCorrect = userAns === sq.correctAnswer;
-                      const isSkipped = !userAns;
-                      // compute assigned mark from result.cqMarks if present
                       const assignedMarkRaw = (() => {
                         if (!result?.cqMarks) return undefined;
-                        return result.cqMarks[sq.id] ?? result.cqMarks[sq.dbId] ?? result.cqMarks[`${q.id}-${sidx}`] ?? result.cqMarks[`${q.id}-${sidx}`];
+                        return result.cqMarks[sq.id] ?? result.cqMarks[sq.dbId] ?? result.cqMarks[`${q.id}-${sidx}`];
                       })();
                       const assignedMark = typeof assignedMarkRaw !== 'undefined' && assignedMarkRaw !== null ? Number(assignedMarkRaw) : null;
                       const maxMark = typeof sq.maxMark !== 'undefined' && sq.maxMark !== null ? Number(sq.maxMark) : null;
+                      const markPct = assignedMark !== null && maxMark ? assignedMark / maxMark : null;
+                      const markBadgeClass =
+                        markPct !== null
+                          ? markPct >= 0.8
+                            ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300'
+                            : markPct >= 0.5
+                            ? 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300'
+                            : markPct > 0
+                            ? 'border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300'
+                            : 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400'
+                          : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 text-slate-500 dark:text-slate-400';
+                      const bengaliLabels = ['ক', 'খ', 'গ', 'ঘ', 'ঙ', 'চ', 'ছ', 'জ'];
+                      const label = sq.label || bengaliLabels[sidx] || `${sidx + 1}`;
                       return (
-                        <div key={sq.id} className={`rounded-lg border p-4 ${isCorrect ? 'border-green-500/30 bg-green-50/50' : isSkipped ? 'border-gray-300 bg-gray-50' : 'border-red-500/30 bg-red-50/50'}`}>
-                          <div className="flex items-start justify-between gap-3 mb-3">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className="text-xs font-bold text-muted-foreground">উপ-প্রশ্ন {sidx+1}</span>
-                                {isCorrect && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">✓ সঠিক</span>}
-                                {!isCorrect && !isSkipped && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">✗ ভুল</span>}
-                                {isSkipped && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">বাদ</span>}
-                              </div>
-                              <div className="font-medium leading-relaxed" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.questionText) }} />
-                              {/* sub-question image (if any) */}
+                        <div key={sq.id} className="px-5 py-4">
+                          <div className="flex gap-3">
+                            {/* Bengali label circle */}
+                            <div className="flex-shrink-0 w-9 h-9 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-base font-bold font-bangla mt-0.5 ring-2 ring-indigo-200 dark:ring-indigo-800">
+                              {label}
+                            </div>
+                            {/* Question text + options + explanation */}
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium leading-relaxed text-foreground font-bangla" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.questionText) }} />
                               {sq.image && (
-                                <div className="mt-2 mb-3 flex justify-center">
-                                  <img src={sq.image} alt="Sub-question" className="max-w-full h-auto max-h-48 object-contain rounded" />
+                                <div className="mt-2 flex justify-start">
+                                  <img src={sq.image} alt="উপ-প্রশ্নের ছবি" className="max-w-full h-auto max-h-48 object-contain rounded-lg border border-border" />
+                                </div>
+                              )}
+                              {sq.options && sq.options.length > 0 && (
+                                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {sq.options.map((opt: any, i: number) => {
+                                    const optionText = typeof opt === 'string' ? opt : opt.text;
+                                    const isCorrectOption = (opt && opt.isCorrect) || optionText === sq.correctAnswer;
+                                    const isUserAnswer = userAns === optionText;
+                                    return (
+                                      <div key={i} className={`px-3 py-2 rounded-lg border text-sm font-bangla ${
+                                        isCorrectOption
+                                          ? 'border-green-500 bg-green-50 dark:bg-green-950/20 font-medium'
+                                          : isUserAnswer && !isCorrectOption
+                                          ? 'border-red-500 bg-red-50 dark:bg-red-950/20'
+                                          : 'border-border bg-muted/30'
+                                      }`}>
+                                        <div className="flex items-center justify-between gap-2">
+                                          <span>
+                                            <span className="font-bold text-muted-foreground mr-1.5">{String.fromCharCode(65 + i)}.</span>
+                                            <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(optionText) }} />
+                                          </span>
+                                          {isCorrectOption && <CheckCircle className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />}
+                                          {isUserAnswer && !isCorrectOption && <XCircle className="h-3.5 w-3.5 text-red-600 flex-shrink-0" />}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              {sq.explanation && (
+                                <div className="mt-3">
+                                  <button
+                                    onClick={() => setExpandedQuestion(expandedQuestion === sq.id ? null : sq.id)}
+                                    className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-bangla flex items-center gap-1"
+                                  >
+                                    {expandedQuestion === sq.id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                    {expandedQuestion === sq.id ? 'ব্যাখ্যা লুকান' : 'ব্যাখ্যা দেখুন'}
+                                  </button>
+                                  <AnimatePresence>
+                                    {expandedQuestion === sq.id && (
+                                      <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="overflow-hidden"
+                                      >
+                                        <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg text-sm font-bangla text-blue-800 dark:text-blue-200" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.explanation) }} />
+                                      </motion.div>
+                                    )}
+                                  </AnimatePresence>
                                 </div>
                               )}
                             </div>
-                            <div className="flex-none ml-4 flex items-center">
+                            {/* ── Mark badge ── */}
+                            <div className={`flex-shrink-0 min-w-[72px] flex flex-col items-center justify-center px-2 py-2.5 rounded-xl border-2 self-start ${markBadgeClass}`}>
                               {assignedMark !== null ? (
-                                <div className="flex items-center space-x-2">
-                                  <div className="px-3 py-1 rounded-full bg-success/10 text-success border border-success/30 font-semibold text-sm">{assignedMark}</div>
-                                  {maxMark !== null ? (
-                                    <div className="text-xs text-muted-foreground">/ {maxMark}</div>
-                                  ) : (
-                                    <div className="text-xs text-muted-foreground">নম্বর</div>
-                                  )}
-                                </div>
+                                <span className="text-2xl font-bold leading-none tabular-nums">
+                                  {Number(assignedMark) % 1 === 0 ? Number(assignedMark).toFixed(0) : Number(assignedMark).toFixed(1)}
+                                </span>
                               ) : (
-                                <div className="px-3 py-1 rounded-full bg-gray-50 text-gray-700 border border-border text-xs">{isPending ? 'অপেক্ষা' : (maxMark !== null ? `/ ${maxMark}` : '-')}</div>
+                                <span className="text-xs font-medium opacity-60 font-bangla text-center leading-tight px-1">
+                                  {isPending ? 'অপেক্ষা' : '—'}
+                                </span>
                               )}
+                              <span className="text-[10px] opacity-40 mt-1 font-bangla">নম্বর</span>
                             </div>
                           </div>
-
-                          {/* Options */}
-                          {sq.options && sq.options.length > 0 && (
-                            <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              {sq.options.map((opt: any, i: number) => {
-                                const optionText = typeof opt === 'string' ? opt : opt.text;
-                                const isCorrectOption = (opt && opt.isCorrect) || optionText === sq.correctAnswer;
-                                const isUserAnswer = userAns === optionText;
-                                return (
-                                  <div key={i} className={`px-4 py-2.5 rounded-lg border text-sm ${isCorrectOption ? 'border-green-500 bg-green-50 font-medium' : isUserAnswer && !isCorrectOption ? 'border-red-500 bg-red-50' : 'border-border bg-card'}`}>
-                                    <div className="flex items-center justify-between">
-                                      <span>
-                                        <span className="font-bold text-muted-foreground mr-2">{String.fromCharCode(65 + i)}.</span>
-                                        <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(optionText) }} />
-                                      </span>
-                                      {isCorrectOption && <CheckCircle className="h-4 w-4 text-green-600" />}
-                                      {isUserAnswer && !isCorrectOption && <XCircle className="h-4 w-4 text-red-600" />}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-
-                          <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
-                            <div className="text-sm">
-                                {isSkipped ? <span className="italic">আপনি উত্তর দেননি</span> : <><span className="font-medium">আপনার উত্তর:</span> <span className="font-bold" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(userAns) }} /></>}
-                                  {!isCorrect && !isSkipped && <div className="text-green-700 mt-1"><span className="font-medium">সঠিক উত্তর:</span> <span className="font-bold" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.correctAnswer) }} /></div>}
-                            </div>
-                            {sq.explanation && (
-                              <Button size="sm" variant="outline" onClick={() => setExpandedQuestion(`${sq.id}`)} className="text-xs">বিস্তারিত</Button>
-                            )}
-                          </div>
-                          {expandedQuestion === sq.id && sq.explanation && (
-                            <div className="mt-3 p-3 bg-blue-50 border rounded" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.explanation) }} />
-                          )}
                         </div>
                       );
                     })}
                   </div>
-                    {/* Uploaded images/files — shown once per CQ parent question */}
-                    {(() => {
-                        const qFeedbackAtts = feedbackAttachments[q.id] || [];
-                        const qOriginalAtts = resultAttachments[q.id] || [];
-                        const mergedCount = Math.max(qFeedbackAtts.length, qOriginalAtts.length);
-                        const qAtts = Array.from({ length: mergedCount }, (_, i) => qFeedbackAtts[i] || qOriginalAtts[i]).filter(Boolean);
-                        if (!qAtts.length) return null;
-                        const hasTeacherEdits = qFeedbackAtts.some(Boolean);
-                      return (
-                        <div className="mt-5 pt-4 border-t border-border">
-                          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-3">
-                            <Paperclip className="h-4 w-4" />
-                              <span>{hasTeacherEdits ? `শিক্ষকের ফিডব্যাক ছবি (${qAtts.length} টি ফাইল)` : `আপলোড করা উত্তর (${qAtts.length} টি ফাইল)`}</span>
-                          </div>
-                          <ImageSlider images={qAtts} />
-                        </div>
-                      );
-                    })()}
-                  </motion.div>
-                );
-              }
 
-            // Regular question
+                  {/* ── Teacher feedback image slider ── */}
+                  {qAtts.length > 0 && (
+                    <div className="px-4 pb-4">
+                      <FeedbackImageSlider images={qAtts} isTeacherFeedback={hasTeacherFeedback} />
+                    </div>
+                  )}
+                </motion.div>
+              );
+            }
+
+            // Regular (MCQ) question
             const userAns = answers[q.id];
             const isCorrect = userAns === q.correctAnswer;
             const isSkipped = !userAns;
