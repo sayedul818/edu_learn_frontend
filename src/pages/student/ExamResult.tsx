@@ -25,6 +25,7 @@ const ExamResult = () => {
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
   const [resultAttachments, setResultAttachments] = useState<Record<string, any[]>>({});
   const [feedbackAttachments, setFeedbackAttachments] = useState<Record<string, any[]>>({});
+  const [cqFilter, setCqFilter] = useState<'all' | 'answered' | 'skipped'>('all');
 
   // ----- FeedbackImageSlider: beautiful animated slider with lightbox -----
   const FeedbackImageSlider = ({ images, isTeacherFeedback = false }: { images: any[]; isTeacherFeedback?: boolean }) => {
@@ -470,9 +471,22 @@ const ExamResult = () => {
 
   const isPending = Boolean(result?.pendingEvaluation);
   const answers = result?.answers || {};
-  const correct = questions.filter((q) => !q.subQuestions && answers[q.id] === q.correctAnswer).length;
-  const wrong = questions.filter((q) => !q.subQuestions && answers[q.id] && answers[q.id] !== q.correctAnswer).length;
-  const skipped = questions.length - correct - wrong;
+  const mcqQuestions = questions.filter((q) => !q.subQuestions || q.subQuestions.length === 0);
+  const cqQuestions = questions.filter((q) => q.subQuestions && q.subQuestions.length > 0);
+  const hasMcq = mcqQuestions.length > 0;
+  const hasCqOnly = cqQuestions.length > 0 && mcqQuestions.length === 0;
+  const cqStatus = (result?.cqStatus && typeof result.cqStatus === 'object') ? result.cqStatus : {};
+  const cqAnsweredCount = cqQuestions.filter((q) => cqStatus[q.id] === 'answered').length;
+  const cqSkippedCount = cqQuestions.filter((q) => cqStatus[q.id] === 'skipped').length;
+  const correct = mcqQuestions.filter((q) => answers[q.id] === q.correctAnswer).length;
+  const wrong = mcqQuestions.filter((q) => answers[q.id] && answers[q.id] !== q.correctAnswer).length;
+  const skipped = mcqQuestions.length - correct - wrong;
+  const reviewQuestions = questions.filter((q) => {
+    const isCQ = q.subQuestions && Array.isArray(q.subQuestions) && q.subQuestions.length > 0;
+    if (!isCQ) return cqFilter === 'all';
+    if (cqFilter === 'all') return true;
+    return cqStatus[q.id] === cqFilter;
+  });
 
   const safePercentage = Number(result?.percentage) || 0;
   const grade = percentageToGrade(safePercentage);
@@ -571,20 +585,39 @@ const ExamResult = () => {
               );
             })()}
 
+            {hasMcq && (
             <div className="flex justify-center gap-8 mt-8 text-sm">
-            <div className="flex flex-col items-center">
-              <span className="text-green-600 dark:text-green-400 font-bold text-2xl">{correct}</span>
-              <span className="text-muted-foreground mt-1">সঠিক</span>
+              <div className="flex flex-col items-center">
+                <span className="text-green-600 dark:text-green-400 font-bold text-2xl">{correct}</span>
+                <span className="text-muted-foreground mt-1">সঠিক</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-red-600 dark:text-red-400 font-bold text-2xl">{wrong}</span>
+                <span className="text-muted-foreground mt-1">ভুল</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-gray-600 dark:text-gray-400 font-bold text-2xl">{skipped}</span>
+                <span className="text-muted-foreground mt-1">বাদ</span>
+              </div>
             </div>
-            <div className="flex flex-col items-center">
-              <span className="text-red-600 dark:text-red-400 font-bold text-2xl">{wrong}</span>
-              <span className="text-muted-foreground mt-1">ভুল</span>
+            )}
+
+            {hasCqOnly && (
+            <div className="flex justify-center gap-8 mt-8 text-sm">
+              <div className="flex flex-col items-center">
+                <span className="text-green-600 dark:text-green-400 font-bold text-2xl">{cqAnsweredCount}</span>
+                <span className="text-muted-foreground mt-1 font-bangla">উত্তর দিয়েছে</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-orange-600 dark:text-orange-400 font-bold text-2xl">{cqSkippedCount}</span>
+                <span className="text-muted-foreground mt-1 font-bangla">স্কিপ করেছে</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-foreground font-bold text-2xl">{cqQuestions.length}</span>
+                <span className="text-muted-foreground mt-1 font-bangla">মোট প্রশ্ন</span>
+              </div>
             </div>
-            <div className="flex flex-col items-center">
-              <span className="text-gray-600 dark:text-gray-400 font-bold text-2xl">{skipped}</span>
-              <span className="text-muted-foreground mt-1">বাদ</span>
-            </div>
-          </div>
+            )}
 
           <div className="flex gap-3 justify-center mt-8">
             <Button variant="outline" onClick={() => navigate("/exams")}>
@@ -603,9 +636,44 @@ const ExamResult = () => {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg font-bangla">উত্তরপত্র পর্যালোচনা (Answer Review)</CardTitle>
+          {cqQuestions.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                variant={cqFilter === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setCqFilter('all')}
+                className="font-bangla"
+              >
+                সব প্রশ্ন ({questions.length})
+              </Button>
+              <Button
+                variant={cqFilter === 'answered' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setCqFilter('answered')}
+                className="font-bangla"
+              >
+                উত্তর প্রশ্ন ({cqAnsweredCount})
+              </Button>
+              <Button
+                variant={cqFilter === 'skipped' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setCqFilter('skipped')}
+                className="font-bangla"
+              >
+                স্কিপ প্রশ্ন ({cqSkippedCount})
+              </Button>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
-          {questions.map((q, idx) => {
+          {reviewQuestions.length === 0 && (
+            <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground font-bangla">
+              {cqFilter === 'answered' && 'উত্তর দেওয়া কোনও প্রশ্ন পাওয়া যায়নি'}
+              {cqFilter === 'skipped' && 'স্কিপ করা কোনও প্রশ্ন পাওয়া যায়নি'}
+              {cqFilter === 'all' && 'দেখানোর মতো প্রশ্ন নেই'}
+            </div>
+          )}
+          {reviewQuestions.map((q, idx) => {
             // ── CQ parent with sub-questions ──────────────────────────────
             if (q.subQuestions && Array.isArray(q.subQuestions) && q.subQuestions.length > 0) {
               // Aggregate assigned marks for the header total

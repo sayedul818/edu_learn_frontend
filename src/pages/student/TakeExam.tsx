@@ -34,6 +34,8 @@ const TakeExam = () => {
   const [submitted, setSubmitted] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  // CQ questions: track which parent question ids the student has marked as answered or skipped
+  const [cqStatus, setCqStatus] = useState<Record<string, 'answered' | 'skipped'>>({}); // parentId -> status
 
   const shuffleArray = <T,>(items: T[]) => {
     const copy = [...items];
@@ -73,6 +75,7 @@ const TakeExam = () => {
       const safeAnswers = draft.answers && typeof draft.answers === "object" ? draft.answers : {};
       const safeFlagged = Array.isArray(draft.flagged) ? draft.flagged : [];
       const safeUploads = draft.uploadedFiles && typeof draft.uploadedFiles === "object" ? draft.uploadedFiles : {};
+      const safeCqStatus = draft.cqStatus && typeof draft.cqStatus === "object" ? draft.cqStatus : {};
       const savedQ = Number(draft.currentQ);
       const clampedQ = Number.isFinite(savedQ)
         ? Math.min(Math.max(0, savedQ), Math.max(0, questionCount - 1))
@@ -83,6 +86,7 @@ const TakeExam = () => {
       setAnswers(safeAnswers);
       setFlagged(new Set(safeFlagged));
       setUploadedFiles(safeUploads);
+      setCqStatus(safeCqStatus);
       setCurrentQ(clampedQ);
       setTimeLeft(restoredTimeLeft);
 
@@ -322,6 +326,7 @@ const TakeExam = () => {
       answers,
       flagged: Array.from(flagged),
       uploadedFiles,
+      cqStatus,
       timeLeft,
       submitted: false,
     };
@@ -335,7 +340,7 @@ const TakeExam = () => {
     } catch (e) {
       console.error("Failed to persist exam draft", e);
     }
-  }, [examId, exam, isLoading, submitted, examDraftKey, userId, currentQ, answers, flagged, uploadedFiles, timeLeft]);
+  }, [examId, exam, isLoading, submitted, examDraftKey, userId, currentQ, answers, flagged, uploadedFiles, cqStatus, timeLeft]);
 
   const handleSubmit = useCallback(async () => {
     if (submitted) return;
@@ -376,6 +381,7 @@ const TakeExam = () => {
       totalMarks,
       percentage: hasCQ ? null : percentage,
       answers,
+      cqStatus,
       timeTaken,
       completedAt: new Date().toISOString(),
       pendingEvaluation: hasCQ,
@@ -423,6 +429,7 @@ const TakeExam = () => {
       const resp = await examResultsAPI.submit({
         examId,
         answers,
+        cqStatus,
         score: result.score,
         totalMarks,
         percentage: result.percentage,
@@ -495,7 +502,7 @@ const TakeExam = () => {
     }
     // For auto-evaluated exams, go to the result page
     navigate(`/exam-result/${examId}`);
-  }, [answers, exam, questions, submitted, timeLeft, examId, navigate, uploadedFiles, user, toast, examDraftKey]);
+  }, [answers, cqStatus, exam, questions, submitted, timeLeft, examId, navigate, uploadedFiles, user, toast, examDraftKey]);
 
   // Auto-submit when time runs out
   useEffect(() => {
@@ -514,7 +521,12 @@ const TakeExam = () => {
   if (!exam) return <div className="text-center py-20 text-muted-foreground">পরীক্ষা খুঁজে পাওয়া যাচ্ছে না</div>;
 
   const formatTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
-  const answeredCount = Object.keys(answers).length;
+  // MCQ: count distinct question ids in answers; CQ: count parent ids in cqStatus
+  const mcqQuestionIds = new Set(questions.filter(q => !q.subQuestions || q.subQuestions.length === 0).map(q => q.id));
+  const mcqAnsweredCount = Object.keys(answers).filter(k => mcqQuestionIds.has(k)).length;
+  const cqMarkedCount = Object.keys(cqStatus).length;
+  const answeredCount = mcqAnsweredCount + cqMarkedCount;
+  const totalCQQuestions = questions.filter(q => q.subQuestions && q.subQuestions.length > 0).length;
   const isUrgent = timeLeft < 60;
 
   return (
@@ -531,7 +543,12 @@ const TakeExam = () => {
       <div className={`flex items-center justify-between p-4 rounded-xl ${isUrgent ? "bg-destructive/10 border border-destructive/30" : "bg-card border border-border"}`}>
         <div>
           <p className="font-display font-bold text-lg">{exam.title}</p>
-          <p className="text-sm text-muted-foreground">{answeredCount}/{questions.length} answered</p>
+          <p className="text-sm text-muted-foreground font-bangla">
+          {mcqAnsweredCount > 0 && <span>MCQ: {mcqAnsweredCount}/{questions.length - totalCQQuestions}</span>}
+          {mcqAnsweredCount > 0 && totalCQQuestions > 0 && <span className="mx-1.5 opacity-40">•</span>}
+          {totalCQQuestions > 0 && <span>CQ: {cqMarkedCount}/{totalCQQuestions} চিহ্নিত</span>}
+          {mcqAnsweredCount === 0 && totalCQQuestions === 0 && <span>{answeredCount}/{questions.length} answered</span>}
+        </p>
         </div>
         <div className={`flex items-center gap-2 text-lg font-mono font-bold ${isUrgent ? "text-destructive animate-pulse-soft" : "text-foreground"}`}>
           <Clock className="h-5 w-5" />
@@ -679,39 +696,79 @@ const TakeExam = () => {
               )}
 
               {qq.subQuestions && (
-                <div className="mt-4">
-                  <label className="block text-sm font-medium mb-2">Upload written answer for this passage (optional)</label>
-                  <input
-                    type="file"
-                    accept=".jpg,.jpeg,.png,.pdf"
-                    multiple
-                    onChange={async (e) => {
-                      const files = Array.from(e.target.files || []);
-                      handleFileSelect(qq.id, files);
-                    }}
-                    className="block w-full text-sm"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">Supported formats: JPG, PNG, PDF • Max file size: 10MB each • You can select multiple files</p>
-                  {(uploadedFiles[qq.id] || []).length > 0 && (
-                    <div className="mt-2 space-y-2">
-                      {(uploadedFiles[qq.id] || []).map((file, fileIdx) => (
-                        <div key={`${file.name}-${fileIdx}`} className="flex items-center justify-between bg-muted/10 p-2 rounded">
-                          <div className="text-sm truncate pr-2">{file.name}</div>
-                          <button
-                            className="text-xs text-destructive"
-                            onClick={() => {
-                              const next = [...(uploadedFiles[qq.id] || [])];
-                              next.splice(fileIdx, 1);
-                              setUploadedFiles((s) => ({ ...s, [qq.id]: next }));
-                            }}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ))}
-                      <button className="text-xs text-destructive" onClick={() => handleFileSelect(qq.id, [])}>Remove all</button>
+                <div className="mt-4 space-y-4">
+                  {/* File upload */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2 font-bangla">উত্তরের ছবি / ফাইল আপলোড করুন (ঐচ্ছিক)</label>
+                    <input
+                      type="file"
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      multiple
+                      onChange={async (e) => {
+                        const files = Array.from(e.target.files || []);
+                        handleFileSelect(qq.id, files);
+                      }}
+                      className="block w-full text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">JPG, PNG, PDF • সর্বোচ্চ ১০MB • একাধিক ফাইল নির্বাচন করা যাবে</p>
+                    {(uploadedFiles[qq.id] || []).length > 0 && (
+                      <div className="mt-2 space-y-2">
+                        {(uploadedFiles[qq.id] || []).map((file, fileIdx) => (
+                          <div key={`${file.name}-${fileIdx}`} className="flex items-center justify-between bg-muted/10 p-2 rounded">
+                            <div className="text-sm truncate pr-2">{file.name}</div>
+                            <button
+                              className="text-xs text-destructive"
+                              onClick={() => {
+                                const next = [...(uploadedFiles[qq.id] || [])];
+                                next.splice(fileIdx, 1);
+                                setUploadedFiles((s) => ({ ...s, [qq.id]: next }));
+                              }}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                        <button className="text-xs text-destructive" onClick={() => handleFileSelect(qq.id, [])}>Remove all</button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Answered / Skip toggle buttons */}
+                  <div className="pt-2 border-t border-border">
+                    <p className="text-xs text-muted-foreground mb-2 font-bangla">এই প্রশ্নের জন্য আপনার অবস্থান চিহ্নিত করুন:</p>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() =>
+                          setCqStatus((prev) => {
+                            if (prev[qq.id] === 'answered') { const { [qq.id]: _, ...rest } = prev; return rest; }
+                            return { ...prev, [qq.id]: 'answered' };
+                          })
+                        }
+                        className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-semibold font-bangla transition-all ${
+                          cqStatus[qq.id] === 'answered'
+                            ? 'border-green-500 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 shadow-sm'
+                            : 'border-border bg-card text-muted-foreground hover:border-green-400 hover:text-green-600'
+                        }`}
+                      >
+                        {cqStatus[qq.id] === 'answered' ? '✓ উত্তর দিয়েছি' : 'উত্তর দিয়েছি'}
+                      </button>
+                      <button
+                        onClick={() =>
+                          setCqStatus((prev) => {
+                            if (prev[qq.id] === 'skipped') { const { [qq.id]: _, ...rest } = prev; return rest; }
+                            return { ...prev, [qq.id]: 'skipped' };
+                          })
+                        }
+                        className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-semibold font-bangla transition-all ${
+                          cqStatus[qq.id] === 'skipped'
+                            ? 'border-orange-400 bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-300 shadow-sm'
+                            : 'border-border bg-card text-muted-foreground hover:border-orange-300 hover:text-orange-600'
+                        }`}
+                      >
+                        {cqStatus[qq.id] === 'skipped' ? '⚠ এড়িয়ে যাচ্ছি' : 'এড়িয়ে যাচ্ছি'}
+                      </button>
                     </div>
-                  )}
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -756,10 +813,19 @@ const TakeExam = () => {
             <CardContent className="p-6 text-center space-y-4">
               <AlertTriangle className="h-12 w-12 text-warning mx-auto" />
               <h3 className="text-lg font-display font-bold">Submit Exam?</h3>
-              <p className="text-sm text-muted-foreground">
-                You answered {answeredCount} of {questions.length} questions.
-                {answeredCount < questions.length && " Unanswered questions will be marked as skipped."}
-              </p>
+              <div className="text-sm text-muted-foreground space-y-1 font-bangla">
+                {questions.length - totalCQQuestions > 0 && (
+                  <p>MCQ: <span className="font-semibold text-foreground">{mcqAnsweredCount}</span> / {questions.length - totalCQQuestions} টি উত্তর দিয়েছেন</p>
+                )}
+                {totalCQQuestions > 0 && (
+                  <p>সৃজনশীল: <span className="font-semibold text-foreground">{cqMarkedCount}</span> / {totalCQQuestions} টি চিহ্নিত
+                    {cqMarkedCount < totalCQQuestions && <span className="text-warning"> ({totalCQQuestions - cqMarkedCount} টি চিহ্নিত নেই)</span>}
+                  </p>
+                )}
+                {answeredCount < questions.length && totalCQQuestions === 0 && (
+                  <p>Unanswered questions will be marked as skipped.</p>
+                )}
+              </div>
               <div className="flex gap-3">
                 <Button variant="outline" className="flex-1" onClick={() => setShowConfirm(false)} disabled={submitted}>Go Back</Button>
                 <Button className="flex-1" onClick={handleSubmit} disabled={submitted}>{submitted ? "Submitting..." : "Submit"}</Button>
