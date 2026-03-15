@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { classesAPI, groupsAPI, subjectsAPI, chaptersAPI, questionsAPI } from "@/services/api";
+import { classesAPI, groupsAPI, subjectsAPI, chaptersAPI, topicsAPI, questionsAPI } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
-import { BookOpen, ChevronRight, ChevronDown } from "lucide-react";
 import ExamCreationModal from "@/components/admin/ExamCreationModal";
 import { renderRichOrMathHtml } from "@/lib/utils";
 
@@ -20,6 +19,7 @@ const AdminExamBuilder = () => {
   const [groups, setGroups] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [chapters, setChapters] = useState<any[]>([]);
+  const [topics, setTopics] = useState<any[]>([]);
   const [dbQuestions, setDbQuestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -28,7 +28,9 @@ const AdminExamBuilder = () => {
   const [selectedGroupId, setSelectedGroupId] = useState<string>("");
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
+  const [selectedTopicId, setSelectedTopicId] = useState<string>("");
   const [selectedQuestionType, setSelectedQuestionType] = useState<string>("");
+  const [selectedSubQuestionType, setSelectedSubQuestionType] = useState<string>("");
 
   // Load all data on mount
   useEffect(() => {
@@ -38,11 +40,12 @@ const AdminExamBuilder = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [classesRes, groupsRes, subjectsRes, chaptersRes, questionsRes] = await Promise.all([
+      const [classesRes, groupsRes, subjectsRes, chaptersRes, topicsRes, questionsRes] = await Promise.all([
         classesAPI.getAll(),
         groupsAPI.getAll(),
         subjectsAPI.getAll(),
         chaptersAPI.getAll(),
+        topicsAPI.getAll(),
         questionsAPI.getAll()
       ]);
 
@@ -50,6 +53,7 @@ const AdminExamBuilder = () => {
       setGroups(groupsRes.data || []);
       setSubjects(subjectsRes.data || []);
       setChapters(chaptersRes.data || []);
+      setTopics(topicsRes.data || []);
       setDbQuestions(questionsRes.data || []);
 
       // Auto-select first class and group
@@ -78,6 +82,7 @@ const AdminExamBuilder = () => {
   const availableGroups = groups.filter(g => (g.classId?._id || g.classId) === selectedClassId);
   const availableSubjects = subjects.filter(s => (s.groupId?._id || s.groupId) === selectedGroupId);
   const availableChapters = selectedSubjectId ? chapters.filter(ch => (ch.subjectId?._id || ch.subjectId) === selectedSubjectId) : [];
+  const availableTopics = selectedChapterId ? topics.filter(t => (t.chapterId?._id || t.chapterId) === selectedChapterId) : [];
 
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -85,22 +90,32 @@ const AdminExamBuilder = () => {
   // Filter questions from database
   const filteredQuestions = useMemo(() => {
     return dbQuestions.filter((q: any) => {
-      if (selectedSubjectId && q.subjectId) {
-        const qSubjectId = q.subjectId?._id || q.subjectId;
-        if (qSubjectId !== selectedSubjectId) return false;
-      }
-      if (selectedChapterId && q.chapterId) {
-        const qChapterId = q.chapterId?._id || q.chapterId;
-        if (qChapterId !== selectedChapterId) return false;
-      }
+      const qSubjectId = q.subjectId?._id || q.subjectId;
+      const qChapterId = q.chapterId?._id || q.chapterId;
+      const qTopicId = q.topicId?._id || q.topicId;
+
+      if (selectedSubjectId && qSubjectId !== selectedSubjectId) return false;
+      if (selectedChapterId && qChapterId !== selectedChapterId) return false;
+      if (selectedTopicId && qTopicId !== selectedTopicId) return false;
+
       if (selectedQuestionType && q.questionType !== selectedQuestionType) return false;
+
+      if (selectedSubQuestionType) {
+        const hasMatchingSubQuestion = Array.isArray(q.subQuestions) && q.subQuestions.some((sq: any) => sq.type === selectedSubQuestionType);
+        if (!hasMatchingSubQuestion) return false;
+      }
+
       if (search) {
-        const text = ((q.questionTextBn || q.questionTextEn || q.questionText || q.questionBn) || "").toLowerCase();
-        if (!text.includes(search.toLowerCase())) return false;
+        const stem = ((q.questionTextBn || q.questionTextEn || q.questionText || q.questionBn) || "").toLowerCase();
+        const subqText = Array.isArray(q.subQuestions)
+          ? q.subQuestions.map((sq: any) => (sq.questionTextBn || sq.questionTextEn || sq.questionText || sq.questionBn || "")).join(" ").toLowerCase()
+          : "";
+        const haystack = `${stem} ${subqText}`;
+        if (!haystack.includes(search.toLowerCase())) return false;
       }
       return true;
     });
-  }, [dbQuestions, selectedSubjectId, selectedChapterId, selectedQuestionType, search]);
+  }, [dbQuestions, selectedSubjectId, selectedChapterId, selectedTopicId, selectedQuestionType, selectedSubQuestionType, search]);
 
   const totalPages = Math.max(1, Math.ceil(filteredQuestions.length / ITEMS_PER_PAGE));
   const start = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -109,7 +124,7 @@ const AdminExamBuilder = () => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [questionMarksMap, setQuestionMarksMap] = useState<Record<string, number>>({});
 
-  useEffect(() => { setCurrentPage(1); }, [selectedSubjectId, selectedChapterId, selectedQuestionType, search]);
+  useEffect(() => { setCurrentPage(1); }, [selectedClassId, selectedGroupId, selectedSubjectId, selectedChapterId, selectedTopicId, selectedQuestionType, selectedSubQuestionType, search]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
@@ -253,38 +268,85 @@ const AdminExamBuilder = () => {
         <BeautifulLoader message="Loading data from database..." className="py-10" />
       ) : (
         <div>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <select 
-              value={selectedClassId} 
-              onChange={(e) => { 
-                const val = e.target.value; 
-                setSelectedClassId(val); 
-                const newGroups = groups.filter(g => (g.classId?._id || g.classId) === val); 
-                setSelectedGroupId(newGroups[0]?._id ?? ""); 
-              }} 
-              className="rounded-xl border border-border bg-card px-4 py-2.5 text-sm"
-            >
-              {classes.map((c) => (<option key={c._id} value={c._id}>{c.name}</option>))}
-            </select>
-            <select 
-              value={selectedGroupId} 
-              onChange={(e) => setSelectedGroupId(e.target.value)} 
-              className="rounded-xl border border-border bg-card px-4 py-2.5 text-sm"
-              disabled={availableGroups.length === 0}
-            >
-              {availableGroups.length === 0 ? (
-                <option value="">No groups available - Create sections first!</option>
-              ) : (
-                availableGroups.map((g) => (<option key={g._id} value={g._id}>{g.name}</option>))
-              )}
-            </select>
-            <div className="ml-auto flex items-center gap-2">
-              <select 
-                value={selectedQuestionType} 
-                onChange={(e) => setSelectedQuestionType(e.target.value)}
-                className="rounded-xl border border-border bg-card px-4 py-2.5 text-sm"
+          <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              <select
+                value={selectedClassId}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedClassId(val);
+                  const newGroups = groups.filter((g) => (g.classId?._id || g.classId) === val);
+                  setSelectedGroupId(newGroups[0]?._id ?? "");
+                  setSelectedSubjectId(null);
+                  setSelectedChapterId(null);
+                  setSelectedTopicId("");
+                }}
+                className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm"
               >
-                <option value="">All Types</option>
+                {classes.map((c) => (<option key={c._id} value={c._id}>{c.name}</option>))}
+              </select>
+
+              <select
+                value={selectedGroupId}
+                onChange={(e) => {
+                  setSelectedGroupId(e.target.value);
+                  setSelectedSubjectId(null);
+                  setSelectedChapterId(null);
+                  setSelectedTopicId("");
+                }}
+                className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm"
+                disabled={availableGroups.length === 0}
+              >
+                <option value="">All Groups</option>
+                {availableGroups.map((g) => (<option key={g._id} value={g._id}>{g.name}</option>))}
+              </select>
+
+              <select
+                value={selectedSubjectId ?? ""}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedSubjectId(val || null);
+                  setSelectedChapterId(null);
+                  setSelectedTopicId("");
+                }}
+                className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm"
+              >
+                <option value="">All Subjects</option>
+                {availableSubjects.map((s) => (<option key={s._id} value={s._id}>{s.name}</option>))}
+              </select>
+
+              <select
+                value={selectedChapterId ?? ""}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedChapterId(val || null);
+                  setSelectedTopicId("");
+                }}
+                className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm"
+                disabled={!selectedSubjectId}
+              >
+                <option value="">All Chapters</option>
+                {availableChapters.map((ch) => (<option key={ch._id} value={ch._id}>{ch.name}</option>))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+              <select
+                value={selectedTopicId}
+                onChange={(e) => setSelectedTopicId(e.target.value)}
+                className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm"
+                disabled={!selectedChapterId}
+              >
+                <option value="">All Topics</option>
+                {availableTopics.map((t) => (<option key={t._id} value={t._id}>{t.name}</option>))}
+              </select>
+
+              <select
+                value={selectedQuestionType}
+                onChange={(e) => setSelectedQuestionType(e.target.value)}
+                className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm"
+              >
+                <option value="">All Question Types</option>
                 <option value="MCQ">MCQ</option>
                 <option value="CQ">CQ</option>
                 <option value="গাণিতিক">গাণিতিক (Mathematical)</option>
@@ -293,61 +355,66 @@ const AdminExamBuilder = () => {
                 <option value="ছোট লিখিত/সংক্ষিপ্ত প্রশ্ন">ছোট লিখিত (Short written)</option>
                 <option value="বড় লিখিত/রচনামূলক প্রশ্ন">বড় লিখিত (Long written)</option>
               </select>
-              <Input placeholder="Search questions..." value={search} onChange={(e:any) => setSearch(e.target.value)} />
-              <Button onClick={() => { setSelectedIds(filteredQuestions.map((q:any)=>q._id)); toast({ title: "Selected all visible" }); }}>Select All</Button>
+
+              <select
+                value={selectedSubQuestionType}
+                onChange={(e) => setSelectedSubQuestionType(e.target.value)}
+                className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm"
+              >
+                <option value="">All Sub-question Types</option>
+                <option value="গাণিতিক">গাণিতিক (Mathematical)</option>
+                <option value="জ্ঞানমূলক">জ্ঞানমূলক (Knowledge-based)</option>
+                <option value="অনুধাবনমূলক">অনুধাবনমূলক (Comprehension)</option>
+                <option value="ছোট লিখিত/সংক্ষিপ্ত প্রশ্ন">ছোট লিখিত (Short written)</option>
+                <option value="বড় লিখিত/রচনামূলক প্রশ্ন">বড় লিখিত (Long written)</option>
+              </select>
+
+              <Input
+                placeholder="Search questions..."
+                value={search}
+                onChange={(e:any) => setSearch(e.target.value)}
+                className="lg:col-span-2"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSelectedSubjectId(null);
+                  setSelectedChapterId(null);
+                  setSelectedTopicId("");
+                  setSelectedQuestionType("");
+                  setSelectedSubQuestionType("");
+                  setSearch("");
+                }}
+              >
+                Clear Filters
+              </Button>
+              <Button onClick={() => { setSelectedIds(filteredQuestions.map((q:any)=>q._id)); toast({ title: "Selected all filtered questions" }); }}>
+                Select All Filtered
+              </Button>
+              <div className="text-sm text-muted-foreground ml-auto">
+                {filteredQuestions.length} question(s) found
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {availableSubjects.length === 0 ? (
-              <div className="col-span-full text-center py-8">
-                <p className="text-muted-foreground">No subjects found for this group. Create sections first!</p>
+          <div className="space-y-4">
+            {selectedSubjectId && (
+              <div className="text-sm text-muted-foreground">
+                Showing questions for <strong>{subjects.find((s)=>s._id===selectedSubjectId)?.name || "Selected subject"}</strong>
+                {selectedChapterId ? <> / <strong>{chapters.find((c)=>c._id===selectedChapterId)?.name || "Selected chapter"}</strong></> : null}
+                {selectedTopicId ? <> / <strong>{topics.find((t)=>t._id===selectedTopicId)?.name || "Selected topic"}</strong></> : null}
+              </div>
+            )}
+
+            {visible.length === 0 ? (
+              <div className="text-center py-10 border border-dashed border-border rounded-xl bg-muted/10">
+                <p className="text-muted-foreground">No questions match the current filters.</p>
               </div>
             ) : (
-              availableSubjects.map((subject) => {
-                const subjectChapters = availableChapters.filter(ch => (ch.subjectId?._id || ch.subjectId) === subject._id);
-                const isExpanded = selectedSubjectId === subject._id;
-                return (
-                  <div key={subject._id} className={`bg-card rounded-xl border ${isExpanded?"border-success/50":"border-border"}`}>
-                    <button onClick={() => setSelectedSubjectId(isExpanded ? null : subject._id)} className="w-full p-4 flex items-center gap-3 text-left">
-                      <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center">
-                        <BookOpen className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <div className="font-bold">{subject.name}</div>
-                          <div className="text-xs text-muted-foreground">{subjectChapters.length} chapters</div>
-                        </div>
-                      </div>
-                      {isExpanded ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-                    </button>
-                    {isExpanded && (
-                      <div className="px-4 pb-4">
-                        {subjectChapters.length === 0 ? (
-                          <p className="text-sm text-muted-foreground py-2">No chapters found</p>
-                        ) : (
-                          subjectChapters.map((ch) => (
-                            <div key={ch._id} className="flex items-center justify-between py-2">
-                              <button onClick={() => { setSelectedChapterId(ch._id); setCurrentPage(1); }} className="text-left flex-1">{ch.name}</button>
-                              <ChevronRight className="h-4 w-4 ml-2" />
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          {/* Questions listing for selected chapter */}
-          {selectedSubjectId && selectedChapterId && (
-            <div className="space-y-4">
-              <div className="text-sm text-muted-foreground">
-                Showing questions for <strong>{subjects.find(s=>s._id===selectedSubjectId)?.name}</strong> / <strong>{chapters.find(c=>c._id===selectedChapterId)?.name}</strong>
-              </div>
-          <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-1 gap-3">
             {visible.map((q:any, idx:number) => (
               <div key={q._id} className="bg-muted/20 p-4 rounded-lg flex items-start gap-3">
                 <div className="pt-1"><Checkbox checked={selectedIds.includes(q._id)} onCheckedChange={() => toggleSelect(q._id)} /></div>
@@ -398,16 +465,16 @@ const AdminExamBuilder = () => {
                 </div>
               </div>
             ))}
-          </div>
+              </div>
+            )}
 
-          {/* Pagination small */}
-          <div className="flex items-center gap-2">
-            <Button onClick={() => setCurrentPage(Math.max(1, currentPage-1))} disabled={currentPage===1}>Prev</Button>
-            <div className="text-sm">Page {currentPage} / {totalPages}</div>
-            <Button onClick={() => setCurrentPage(Math.min(totalPages, currentPage+1))} disabled={currentPage===totalPages}>Next</Button>
+            {/* Pagination small */}
+            <div className="flex items-center gap-2">
+              <Button onClick={() => setCurrentPage(Math.max(1, currentPage-1))} disabled={currentPage===1}>Prev</Button>
+              <div className="text-sm">Page {currentPage} / {totalPages}</div>
+              <Button onClick={() => setCurrentPage(Math.min(totalPages, currentPage+1))} disabled={currentPage===totalPages}>Next</Button>
+            </div>
           </div>
-        </div>
-      )}
 
       {/* Bottom bar - centered and responsive */}
       <div className="fixed left-0 right-0 bottom-4 px-4">
@@ -447,7 +514,7 @@ const AdminExamBuilder = () => {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
                     {/* Grouped CQ parent with subQuestions */}
-                    {q.subQuestions && Array.isArray(q.subQuestions) ? (
+                    {q.subQuestions && Array.isArray(q.subQuestions) && q.subQuestions.length > 0 ? (
                       <div className="space-y-4">
                         {q.image ? (
                           <div className="flex flex-col lg:flex-row gap-4 items-start">

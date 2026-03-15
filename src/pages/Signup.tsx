@@ -56,10 +56,13 @@ const Signup = () => {
             <div className="h-10 w-10 rounded-lg bg-hero-gradient flex items-center justify-center">
               <BookOpen className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-2xl font-display font-bold">ExamPro</span>
+            <div className="text-left leading-tight">
+              <span className="block text-2xl font-display font-bold">ExamPathshala</span>
+              <span className="block text-xs text-muted-foreground">Practice smarter, score better.</span>
+            </div>
           </Link>
           <h1 className="text-2xl font-display font-bold">Create your account</h1>
-          <p className="text-muted-foreground text-sm mt-1">Start your exam preparation journey</p>
+          <p className="text-muted-foreground text-sm mt-1">Start your journey with ExamPathshala</p>
         </div>
 
         <div className="bg-card rounded-2xl border border-border shadow-card p-8">

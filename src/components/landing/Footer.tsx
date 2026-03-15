@@ -11,10 +11,10 @@ const Footer = () => {
               <div className="h-8 w-8 rounded-lg bg-hero-gradient flex items-center justify-center">
                 <BookOpen className="h-4 w-4 text-primary-foreground" />
               </div>
-              <span className="text-lg font-display font-bold">ExamPro</span>
+              <span className="text-lg font-display font-bold">ExamPathshala</span>
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              The smartest way to prepare for exams. Practice, analyze, and excel.
+              Practice smarter, score better.
             </p>
           </div>
 
@@ -51,7 +51,7 @@ const Footer = () => {
 
         <div className="border-t border-border pt-6 text-center">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} ExamPro. All rights reserved.
+            © {new Date().getFullYear()} ExamPathshala. All rights reserved.
           </p>
         </div>
       </div>

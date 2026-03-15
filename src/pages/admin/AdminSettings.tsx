@@ -9,9 +9,9 @@ import { Save } from "lucide-react";
 const AdminSettings = () => {
   const { toast } = useToast();
   const [settings, setSettings] = useState({
-    siteName: "ExamPro",
-    siteTagline: "Smart Exam Preparation Platform",
-    contactEmail: "admin@exampro.com",
+    siteName: "ExamPathshala",
+    siteTagline: "Practice smarter, score better.",
+    contactEmail: "admin@exampathshala.com",
     maxExamDuration: 180,
     defaultNegativeMarking: false,
     negativeMarkValue: 0.25,

@@ -5,7 +5,7 @@ const testimonials = [
   {
     name: "Rahim Ahmed",
     role: "SSC Student, Dhaka",
-    content: "ExamPro helped me score A+ in my SSC exams. The question bank is incredibly well-organized and the analytics showed me exactly where I needed to improve.",
+    content: "ExamPathshala helped me score A+ in my SSC exams. The question bank is incredibly well-organized and the analytics showed me exactly where I needed to improve.",
     rating: 5,
   },
   {
@@ -23,7 +23,7 @@ const testimonials = [
   {
     name: "Nadia Islam",
     role: "University Admission Prep",
-    content: "I tried multiple platforms but ExamPro's adaptive difficulty and detailed explanations made the biggest difference in my preparation journey.",
+    content: "I tried multiple platforms but ExamPathshala's adaptive difficulty and detailed explanations made the biggest difference in my preparation journey.",
     rating: 5,
   },
 ];
@@ -38,7 +38,7 @@ const TestimonialsSection = () => {
             Loved by Students & Teachers
           </h2>
           <p className="text-muted-foreground text-lg">
-            Join thousands of students who have improved their exam performance with ExamPro.
+            Join thousands of students who have improved their exam performance with ExamPathshala.
           </p>
         </div>
 

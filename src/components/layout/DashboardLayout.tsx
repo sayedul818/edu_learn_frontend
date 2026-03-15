@@ -77,7 +77,10 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
             <div className="h-8 w-8 rounded-lg bg-hero-gradient flex items-center justify-center">
               <BookOpen className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="text-lg font-display font-bold text-foreground">ExamPro</span>
+            <div className="leading-tight">
+              <span className="block text-lg font-display font-bold text-foreground">ExamPathshala</span>
+              <span className="text-[11px] text-muted-foreground">Practice smarter, score better.</span>
+            </div>
             <button className="lg:hidden ml-auto text-muted-foreground" onClick={() => setSidebarOpen(false)}>
               <X className="h-5 w-5" />
             </button>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ExamPathshala icon">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#2563eb" />
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="16" fill="url(#bg)" />
+  <path d="M18 20h28v6H25v7h18v6H25v7h21v6H18z" fill="#f8fafc" />
+  <path d="M43 18h3c2.761 0 5 2.239 5 5v18c0 2.761-2.239 5-5 5h-3v-4h2c1.105 0 2-.895 2-2V24c0-1.105-.895-2-2-2h-2z" fill="#93c5fd" />
+</svg>

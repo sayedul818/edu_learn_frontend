@@ -35,7 +35,10 @@ const Navbar = () => {
           <div className="h-9 w-9 rounded-lg bg-hero-gradient flex items-center justify-center">
             <BookOpen className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span className="text-xl font-display font-bold text-foreground">ExamPro</span>
+          <div className="leading-tight">
+            <span className="block text-xl font-display font-bold text-foreground">ExamPathshala</span>
+            <span className="hidden sm:block text-[11px] text-muted-foreground">Practice smarter, score better.</span>
+          </div>
         </Link>
 
         <div className="hidden md:flex items-center gap-8">

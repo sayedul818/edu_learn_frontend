@@ -20,7 +20,7 @@ const CTASection = () => {
               Ready to Ace Your Next Exam?
             </h2>
             <p className="text-primary-foreground/80 text-lg max-w-xl mx-auto mb-8">
-              Join thousands of students already using ExamPro to boost their scores. Start your free practice today.
+              Join thousands of students already using ExamPathshala to boost their scores. Start your free practice today.
             </p>
             <Button
               size="lg"
