@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { classesAPI, groupsAPI, subjectsAPI, chaptersAPI, topicsAPI, questionsAPI } from "@/services/api";
+import { useNavigate } from "react-router-dom";
+import { classesAPI, groupsAPI, subjectsAPI, chaptersAPI, topicsAPI, questionsAPI, examsAPI } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
 import ExamCreationModal from "@/components/admin/ExamCreationModal";
 import { renderRichOrMathHtml } from "@/lib/utils";
@@ -13,6 +16,7 @@ const ITEMS_PER_PAGE = 8;
 
 const AdminExamBuilder = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Database data
   const [classes, setClasses] = useState<any[]>([]);
@@ -136,16 +140,76 @@ const AdminExamBuilder = () => {
   };
 
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [examTypeOpen, setExamTypeOpen] = useState(false);
   const [examCreationOpen, setExamCreationOpen] = useState(false);
+  const [selectedExamType, setSelectedExamType] = useState<"online" | "offline">("online");
+  const [creatingOfflineExam, setCreatingOfflineExam] = useState(false);
 
   const handleProceedToCreate = () => {
     setPreviewOpen(false);
-    setExamCreationOpen(true);
+    setExamTypeOpen(true);
   };
 
-  const handleExamCreationSuccess = () => {
+  const handleContinueExamType = async () => {
+    if (selectedExamType === "online") {
+      setExamTypeOpen(false);
+      setExamCreationOpen(true);
+      return;
+    }
+
+    if (selectedIds.length === 0) {
+      toast({ title: "No questions selected", description: "Select some questions first", variant: "destructive" });
+      return;
+    }
+
+    try {
+      setCreatingOfflineExam(true);
+      const now = new Date();
+      const datePart = now.toLocaleDateString("en-CA");
+      const title = `Offline Exam ${datePart}`;
+
+      const payload: any = {
+        title,
+        duration: 60,
+        totalMarks: totalMarks || 0,
+        questionIds: selectedIds,
+        ...(selectedQuestionMarksArray.length > 0 ? { questionMarks: selectedQuestionMarksArray } : {}),
+        status: "draft",
+        instructions: "Answer all questions.",
+        subjectId: selectedSubjectId || null,
+        chapterId: selectedChapterId || null,
+      };
+
+      const response = await examsAPI.create(payload);
+      const createdExam = response?.data;
+
+      if (!createdExam?._id) {
+        throw new Error("Exam created but exam id was not returned");
+      }
+
+      setExamTypeOpen(false);
+      setSelectedIds([]);
+      toast({ title: "Offline exam draft created", description: "Opening offline builder..." });
+      navigate(`/admin/offline-exam/create/${createdExam._id}?mode=edit`);
+    } catch (err) {
+      console.error("Failed to create offline exam:", err);
+      toast({
+        title: "Failed to create offline exam",
+        description: err instanceof Error ? err.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setCreatingOfflineExam(false);
+    }
+  };
+
+  const handleExamCreationSuccess = (createdExam?: any) => {
     setSelectedIds([]);
     toast({ title: "পরীক্ষা তৈরি সফল!", description: "নতুন পরীক্ষা সফলভাবে তৈরি হয়েছে" });
+
+    if (selectedExamType === "offline" && createdExam?._id) {
+      navigate(`/admin/offline-exam/create/${createdExam._id}?mode=edit`);
+    }
   };
 
   const selectedQuestions = useMemo(() => {
@@ -599,6 +663,33 @@ const AdminExamBuilder = () => {
           <div className="flex justify-end gap-2 mt-3">
             <Button variant="ghost" onClick={() => setPreviewOpen(false)}>Cancel</Button>
             <Button onClick={handleProceedToCreate}>Proceed to Create</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Exam Type Dialog: choose online (existing flow) or offline paper builder */}
+      <Dialog open={examTypeOpen} onOpenChange={setExamTypeOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select Exam Type</DialogTitle>
+          </DialogHeader>
+
+          <RadioGroup value={selectedExamType} onValueChange={(v) => setSelectedExamType(v as "online" | "offline")} className="space-y-3">
+            <div className="flex items-center space-x-2 rounded-lg border border-border p-3">
+              <RadioGroupItem value="online" id="exam-type-online" />
+              <Label htmlFor="exam-type-online" className="cursor-pointer">Online Exam</Label>
+            </div>
+            <div className="flex items-center space-x-2 rounded-lg border border-border p-3">
+              <RadioGroupItem value="offline" id="exam-type-offline" />
+              <Label htmlFor="exam-type-offline" className="cursor-pointer">Offline Exam</Label>
+            </div>
+          </RadioGroup>
+
+          <div className="mt-2 flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setExamTypeOpen(false)}>Cancel</Button>
+            <Button onClick={handleContinueExamType} disabled={creatingOfflineExam}>
+              {creatingOfflineExam ? "Creating..." : "Continue"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { classesAPI, groupsAPI, subjectsAPI, chaptersAPI, topicsAPI, questionsAPI, examTypesAPI } from "@/services/api";
@@ -9,8 +9,7 @@ import { Label } from "@/components/ui/label";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { Search, ArrowLeft, CheckCircle, Info, BarChart3, Flag, Bookmark, BookOpen, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { parseQuestionWithSubPoints, parseInstructionAndContent, renderRichOrMathHtml } from "@/lib/utils";
-import { uploadImageToCloudinary } from "@/services/cloudinary";
+import { parseQuestionWithSubPoints } from "@/lib/utils";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -168,11 +167,6 @@ const AdminQuestionListing = () => {
   // Editor
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<any>(null);
-  const [imageUploading, setImageUploading] = useState(false);
-  const [activeEditorKey, setActiveEditorKey] = useState<string | null>(null);
-  const [fontSizeChoice, setFontSizeChoice] = useState("16");
-  const [lineSpacingChoice, setLineSpacingChoice] = useState("1.6");
-  const editorRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const openEditor = (id: string) => {
     // Check if this is a sub-question item
@@ -189,138 +183,16 @@ const AdminQuestionListing = () => {
     normalized.topicId = (q.topicId && (q.topicId._id || q.topicId)) || "";
     normalized.groupId = (q.groupId && (q.groupId._id || q.groupId)) || "";
     normalized.classId = (q.classId && (q.classId._id || q.classId)) || "";
-    normalized.options = (normalized.options || []).map((opt: any) => ({
-      text: typeof opt === "string" ? opt : (opt.text || ""),
-      isCorrect: typeof opt === "object" ? !!opt.isCorrect : false,
-    }));
-    if (normalized.options.length > 0 && normalized.options.every((opt: any) => !opt.isCorrect)) {
-      normalized.options[0].isCorrect = true;
-    }
     setForm(normalized);
     setEditingId(q._id);
-    setActiveEditorKey(null);
-    editorRefs.current = {};
-  };
-
-  const updateValueByEditorKey = (key: string, value: string) => {
-    setForm((prev: any) => {
-      if (!prev) return prev;
-
-      if (key.startsWith("subq-")) {
-        const parts = key.split("-");
-        const idx = Number(parts[1]);
-        const field = parts.slice(2).join("-");
-        const copy = JSON.parse(JSON.stringify(prev));
-        copy.subQuestions = copy.subQuestions || [];
-        copy.subQuestions[idx] = copy.subQuestions[idx] || {};
-
-        if (field === "text") {
-          copy.subQuestions[idx].questionTextBn = value;
-          copy.subQuestions[idx].text = value;
-        } else {
-          copy.subQuestions[idx][field] = value;
-        }
-        return copy;
-      }
-
-      if (key.startsWith("option-")) {
-        const parts = key.split("-");
-        const idx = Number(parts[1]);
-        const field = parts.slice(2).join("-");
-        const copy = JSON.parse(JSON.stringify(prev));
-        copy.options = copy.options || [];
-        copy.options[idx] = copy.options[idx] || { text: "", isCorrect: false };
-        copy.options[idx][field] = value;
-        return copy;
-      }
-
-      return { ...prev, [key]: value };
-    });
-  };
-
-  const getActiveEditor = () => {
-    if (!activeEditorKey) return null;
-    const el = editorRefs.current[activeEditorKey];
-    if (!el) return null;
-    return { key: activeEditorKey, el };
-  };
-
-  const syncEditorHtml = (key: string) => {
-    const el = editorRefs.current[key];
-    if (!el) return;
-    updateValueByEditorKey(key, el.innerHTML);
-  };
-
-  const runEditorCommand = (command: string, value?: string) => {
-    const active = getActiveEditor();
-    if (!active) return;
-    const { key, el } = active;
-    el.focus();
-    document.execCommand(command, false, value);
-    syncEditorHtml(key);
-  };
-
-  const insertHtmlAtSelection = (html: string) => {
-    runEditorCommand("insertHTML", html);
-  };
-
-  const wrapSelectionWithTag = (tag: string, fallbackText: string, style?: string) => {
-    const selection = window.getSelection();
-    const selected = selection && selection.rangeCount > 0 ? selection.toString() : "";
-    const content = selected || fallbackText;
-    const styleAttr = style ? ` style=\"${style}\"` : "";
-    insertHtmlAtSelection(`<${tag}${styleAttr}>${content}</${tag}>`);
-  };
-
-  const insertAtCursor = (text: string) => {
-    runEditorCommand("insertText", text);
-  };
-
-  const applyListToSelection = (ordered: boolean) => {
-    runEditorCommand(ordered ? "insertOrderedList" : "insertUnorderedList");
-  };
-
-  const applyUndoRedo = (direction: "undo" | "redo") => {
-    runEditorCommand(direction);
-  };
-
-  const handleEditorChange = (key: string, el: HTMLDivElement | null) => {
-    if (!el) return;
-    updateValueByEditorKey(key, el.innerHTML);
-    // Auto grow rich editor height for long text
-    el.style.height = "auto";
-    el.style.height = `${Math.max(120, el.scrollHeight)}px`;
-  };
-
-  const registerEditor = (key: string, el: HTMLDivElement | null, initialValue?: string) => {
-    editorRefs.current[key] = el;
-    if (!el) return;
-    if (el.dataset.initialized !== "1") {
-      el.innerHTML = initialValue ?? "";
-      el.dataset.initialized = "1";
-    }
-    el.style.height = "auto";
-    el.style.height = `${Math.max(120, el.scrollHeight)}px`;
   };
 
   const saveEdit = async () => {
     if (!editingId || !form) return;
     try {
       // normalize ids before sending
-      const normalizedOptions = (form.options || [])
-        .map((opt: any) => ({
-          text: typeof opt === "string" ? opt.trim() : String(opt?.text || "").trim(),
-          isCorrect: typeof opt === "object" ? !!opt.isCorrect : false,
-        }))
-        .filter((opt: any) => opt.text.length > 0);
-
-      if (normalizedOptions.length > 0 && normalizedOptions.every((opt: any) => !opt.isCorrect)) {
-        normalizedOptions[0].isCorrect = true;
-      }
-
       const payload = {
         ...form,
-        options: normalizedOptions,
         chapterId: form.chapterId && (form.chapterId._id || form.chapterId),
         subjectId: form.subjectId && (form.subjectId._id || form.subjectId),
         topicId: form.topicId && form.topicId !== "" ? (form.topicId._id || form.topicId) : undefined,
@@ -482,142 +354,94 @@ const AdminQuestionListing = () => {
         {visible.map((item, idx) => {
           const q = item.isSubQuestion ? item.parentQuestion : item;
           const isSubQuestionDisplay = item.isSubQuestion;
-          const questionIndex = startIdx + idx + 1;
-          const hasSubQuestions = (q as any).subQuestions && Array.isArray((q as any).subQuestions) && (q as any).subQuestions.length > 0;
-
-          const renderQuestionStem = () => {
-            // If showing a sub-question from filter, display it differently
-            if (isSubQuestionDisplay) {
-              const sq = item.subQuestion;
-              return (
-                <div className="text-foreground leading-relaxed text-sm">
-                  <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <div className="font-semibold">{sq.label || 'ক'}</div>
-                    <div dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.questionTextBn || sq.questionTextEn) }} />
-                    {sq.type && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200">
-                        {sq.type}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            }
-
-            const questionText = (q as any).questionTextBn || (q as any).questionTextEn || "";
-
-            if (hasSubQuestions) {
-              return questionText ? (
-                <div className="rounded-lg bg-card border border-border text-foreground p-4 leading-relaxed text-sm">
-                  <div className="whitespace-pre-line" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(questionText) }} />
-                </div>
-              ) : null;
-            }
-
-            // For regular questions without subQuestions
-            // First check for instruction pattern
-            const instructionData = parseInstructionAndContent(questionText);
-            if (instructionData.hasInstruction) {
-              return (
-                <div className="text-foreground font-medium leading-relaxed">
-                  <p className="mb-3 font-semibold" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(instructionData.instruction) }} />
-                  <div className="mt-3 p-3 rounded-lg bg-card border border-border text-foreground leading-relaxed text-sm whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(instructionData.content) }} />
-                </div>
-              );
-            }
-            
-            // Then check for Roman numeral pattern
-            const parsed = parseQuestionWithSubPoints(questionText);
-
-            if (parsed.hasSubPoints) {
-              return (
-                <div className="text-foreground font-medium leading-relaxed">
-                  {parsed.mainQuestion && <p className="mb-2" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(parsed.mainQuestion) }} />}
-                  <div className="ml-4 space-y-1">
-                    {parsed.subPoints.map((point, i) => (
-                      <div key={i} className="flex gap-2">
-                        <span className="font-semibold min-w-[2rem]">{['i.', 'ii.', 'iii.', 'iv.', 'v.', 'vi.', 'vii.', 'viii.', 'ix.', 'x.'][i]}</span>
-                        <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(point) }} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            }
-
-            return <p className="text-foreground font-medium leading-relaxed" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(questionText) }} />;
-          };
-
-          const renderSubQuestionRow = () => {
-            if (!hasSubQuestions || isSubQuestionDisplay) return null;
-
-            return (
-              <div className="space-y-3">
-                {(q as any).subQuestions.map((sq: any, i: number) => (
-                  <div key={i} className="border-l-2 border-success/30 pl-3">
-                    <div className="flex items-start gap-2">
-                      <div className="w-6 flex-none font-semibold text-foreground text-base leading-tight">{sq.label || (['ক','খ','গ','ঘ','ঙ'][i] || `${i+1}.`)}</div>
-                      <div className="flex-1 flex flex-wrap items-center gap-2">
-                        <div className="text-foreground leading-relaxed text-sm" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.questionTextBn || sq.questionTextEn) }} />
-                        {sq.type && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200">
-                            {sq.type}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            );
-          };
-
-          const renderQuestionHeader = () => (
-            <span className="text-xs font-bold text-muted-foreground whitespace-nowrap">
-              {isSubQuestionDisplay ? (
-                <>Sub-Question {questionIndex}</>
-              ) : (
-                <>প্রশ্ন {questionIndex}</>
-              )}
-            </span>
-          );
 
           return (
-          <motion.div key={item._id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }} className="bg-muted/30 rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-            <div className="p-5">
+          <motion.div key={item._id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }} className="bg-muted/30 rounded-xl border border-border p-5 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between gap-3 mb-3">
               <div className="flex-1">
-                {q.image ? (
-                  <div className="space-y-4">
-                    <div className="flex flex-col lg:flex-row gap-4 items-start">
-                      <div className="w-full lg:w-40 pt-1 lg:flex-none">
-                        {renderQuestionHeader()}
+                <div className="flex items-center gap-2 mb-2">
+                  {isSubQuestionDisplay ? (
+                    <span className="text-xs font-bold text-muted-foreground">Sub-Question {startIdx + idx + 1}</span>
+                  ) : (
+                    <span className="text-xs font-bold text-muted-foreground">প্রশ্ন {startIdx + idx + 1}</span>
+                  )}
+                </div>
+                {(() => {
+                  // If showing a sub-question from filter, display it differently
+                  if (isSubQuestionDisplay) {
+                    const sq = item.subQuestion;
+                    return (
+                      <div className="text-foreground leading-relaxed text-sm">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <div className="font-semibold">{sq.label || 'ক'}</div>
+                          <div>{sq.questionTextBn || sq.questionTextEn}</div>
+                          {sq.type && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200">
+                              {sq.type}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="w-full lg:flex-1 bg-gray-50 border border-border rounded-lg p-3 flex justify-center max-w-4xl mx-auto">
-                        <img
-                          src={q.image}
-                          alt="Question"
-                          className="max-w-full h-auto max-h-96 object-contain rounded"
-                        />
+                    );
+                  }
+
+                  // Check if question has subQuestions array
+                  const hasSubQuestions = (q as any).subQuestions && Array.isArray((q as any).subQuestions) && (q as any).subQuestions.length > 0;
+
+                  // For questions with subQuestions (CQ, জ্ঞানমূলক, etc.)
+                  if (hasSubQuestions) {
+                    const passage = (q as any).questionTextBn || (q as any).questionTextEn || '';
+                    return (
+                      <div>
+                        {passage ? (
+                          <div className="mb-4 rounded-lg bg-card border border-border text-foreground p-4 leading-relaxed text-sm">
+                            <p className="whitespace-pre-line">{passage}</p>
+                          </div>
+                        ) : null}
+
+                        <div className="space-y-3">
+                          {(q as any).subQuestions.map((sq: any, i: number) => (
+                            <div key={i} className="border-l-2 border-success/30 pl-3">
+                              <div className="flex items-start gap-2">
+                                <div className="w-6 flex-none font-semibold text-foreground text-base leading-tight">{sq.label || (['ক','খ','গ','ঘ','ঙ'][i] || `${i+1}.`)}</div>
+                                <div className="flex-1 flex flex-wrap items-center gap-2">
+                                  <div className="text-foreground leading-relaxed text-sm">{sq.questionTextBn || sq.questionTextEn}</div>
+                                  {sq.type && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200">
+                                      {sq.type}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <div className="hidden lg:block lg:w-40 lg:flex-none" aria-hidden="true" />
-                    </div>
-                    <div>
-                      {renderQuestionStem()}
-                    </div>
-                    {renderSubQuestionRow()}
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-2">
-                      {renderQuestionHeader()}
-                      <div className="flex-1 min-w-0">
-                        {renderQuestionStem()}
+                    );
+                  }
+
+                  // For regular questions without subQuestions
+                  const questionText = (q as any).questionTextBn || (q as any).questionTextEn;
+                  const parsed = parseQuestionWithSubPoints(questionText);
+
+                  if (parsed.hasSubPoints) {
+                    return (
+                      <div className="text-foreground font-medium leading-relaxed">
+                        {parsed.mainQuestion && <p className="mb-2">{parsed.mainQuestion}</p>}
+                        <div className="ml-4 space-y-1">
+                          {parsed.subPoints.map((point, i) => (
+                            <div key={i} className="flex gap-2">
+                              <span className="font-semibold min-w-[2rem]">{['i.', 'ii.', 'iii.', 'iv.', 'v.', 'vi.', 'vii.', 'viii.', 'ix.', 'x.'][i]}</span>
+                              <span>{point}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                    {renderSubQuestionRow()}
-                  </div>
-                )}
+                    );
+                  }
+
+                  return <p className="text-foreground font-medium leading-relaxed">{questionText}</p>;
+                })()}
               </div>
               <div className="flex flex-col gap-2">
                 <Button size="sm" onClick={() => openEditor(item._id)} className="bg-success hover:bg-success/90 text-white rounded-lg text-xs">Edit</Button>
@@ -655,7 +479,7 @@ const AdminQuestionListing = () => {
                 {(q as any).options.map((opt: any, i: number) => (
                   <div key={i} className={`px-4 py-2.5 rounded-lg border text-sm transition-all ${opt.isCorrect ? "border-success/50 bg-success/5" : "border-border bg-card hover:border-success/50 hover:bg-success/5"}`}>
                     <span className="font-bold text-muted-foreground mr-2">{String.fromCharCode(65 + i)}.</span>
-                    <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(opt.text || opt) }} />
+                    {opt.text}
                     {opt.isCorrect && <span className="ml-2 text-success font-bold">✓</span>}
                   </div>
                 ))}
@@ -684,7 +508,7 @@ const AdminQuestionListing = () => {
                     {!isSubQuestionDisplay && (q as any).options && (
                       <>
                         <p className="text-sm font-bold text-success mb-2">
-                          Correct Answer: <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(((q as any).options.find((o: any) => o.isCorrect)?.text) || "N/A") }} />
+                          Correct Answer: {(q as any).options.find((o: any) => o.isCorrect)?.text || "N/A"}
                         </p>
                       </>
                     )}
@@ -692,7 +516,7 @@ const AdminQuestionListing = () => {
                     {isSubQuestionDisplay ? (
                       <div>
                         <p className="text-sm font-bold text-success mb-2">Answer:</p>
-                        <p className="text-sm text-muted-foreground leading-relaxed" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(item.subQuestion.answerBn || item.subQuestion.answer || 'N/A') }} />
+                        <p className="text-sm text-muted-foreground leading-relaxed">{item.subQuestion.answerBn || item.subQuestion.answer || 'N/A'}</p>
                       </div>
                     ) : (
                       <>
@@ -721,12 +545,11 @@ const AdminQuestionListing = () => {
                         )}
                       </>
                     )}
-                    <p className="text-sm text-muted-foreground leading-relaxed mt-2" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml((q as any).explanation || "No explanation provided") }} />
+                    <p className="text-sm text-muted-foreground leading-relaxed mt-2">{(q as any).explanation || "No explanation provided"}</p>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
-            </div>
           </motion.div>
           );
         })}
@@ -763,258 +586,56 @@ const AdminQuestionListing = () => {
       )}
 
       {/* Edit Dialog */}
-      <Dialog open={!!editingId} onOpenChange={(open) => { if (!open) setEditingId(null); }}>
+      <Dialog open={!!editingId} onOpenChange={() => setEditingId(null)}>
         <DialogContent className="w-full sm:max-w-lg md:max-w-2xl lg:max-w-4xl max-h-[85vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>Edit Question</DialogTitle>
           </DialogHeader>
           {form && (
             <div className="space-y-3">
-              <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border border-border rounded-lg p-2">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <button type="button" className="px-2 py-1 text-xs rounded border border-border hover:bg-muted" onClick={() => runEditorCommand("bold")}>B</button>
-                  <button type="button" className="px-2 py-1 text-xs rounded border border-border hover:bg-muted italic" onClick={() => runEditorCommand("italic")}>I</button>
-                  <button type="button" className="px-2 py-1 text-xs rounded border border-border hover:bg-muted underline" onClick={() => runEditorCommand("underline")}>U</button>
-
-                  <div className="h-5 w-px bg-border mx-1" />
-
-                  <select
-                    value={fontSizeChoice}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setFontSizeChoice(v);
-                      wrapSelectionWithTag("span", "text", `font-size:${v}px;`);
-                    }}
-                    className="h-7 rounded border border-border bg-background px-2 text-xs"
-                  >
-                    <option value="12">12px</option>
-                    <option value="14">14px</option>
-                    <option value="16">16px</option>
-                    <option value="18">18px</option>
-                    <option value="20">20px</option>
-                    <option value="24">24px</option>
-                  </select>
-
-                  <select
-                    value={lineSpacingChoice}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setLineSpacingChoice(v);
-                      wrapSelectionWithTag("div", "line spacing", `line-height:${v};`);
-                    }}
-                    className="h-7 rounded border border-border bg-background px-2 text-xs"
-                  >
-                    <option value="1.2">Line 1.2</option>
-                    <option value="1.4">Line 1.4</option>
-                    <option value="1.6">Line 1.6</option>
-                    <option value="1.8">Line 1.8</option>
-                    <option value="2">Line 2.0</option>
-                  </select>
-
-                  <div className="h-5 w-px bg-border mx-1" />
-
-                  <button type="button" className="px-2 py-1 text-xs rounded border border-border hover:bg-muted" onClick={() => applyListToSelection(false)}>• List</button>
-                  <button type="button" className="px-2 py-1 text-xs rounded border border-border hover:bg-muted" onClick={() => applyListToSelection(true)}>1. List</button>
-
-                  <button type="button" className="px-2 py-1 text-xs rounded border border-border hover:bg-muted" onClick={() => runEditorCommand("justifyLeft")}>Left</button>
-                  <button type="button" className="px-2 py-1 text-xs rounded border border-border hover:bg-muted" onClick={() => runEditorCommand("justifyCenter")}>Center</button>
-                  <button type="button" className="px-2 py-1 text-xs rounded border border-border hover:bg-muted" onClick={() => runEditorCommand("justifyRight")}>Right</button>
-
-                  <button type="button" className="px-2 py-1 text-xs rounded border border-border hover:bg-muted" onClick={() => wrapSelectionWithTag("span", "text", "text-decoration: overline;")}>Bar</button>
-
-                  <button type="button" className="px-2 py-1 text-xs rounded border border-border hover:bg-muted" onClick={() => runEditorCommand("superscript")}>x²</button>
-                  <button type="button" className="px-2 py-1 text-xs rounded border border-border hover:bg-muted" onClick={() => runEditorCommand("subscript")}>x₂</button>
-
-                  <button type="button" className="px-2 py-1 text-xs rounded border border-border hover:bg-muted" onClick={() => insertAtCursor("π")}>π</button>
-                  <button type="button" className="px-2 py-1 text-xs rounded border border-border hover:bg-muted" onClick={() => insertAtCursor("∞")}>∞</button>
-                  <button type="button" className="px-2 py-1 text-xs rounded border border-border hover:bg-muted" onClick={() => insertAtCursor("√")}>√</button>
-
-                  <div className="h-5 w-px bg-border mx-1" />
-
-                  <button type="button" className="px-2 py-1 text-xs rounded border border-border hover:bg-muted" onClick={() => applyUndoRedo("undo")}>Undo</button>
-                  <button type="button" className="px-2 py-1 text-xs rounded border border-border hover:bg-muted" onClick={() => applyUndoRedo("redo")}>Redo</button>
-                </div>
-                <p className="text-[11px] text-muted-foreground mt-2">
-                  Active editor: <span className="font-medium">{activeEditorKey || "none"}</span>
-                </p>
-              </div>
-
               <div>
                 <Label>Question (Bengali)</Label>
-                <div
-                  contentEditable
-                  suppressContentEditableWarning
-                  onFocus={() => setActiveEditorKey("questionTextBn")}
-                  ref={(el) => registerEditor("questionTextBn", el, form.questionTextBn ?? "")}
-                  onInput={(e) => handleEditorChange("questionTextBn", e.currentTarget)}
-                  className="w-full min-h-[120px] rounded-lg border border-input bg-background px-3 py-2 text-sm leading-relaxed overflow-auto whitespace-pre-wrap"
-                />
+                <Input value={form.questionTextBn ?? ""} onChange={(e) => setForm({ ...form, questionTextBn: e.target.value })} />
               </div>
               <div>
                 <Label>Question (English)</Label>
-                <div
-                  contentEditable
-                  suppressContentEditableWarning
-                  onFocus={() => setActiveEditorKey("questionTextEn")}
-                  ref={(el) => registerEditor("questionTextEn", el, form.questionTextEn ?? "")}
-                  onInput={(e) => handleEditorChange("questionTextEn", e.currentTarget)}
-                  className="w-full min-h-[120px] rounded-lg border border-input bg-background px-3 py-2 text-sm leading-relaxed overflow-auto whitespace-pre-wrap"
+                <Input value={form.questionTextEn ?? ""} onChange={(e) => setForm({ ...form, questionTextEn: e.target.value })} />
+              </div>
+              <div>
+                <Label>Options (comma separated)</Label>
+                <Input 
+                  value={(form.options || []).map((opt: any) => opt.text || opt).join(", ")} 
+                  onChange={(e) => setForm({ 
+                    ...form, 
+                    options: e.target.value.split(",").map((text: string) => ({
+                      text: text.trim(),
+                      isCorrect: false
+                    }))
+                  })} 
                 />
               </div>
-
-              {form.passage !== undefined && (
-                <div>
-                  <Label>Passage / Description</Label>
-                  <div
-                    contentEditable
-                    suppressContentEditableWarning
-                    onFocus={() => setActiveEditorKey("passage")}
-                    ref={(el) => registerEditor("passage", el, form.passage ?? "")}
-                    onInput={(e) => handleEditorChange("passage", e.currentTarget)}
-                    className="w-full min-h-[120px] rounded-lg border border-input bg-background px-3 py-2 text-sm leading-relaxed overflow-auto whitespace-pre-wrap"
-                  />
-                </div>
-              )}
-
-              {form.description !== undefined && (
-                <div>
-                  <Label>Description</Label>
-                  <div
-                    contentEditable
-                    suppressContentEditableWarning
-                    onFocus={() => setActiveEditorKey("description")}
-                    ref={(el) => registerEditor("description", el, form.description ?? "")}
-                    onInput={(e) => handleEditorChange("description", e.currentTarget)}
-                    className="w-full min-h-[120px] rounded-lg border border-input bg-background px-3 py-2 text-sm leading-relaxed overflow-auto whitespace-pre-wrap"
-                  />
-                </div>
-              )}
-
+              <div>
+                <Label>Mark Correct Answer</Label>
+                <select 
+                  value={form.options?.findIndex((opt: any) => opt.isCorrect) ?? -1}
+                  onChange={(e) => setForm({
+                    ...form,
+                    options: form.options?.map((opt: any, idx: number) => ({
+                      ...opt,
+                      isCorrect: idx === parseInt(e.target.value)
+                    }))
+                  })}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value={-1}>Select correct answer</option>
+                  {form.options?.map((opt: any, idx: number) => (
+                    <option key={idx} value={idx}>{String.fromCharCode(65 + idx)}. {opt.text || opt}</option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <Label>Explanation</Label>
-                <div
-                  contentEditable
-                  suppressContentEditableWarning
-                  onFocus={() => setActiveEditorKey("explanation")}
-                  ref={(el) => registerEditor("explanation", el, form.explanation || "")}
-                  onInput={(e) => handleEditorChange("explanation", e.currentTarget)}
-                  className="w-full min-h-[120px] rounded-lg border border-input bg-background px-3 py-2 text-sm leading-relaxed overflow-auto whitespace-pre-wrap"
-                />
-              </div>
-
-              <div>
-                <Label>Options (rich text)</Label>
-                <div className="space-y-2">
-                  {(form.options || []).map((opt: any, idx: number) => (
-                    <div key={idx} className="border border-border rounded-lg p-2">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="text-xs font-semibold text-muted-foreground">Option {String.fromCharCode(65 + idx)}</div>
-                        <div className="flex items-center gap-2">
-                          <label className="text-xs flex items-center gap-1 text-foreground">
-                            <input
-                              type="radio"
-                              name="correct-option"
-                              checked={!!opt?.isCorrect}
-                              onChange={() => {
-                                const updated = (form.options || []).map((o: any, i: number) => ({
-                                  ...(typeof o === "string" ? { text: o } : o),
-                                  isCorrect: i === idx,
-                                }));
-                                setForm({ ...form, options: updated });
-                              }}
-                            />
-                            Correct
-                          </label>
-                          <button
-                            type="button"
-                            className="px-2 py-1 rounded text-xs text-red-600 hover:bg-red-50"
-                            onClick={() => {
-                              const updated = [...(form.options || [])];
-                              const wasCorrect = !!updated[idx]?.isCorrect;
-                              updated.splice(idx, 1);
-                              if (wasCorrect && updated.length > 0) {
-                                updated[0] = { ...(typeof updated[0] === "string" ? { text: updated[0] } : updated[0]), isCorrect: true };
-                              }
-                              setForm({ ...form, options: updated });
-                            }}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-
-                      <div
-                        contentEditable
-                        suppressContentEditableWarning
-                        onFocus={() => setActiveEditorKey(`option-${idx}-text`)}
-                        ref={(el) => registerEditor(`option-${idx}-text`, el, opt?.text || "")}
-                        onInput={(e) => handleEditorChange(`option-${idx}-text`, e.currentTarget)}
-                        className="w-full min-h-[72px] rounded-lg border border-input bg-background px-3 py-2 text-sm leading-relaxed overflow-auto whitespace-pre-wrap"
-                      />
-                    </div>
-                  ))}
-
-                  <div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        const updated = [...(form.options || [])];
-                        updated.push({ text: "", isCorrect: updated.length === 0 });
-                        setForm({ ...form, options: updated });
-                      }}
-                    >
-                      + Add Option
-                    </Button>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <Label>Question Image (optional)</Label>
-                <div className="space-y-2">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    disabled={imageUploading}
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        try {
-                          setImageUploading(true);
-                          const imageUrl = await uploadImageToCloudinary(file);
-                          setForm({ ...form, image: imageUrl });
-                          toast({ title: "Image uploaded successfully!", variant: "default" });
-                        } catch (error) {
-                          console.error("Upload failed:", error);
-                          toast({ 
-                            title: "Image upload failed", 
-                            description: error instanceof Error ? error.message : "Unknown error",
-                            variant: "destructive"
-                          });
-                        } finally {
-                          setImageUploading(false);
-                        }
-                      }
-                    }}
-                    className="block w-full text-sm border border-input rounded-lg p-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                  {imageUploading && (
-                    <p className="text-sm text-muted-foreground">Uploading image to Cloudinary...</p>
-                  )}
-                  {form.image && (
-                    <div className="relative">
-                      <img src={form.image} alt="Preview" className="w-full max-h-48 object-contain rounded-lg border border-border" />
-                      <button
-                        type="button"
-                        onClick={() => setForm({ ...form, image: "" })}
-                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <Input value={form.explanation || ""} onChange={(e) => setForm({ ...form, explanation: e.target.value })} />
               </div>
               <div>
                 <Label>Sub-questions (for CQ)</Label>
@@ -1049,7 +670,17 @@ const AdminQuestionListing = () => {
                           <option value="প্রয়োগমূলক">প্রয়োগমূলক</option>
                           <option value="উচ্চতর দক্ষতা">উচ্চতর দক্ষতা</option>
                         </select>
-
+                        <Input
+                          className="col-span-6"
+                          placeholder="Sub-question (Bengali)"
+                          value={sq.questionTextBn || ''}
+                          onChange={(e) => {
+                            const copy = JSON.parse(JSON.stringify(form));
+                            copy.subQuestions = copy.subQuestions || [];
+                            copy.subQuestions[i] = { ...copy.subQuestions[i], questionTextBn: e.target.value };
+                            setForm(copy);
+                          }}
+                        />
                         <button
                           onClick={() => {
                             const copy = JSON.parse(JSON.stringify(form));
@@ -1063,16 +694,8 @@ const AdminQuestionListing = () => {
                           ✕
                         </button>
                       </div>
-                      <div
-                        contentEditable
-                        suppressContentEditableWarning
-                        className="w-full min-h-[100px] rounded-lg border border-input bg-background px-3 py-2 text-sm leading-relaxed overflow-auto whitespace-pre-wrap mb-2"
-                        onFocus={() => setActiveEditorKey(`subq-${i}-text`)}
-                        ref={(el) => registerEditor(`subq-${i}-text`, el, sq.questionTextBn || sq.text || "")}
-                        onInput={(e) => handleEditorChange(`subq-${i}-text`, e.currentTarget)}
-                      />
-                      <textarea
-                        className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm leading-relaxed resize-none overflow-hidden"
+                      <Input
+                        className="w-full"
                         placeholder="Answer (Bengali)"
                         value={sq.answerBn || sq.answer || ''}
                         onChange={(e) => {
@@ -1081,7 +704,6 @@ const AdminQuestionListing = () => {
                           copy.subQuestions[i] = { ...copy.subQuestions[i], answerBn: e.target.value };
                           setForm(copy);
                         }}
-                        rows={2}
                       />
                     </div>
                   ))}
@@ -1125,15 +747,6 @@ const AdminQuestionListing = () => {
                     <option value="hard">Hard</option>
                   </select>
                 </div>
-              </div>
-              <div>
-                <Label>Marks</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={(form.marks ?? 1)}
-                  onChange={(e) => setForm({ ...form, marks: Number(e.target.value) })}
-                />
               </div>
               <div>
                 <Label>Topic (optional)</Label>

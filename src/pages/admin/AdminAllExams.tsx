@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { examsAPI, questionsAPI, examResultsAPI } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -51,9 +52,11 @@ type Exam = {
 
 const AdminAllExams = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
   const [allQuestions, setAllQuestions] = useState<ExamQuestion[]>([]);
+  const [examTypeTab, setExamTypeTab] = useState<"online" | "offline">("online");
   const [tab, setTab] = useState<"live" | "previous">("live");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "live" | "draft">("all");
@@ -106,6 +109,11 @@ const AdminAllExams = () => {
     })();
   }, []);
 
+  const isOfflineExam = (exam: Exam) => {
+    const title = (exam?.title || "").toLowerCase();
+    return title.startsWith("offline") || title.includes("offline exam");
+  };
+
   const filtered = useMemo(() => {
     const listRaw = Array.isArray(exams) ? exams : [];
     let list = listRaw.slice();
@@ -131,8 +139,17 @@ const AdminAllExams = () => {
     return list;
   }, [exams, search, statusFilter, sortBy]);
 
-  const live = filtered.filter((e) => e.status === "live");
-  const previous = filtered.filter((e) => e.status !== "live");
+  const scopedByExamType = useMemo(() => {
+    return examTypeTab === "offline"
+      ? filtered.filter((e) => isOfflineExam(e))
+      : filtered.filter((e) => !isOfflineExam(e));
+  }, [filtered, examTypeTab]);
+
+  const onlineCount = useMemo(() => filtered.filter((e) => !isOfflineExam(e)).length, [filtered]);
+  const offlineCount = useMemo(() => filtered.filter((e) => isOfflineExam(e)).length, [filtered]);
+
+  const live = scopedByExamType.filter((e) => e.status === "live");
+  const previous = scopedByExamType.filter((e) => e.status !== "live");
 
   const toggleStatus = async (exam: Exam) => {
     try {
@@ -222,6 +239,11 @@ const AdminAllExams = () => {
   };
 
   const openEdit = (exam: Exam) => {
+    if (isOfflineExam(exam)) {
+      navigate(`/admin/offline-exam/create/${exam._id}?mode=edit`);
+      return;
+    }
+
     setEditExam(exam);
     setEditOpen(true);
   };
@@ -262,6 +284,27 @@ const AdminAllExams = () => {
             <option value="title">Title</option>
           </select>
         </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => {
+            setExamTypeTab("online");
+            setTab("live");
+          }}
+          className={`px-4 py-2 rounded-lg ${examTypeTab === "online" ? "bg-success text-white" : "bg-card text-foreground"}`}
+        >
+          Online ({onlineCount})
+        </button>
+        <button
+          onClick={() => {
+            setExamTypeTab("offline");
+            setTab("live");
+          }}
+          className={`px-4 py-2 rounded-lg ${examTypeTab === "offline" ? "bg-success text-white" : "bg-card text-foreground"}`}
+        >
+          Offline ({offlineCount})
+        </button>
       </div>
 
       <div className="flex items-center gap-2">
