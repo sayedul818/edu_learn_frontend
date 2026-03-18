@@ -146,6 +146,7 @@ export function renderMathToHtml(input: string | null | undefined): string {
     .replace(/\\\\([a-zA-Z]+)/g, "\\$1");
   // quick escape for HTML
   const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const preserveLineBreaks = (s: string) => s.replace(/\r\n|\r|\n/g, "<br />");
   try {
     // Scan for display $$..$$, inline \(...\) and bare LaTeX commands like \bar{A}
     const parts: string[] = [];
@@ -172,10 +173,10 @@ export function renderMathToHtml(input: string | null | undefined): string {
       lastIndex = pattern.lastIndex;
     }
     if (lastIndex < normalizedTxt.length) parts.push(escapeHtml(normalizedTxt.slice(lastIndex)));
-    return parts.join('');
+    return preserveLineBreaks(parts.join(''));
   } catch (e) {
     // katex failed - return escaped text preserving LaTeX delimiters
-    return escapeHtml(normalizedTxt);
+    return preserveLineBreaks(escapeHtml(normalizedTxt));
   }
 }
 
@@ -185,6 +186,33 @@ export function renderRichOrMathHtml(input: string | null | undefined): string {
   const hasHtml = /<\/?[a-z][\s\S]*>/i.test(txt);
   if (!hasHtml) return renderMathToHtml(txt);
 
+  const preserveLineBreaksOutsideTags = (html: string) =>
+    html
+      .split(/(<[^>]+>)/g)
+      .map((segment) => (segment.startsWith("<") ? segment : segment.replace(/\r\n|\r|\n/g, "<br />")))
+      .join("");
+
+  const allowedStyleProps = new Set([
+    "color",
+    "background",
+    "background-color",
+    "font-size",
+    "font-weight",
+    "font-style",
+    "text-decoration",
+    "text-align",
+    "font-family",
+    "border",
+    "border-collapse",
+    "padding",
+    "margin",
+    "display",
+    "width",
+    "min-width",
+    "max-width",
+    "vertical-align",
+  ]);
+
   const sanitized = txt
     .replace(/\sstyle=(['"])(.*?)\1/gi, (_match, quote, styleValue) => {
       const cleaned = String(styleValue)
@@ -193,13 +221,13 @@ export function renderRichOrMathHtml(input: string | null | undefined): string {
         .filter(Boolean)
         .filter((rule) => {
           const property = rule.split(":")[0]?.trim().toLowerCase();
-          return property !== "color" && property !== "background" && property !== "background-color";
+          return !!property && allowedStyleProps.has(property);
         })
         .join("; ");
 
       return cleaned ? ` style=${quote}${cleaned}${quote}` : "";
     })
-    .replace(/<font\b[^>]*color=(['"]).*?\1[^>]*>/gi, (match) => match.replace(/\scolor=(['"]).*?\1/gi, ""));
+    .replace(/<font\b[^>]*>/gi, (match) => match);
 
-  return sanitized;
+  return preserveLineBreaksOutsideTags(sanitized);
 }
