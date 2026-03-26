@@ -5,7 +5,7 @@ import { examsAPI, examResultsAPI } from "@/services/api";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { Trophy, ArrowRight } from "lucide-react";
+import { Trophy, ArrowRight, Sparkles } from "lucide-react";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
 
 
@@ -103,10 +103,16 @@ const MyResults = () => {
 
   return (
     <div className="space-y-8 font-bangla">
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 p-6 text-white shadow-lg">
+      <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-r from-card via-card to-muted/60 p-5 shadow-lg md:p-6">
+        <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-primary/10 blur-2xl" />
+        <div className="pointer-events-none absolute -left-16 -bottom-16 h-44 w-44 rounded-full bg-emerald-400/10 blur-2xl" />
+
         <div className="relative z-10">
-          <h1 className="text-2xl font-display font-bold">আমার ফলাফল</h1>
-          <p className="mt-1 text-sm text-white/80">আপনার পরীক্ষার পারফরম্যান্স ও অগ্রগতি দেখুন</p>
+          <p className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs text-primary">
+            <Sparkles className="h-3.5 w-3.5" /> Student Performance
+          </p>
+          <h1 className="mt-3 text-2xl font-display font-bold text-foreground">My Results</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Review your exam performance, trends, and progress over time.</p>
         </div>
       </div>
 

@@ -556,7 +556,7 @@ const AdminOfflineExamBuilder = () => {
             <div className="flex items-start justify-between gap-3">
               {style.showQuestion ? (
                 <div
-                  className="flex-1"
+                  className="flex-1 whitespace-pre-wrap break-words"
                   dangerouslySetInnerHTML={{
                     __html: renderRichOrMathHtml(question.questionTextBn || question.questionTextEn || question.questionText || question.questionBn || ""),
                   }}
@@ -568,7 +568,7 @@ const AdminOfflineExamBuilder = () => {
             </div>
 
             {style.showStem && question.parentPassage ? (
-              <div className="mt-2 rounded border border-gray-200 bg-gray-50 px-2 py-1 text-[0.9em]" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(question.parentPassage) }} />
+              <div className="mt-2 rounded border border-gray-200 bg-gray-50 px-2 py-1 text-[0.9em] whitespace-pre-wrap break-words" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(question.parentPassage) }} />
             ) : null}
 
             {question.image ? <img src={question.image} alt="Question" className="mt-3 max-h-56 w-auto rounded-sm object-contain" /> : null}
@@ -580,7 +580,7 @@ const AdminOfflineExamBuilder = () => {
                     <div className="flex gap-2">
                       <div className="w-8 shrink-0">{sq.label || getOptionLabel(sqIndex).replace(/\)|\./g, "")}</div>
                       <div className="min-w-0 flex-1">
-                        <div dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.questionTextBn || sq.questionTextEn || sq.questionText || sq.questionBn || "") }} />
+                        <div className="whitespace-pre-wrap break-words" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.questionTextBn || sq.questionTextEn || sq.questionText || sq.questionBn || "") }} />
                         {sq.image ? <img src={sq.image} alt="Sub-question" className="mt-2 max-h-52 w-auto rounded-sm object-contain" /> : null}
                         {renderOptions(sq.options || [])}
                         {renderAnswer(sq.correctAnswer || sq.answer)}

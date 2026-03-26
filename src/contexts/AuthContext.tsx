@@ -10,6 +10,18 @@ export interface User {
   email: string;
   role: UserRole;
   avatar?: string;
+  class?: string;
+  group?: string;
+  phone?: string;
+  preferences?: {
+    language?: string;
+    theme?: 'light' | 'dark' | 'system';
+    notifications?: {
+      examReminders?: boolean;
+      resultAlerts?: boolean;
+      leaderboardUpdates?: boolean;
+    };
+  };
 }
 
 interface AuthContextType {
@@ -17,6 +29,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string, role: UserRole) => Promise<void>;
   logout: () => void;
+  setUserData: (nextUser: User) => void;
   isAuthenticated: boolean;
 }
 
@@ -62,6 +75,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const setUserData = (nextUser: User) => {
+    setUser(nextUser);
+    localStorage.setItem('exampro_user', JSON.stringify(nextUser));
+  };
+
   // Migrate legacy, shared local/session storage keys to user-scoped keys when a user becomes available.
   // This prevents cached results from one user leaking into another user's session on the same browser.
   useEffect(() => {
@@ -99,7 +117,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [user]);
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, login, signup, logout, setUserData, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );

@@ -36,6 +36,9 @@ const cacheablePrefixes = [
   '/exam-types',
   '/exams',
   '/leaderboard',
+  '/courses',
+  '/enrollments',
+  '/teacher',
 ];
 
 const nonCacheablePrefixes = [
@@ -249,6 +252,20 @@ export const authAPI = {
   register: (data: { name: string; email: string; password: string; role?: string }) =>
     fetchAPI('/auth/register', { method: 'POST', body: data }),
   me: () => fetchAPI('/auth/me'),
+  getProfile: () => fetchAPI('/auth/profile'),
+  updateProfile: (data: { name?: string; email?: string; phone?: string; class?: string; group?: string; avatar?: string }) =>
+    fetchAPI('/auth/profile', { method: 'PATCH', body: data }),
+  updatePassword: (data: { currentPassword: string; newPassword: string }) =>
+    fetchAPI('/auth/password', { method: 'PATCH', body: data }),
+  updatePreferences: (data: {
+    language?: string;
+    theme?: 'light' | 'dark' | 'system';
+    notifications?: {
+      examReminders?: boolean;
+      resultAlerts?: boolean;
+      leaderboardUpdates?: boolean;
+    };
+  }) => fetchAPI('/auth/preferences', { method: 'PATCH', body: data }),
 };
 
 // ============ USERS API ============
@@ -264,4 +281,73 @@ export const usersAPI = {
   changeStatus: (id: string, status: string) => fetchAPI(`/users/${id}/status`, { method: 'PATCH', body: { status } }),
   resetPassword: (id: string, password: string) => fetchAPI(`/users/${id}/reset-password`, { method: 'PATCH', body: { password } }),
   delete: (id: string) => fetchAPI(`/users/${id}`, { method: 'DELETE' }),
+};
+
+// ============ COURSES API ============
+export const coursesAPI = {
+  getAll: (params?: Record<string, any>) => {
+    const qs = params
+      ? `?${new URLSearchParams(
+          Object.entries(params).reduce((acc, [k, v]) => {
+            if (v !== undefined && v !== null && v !== '') acc[k] = String(v);
+            return acc;
+          }, {} as Record<string, string>)
+        ).toString()}`
+      : '';
+    return fetchAPI(`/courses${qs}`);
+  },
+  get: (id: string) => fetchAPI(`/courses/${id}`),
+  create: (data: any) => fetchAPI('/courses', { method: 'POST', body: data }),
+  update: (id: string, data: any) => fetchAPI(`/courses/${id}`, { method: 'PUT', body: data }),
+  delete: (id: string) => fetchAPI(`/courses/${id}`, { method: 'DELETE' }),
+  getStudents: (courseId: string) => fetchAPI(`/courses/${courseId}/students`),
+  addStudent: (courseId: string, data: { studentId: string; enrollmentDate?: string; status?: 'active' | 'pending' }) =>
+    fetchAPI(`/courses/${courseId}/students`, { method: 'POST', body: data }),
+  removeStudent: (courseId: string, studentId: string) => fetchAPI(`/courses/${courseId}/students/${studentId}`, { method: 'DELETE' }),
+  linkExam: (courseId: string, examId: string) => fetchAPI(`/courses/${courseId}/exams`, { method: 'POST', body: { examId } }),
+  unlinkExam: (courseId: string, examId: string) => fetchAPI(`/courses/${courseId}/exams/${examId}`, { method: 'DELETE' }),
+  addMaterial: (courseId: string, data: { title: string; url: string; type?: 'link' | 'pdf' | 'video' | 'doc' }) =>
+    fetchAPI(`/courses/${courseId}/materials`, { method: 'POST', body: data }),
+  removeMaterial: (courseId: string, materialId: string) => fetchAPI(`/courses/${courseId}/materials/${materialId}`, { method: 'DELETE' }),
+  addAnnouncement: (courseId: string, message: string) => fetchAPI(`/courses/${courseId}/announcements`, { method: 'POST', body: { message } }),
+  removeAnnouncement: (courseId: string, announcementId: string) =>
+    fetchAPI(`/courses/${courseId}/announcements/${announcementId}`, { method: 'DELETE' }),
+};
+
+// ============ ENROLLMENTS API ============
+export const enrollmentsAPI = {
+  getAll: (params?: Record<string, any>) => {
+    const qs = params
+      ? `?${new URLSearchParams(
+          Object.entries(params).reduce((acc, [k, v]) => {
+            if (v !== undefined && v !== null && v !== '') acc[k] = String(v);
+            return acc;
+          }, {} as Record<string, string>)
+        ).toString()}`
+      : '';
+    return fetchAPI(`/enrollments${qs}`);
+  },
+  update: (id: string, data: { status?: 'active' | 'pending'; enrollmentDate?: string }) =>
+    fetchAPI(`/enrollments/${id}`, { method: 'PUT', body: data }),
+  delete: (id: string) => fetchAPI(`/enrollments/${id}`, { method: 'DELETE' }),
+};
+
+// ============ TEACHER API ============
+export const teacherAPI = {
+  getStudents: (params?: Record<string, any>) => {
+    const qs = params
+      ? `?${new URLSearchParams(
+          Object.entries(params).reduce((acc, [k, v]) => {
+            if (v !== undefined && v !== null && v !== '') acc[k] = String(v);
+            return acc;
+          }, {} as Record<string, string>)
+        ).toString()}`
+      : '';
+    return fetchAPI(`/teacher/students${qs}`);
+  },
+  createStudent: (data: any) => fetchAPI('/teacher/students', { method: 'POST', body: data }),
+  updateStudent: (id: string, data: any) => fetchAPI(`/teacher/students/${id}`, { method: 'PUT', body: data }),
+  changeStudentStatus: (id: string, status: 'active' | 'inactive') =>
+    fetchAPI(`/teacher/students/${id}/status`, { method: 'PATCH', body: { status } }),
+  deleteStudent: (id: string) => fetchAPI(`/teacher/students/${id}`, { method: 'DELETE' }),
 };

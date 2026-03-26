@@ -10,10 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const AdminQuestions = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const routeBase = user?.role === "teacher" ? "/teacher" : "/admin";
 
   // Database data
   const [classes, setClasses] = useState<any[]>([]);
@@ -86,7 +89,7 @@ const AdminQuestions = () => {
   const toggleSubject = (id: string) => setExpandedSubject(expandedSubject === id ? null : id);
 
   const handleChapterClick = (subjectId: string, chapterId: string) => {
-    navigate(`/admin/questions/${subjectId}/${chapterId}`);
+    navigate(`${routeBase}/questions/${subjectId}/${chapterId}`);
   };
 
   // Get chapters for a specific subject
@@ -99,7 +102,7 @@ const AdminQuestions = () => {
   const [jsonText, setJsonText] = useState("");
   const [parsingError, setParsingError] = useState<string | null>(null);
 
-  const handleCreateGlobal = () => navigate(`/teacher/create-question`);
+  const handleCreateGlobal = () => navigate(`${routeBase}/create-question`);
 
   const handleImportJson = async () => {
     setParsingError(null);
@@ -265,7 +268,7 @@ const AdminQuestions = () => {
                     You need to create a complete hierarchy first:<br />
                     Class → <strong>Group</strong> → Subject → Chapter → Topic
                   </p>
-                  <Button onClick={() => navigate('/admin/sections')}>
+                  <Button onClick={() => navigate(`${routeBase}/sections`)}>
                     Go to Sections Page
                   </Button>
                 </CardContent>
@@ -276,7 +279,7 @@ const AdminQuestions = () => {
                   <BookOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                   <p className="text-muted-foreground">No subjects found for this group.</p>
                   <p className="text-sm text-muted-foreground mt-2">Create sections first from the Sections page!</p>
-                  <Button onClick={() => navigate('/admin/sections')} className="mt-4">
+                  <Button onClick={() => navigate(`${routeBase}/sections`)} className="mt-4">
                     Go to Sections Page
                   </Button>
                 </CardContent>

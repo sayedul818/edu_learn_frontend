@@ -375,7 +375,7 @@ const CreateQuestion = () => {
                 <PlusCircle className="h-4 w-4 mr-2" /> {submitting ? "Creating..." : "Create Question"}
               </Button>
               <Button variant="ghost" className="flex-1" onClick={() => {
-                setForm({ classId: form.classId, groupId: "", subjectId: "", chapterId: "", topicId: "", questionTextEn: "", questionTextBn: "", options: ["", "", "", ""], correctAnswer: "", explanation: "", difficulty: "medium", questionType: "MCQ", tags: [] });
+                setForm({ classId: form.classId, groupId: "", subjectId: "", chapterId: "", topicId: "", examTypeId: "", questionTextEn: "", questionTextBn: "", options: ["", "", "", ""], correctAnswer: "", explanation: "", difficulty: "medium", questionType: "MCQ", marks: 1, tags: [] });
               }}>Reset</Button>
             </div>
           </form>

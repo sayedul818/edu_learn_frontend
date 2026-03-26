@@ -5,10 +5,13 @@ import { Button } from "@/components/ui/button";
 import { useNavigate, useParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { classesAPI, groupsAPI, subjectsAPI, chaptersAPI, topicsAPI } from "@/services/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 const AdminCreateSection = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const routeBase = user?.role === "teacher" ? "/teacher" : "/admin";
   const { id: classId } = useParams<{ id: string }>();
   const isEditing = !!classId;
 
@@ -186,7 +189,7 @@ const AdminCreateSection = () => {
         });
       }
       
-      navigate("/admin/sections");
+      navigate(`${routeBase}/sections`);
     } catch (err) {
       console.error('❌ Overall error:', err);
       toast({ 

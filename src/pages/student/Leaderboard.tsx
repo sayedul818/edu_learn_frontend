@@ -1,8 +1,9 @@
   
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { leaderboardAPI } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { Trophy, Medal, Award } from "lucide-react";
+import { Trophy, Medal, Award, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 
@@ -55,10 +56,16 @@ const Leaderboard = () => {
 
   return (
     <div className="space-y-6 font-bangla">
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 p-6 text-white">
+      <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-r from-card via-card to-muted/60 p-5 md:p-6">
+        <div className="pointer-events-none absolute -right-12 -top-10 h-40 w-40 rounded-full bg-primary/10 blur-2xl" />
+        <div className="pointer-events-none absolute -left-16 -bottom-16 h-44 w-44 rounded-full bg-emerald-400/10 blur-2xl" />
+
         <div className="relative z-10">
-          <h1 className="text-2xl font-display font-bold">Leaderboard</h1>
-          <p className="mt-1 text-sm text-white/80">See how you rank against other students</p>
+          <p className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs text-primary">
+            <Sparkles className="h-3.5 w-3.5" /> Student Rankings
+          </p>
+          <h1 className="mt-3 text-2xl font-display font-bold text-foreground">Leaderboard</h1>
+          <p className="mt-1 text-sm text-muted-foreground">See how you rank against other students</p>
         </div>
       </div>
 
@@ -85,9 +92,12 @@ const Leaderboard = () => {
               <Card>
                 <CardContent className="p-6">
                   <div className="mb-3">{rankIcons[data[0].rank]}</div>
-                  <div className="h-20 w-20 mx-auto rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
-                    {data[0].name ? String(data[0].name).charAt(0) : "?"}
-                  </div>
+                  <Avatar className="h-20 w-20 mx-auto border border-border/60 shadow-lg">
+                    <AvatarImage src={data[0]?.avatar || ""} alt={data[0]?.name || "Student"} />
+                    <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-teal-500 text-white text-2xl font-bold">
+                      {data[0].name ? String(data[0].name).charAt(0) : "?"}
+                    </AvatarFallback>
+                  </Avatar>
                   <p className="font-medium mt-3 text-base">{data[0].name}</p>
                   <div className="mt-3">
                     <motion.span initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.12 }} className="text-3xl font-display font-bold text-emerald-600">{Number(data[0].avgPercentage).toFixed(2)}%</motion.span>
@@ -110,9 +120,12 @@ const Leaderboard = () => {
                 <span className={`w-10 text-center font-display font-bold text-lg ${entry.rank <= 3 ? "text-warning" : "text-muted-foreground"}`}>
                   #{entry.rank}
                 </span>
-                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-emerald-300 to-teal-400 flex items-center justify-center text-white font-bold text-sm shadow-sm">
-                  {entry.name ? String(entry.name).charAt(0) : "?"}
-                </div>
+                <Avatar className="h-9 w-9 border border-border/60 shadow-sm">
+                  <AvatarImage src={entry?.avatar || ""} alt={entry?.name || "Student"} />
+                  <AvatarFallback className="bg-gradient-to-br from-emerald-300 to-teal-400 text-white font-bold text-sm">
+                    {entry.name ? String(entry.name).charAt(0) : "?"}
+                  </AvatarFallback>
+                </Avatar>
                 <div className="flex-1">
                   <p className="font-medium text-sm">{entry.name} {String(entry.studentId) === String(user?.id || (user as any)?._id) && <span className="text-xs text-primary">(You)</span>}</p>
                   <p className="text-xs text-muted-foreground">{entry.examsCompleted} exams</p>

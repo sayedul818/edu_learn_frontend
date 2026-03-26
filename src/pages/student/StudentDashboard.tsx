@@ -1,30 +1,71 @@
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useMemo, useState } from "react";
 import { examsAPI, examResultsAPI, leaderboardAPI } from "@/services/api";
-import { BarChart3, ClipboardList, Trophy, Target, BookOpen, Clock, TrendingUp } from "lucide-react";
 import {
-  BarChart,
-  Bar,
+  Flame,
+  Gauge,
+  BookOpen,
+  ClipboardList,
+  Trophy,
+  ArrowRight,
+  Rocket,
+  Target,
+  Zap,
+  CircleDashed,
+} from "lucide-react";
+import {
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
 } from "recharts";
 import { percentageToGrade } from "@/lib/utils";
 
-const COLORS = ["#10B981", "#2563EB", "#F59E0B"];
+type ExamLike = Record<string, any>;
+type ResultLike = Record<string, any>;
+
+const getExamDate = (exam: ExamLike) => {
+  const direct = exam.startAt || exam.start || exam.date || exam.scheduledAt;
+  if (direct) {
+    const parsed = new Date(direct);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+
+  if (exam.startDate) {
+    const day = new Date(exam.startDate);
+    if (Number.isNaN(day.getTime())) return null;
+    if (!exam.startTime) return day;
+
+    const dayStr = day.toISOString().slice(0, 10);
+    const parsed = new Date(`${dayStr}T${exam.startTime}:00`);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+    return day;
+  }
+
+  return null;
+};
+
+const asPercent = (value: unknown) => {
+  const numeric = Number(value);
+  if (Number.isNaN(numeric)) return 0;
+  return Math.max(0, Math.min(100, numeric));
+};
+
+const readField = (value: unknown, key: string) => {
+  if (!value || typeof value !== "object") return undefined;
+  return (value as Record<string, unknown>)[key];
+};
 
 const StudentDashboard = () => {
   const { user } = useAuth();
-  const [exams, setExams] = useState<any[]>([]);
-  const [results, setResults] = useState<any[]>([]);
+  const [exams, setExams] = useState<ExamLike[]>([]);
+  const [results, setResults] = useState<ResultLike[]>([]);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,260 +73,447 @@ const StudentDashboard = () => {
     const load = async () => {
       setLoading(true);
       try {
-        // fetch student's results and leaderboard
-        const [resultsRes, lbRes] = await Promise.allSettled([
+        const [resultsRes, leaderboardRes, examsRes] = await Promise.allSettled([
           examResultsAPI.getMine(),
           leaderboardAPI.get("weekly"),
+          examsAPI.getMine(),
         ]);
 
-        if (resultsRes.status === "fulfilled") setResults((resultsRes.value?.data || []).filter((r: any) => String(r.studentId) === String(user?.id || (user as any)?._id)));
-        if (lbRes.status === "fulfilled") setLeaderboard(lbRes.value?.data || []);
-
-        // fetch exams: try getMine(), but also fall back to getAll() so upcoming exams created by teachers/admins appear
-        let examsList: any[] = [];
-        try {
-          const mine = await examsAPI.getMine();
-          examsList = mine?.data || [];
-        } catch (err) {
-          // ignore
+        if (resultsRes.status === "fulfilled") {
+          setResults(resultsRes.value?.data || []);
         }
-        if (!examsList || examsList.length === 0) {
+        if (leaderboardRes.status === "fulfilled") {
+          setLeaderboard(leaderboardRes.value?.data || []);
+        }
+
+        let examsList: ExamLike[] = [];
+        if (examsRes.status === "fulfilled") {
+          examsList = examsRes.value?.data || [];
+        }
+        if (examsList.length === 0) {
           try {
-            const all = await examsAPI.getAll();
-            examsList = all?.data || [];
-          } catch (err) {
-            // ignore
+            const fallback = await examsAPI.getAll();
+            examsList = fallback?.data || [];
+          } catch {
+            examsList = [];
           }
         }
-        setExams(examsList || []);
-      } catch (e) {
-        console.error("Dashboard load error", e);
+        setExams(examsList);
+      } catch (error) {
+        console.error("Student dashboard load failed", error);
       } finally {
         setLoading(false);
       }
     };
+
     load();
   }, [user?.id]);
 
-  // Summary stats
-  const totalGiven = results.length;
-  const upcomingExams = useMemo(() => {
-    const now = Date.now();
-    return exams
-      .map((e) => ({
-        ...e,
-        _start: new Date(e.startTime || e.startAt || e.date || e.scheduledAt || e.start || null),
-      }))
-      .filter((e) => e._start && e._start.getTime() > now)
-      .sort((a, b) => a._start - b._start);
-  }, [exams]);
+  const userId = String(user?.id || (user as any)?._id || "");
 
-  const pendingResults = results.filter((r) => r.pendingEvaluation).length;
+  const myRank = useMemo(() => {
+    return leaderboard.find((item) => String(item.studentId) === userId)?.rank || "-";
+  }, [leaderboard, userId]);
 
-  // current streak: consecutive days with submissions up to today
+  const avgScore = useMemo(() => {
+    if (!results.length) return 0;
+    const sum = results.reduce((acc, result) => acc + asPercent(result.percentage), 0);
+    return Number((sum / results.length).toFixed(1));
+  }, [results]);
+
+  const totalStudySeconds = useMemo(() => {
+    return results.reduce((acc, result) => acc + (Number(result.timeTaken) || 0), 0);
+  }, [results]);
+
+  const studyTimeLabel = useMemo(() => {
+    if (!totalStudySeconds) return "0m";
+    const totalMinutes = Math.round(totalStudySeconds / 60);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (!hours) return `${minutes}m`;
+    return `${hours}h ${minutes}m`;
+  }, [totalStudySeconds]);
+
   const currentStreak = useMemo(() => {
-    const dates = Array.from(new Set(results.map((r) => (r.submittedAt ? new Date(r.submittedAt).toISOString().slice(0, 10) : null)).filter(Boolean)));
-    dates.sort((a, b) => (a > b ? -1 : 1));
+    const daySet = new Set(
+      results
+        .map((result) => {
+          if (!result.submittedAt) return null;
+          const d = new Date(result.submittedAt);
+          if (Number.isNaN(d.getTime())) return null;
+          return d.toISOString().slice(0, 10);
+        })
+        .filter(Boolean) as string[]
+    );
+
+    if (!daySet.size) return 0;
     let streak = 0;
-    let day = new Date();
-    for (let i = 0; i < 365; i++) {
+    const day = new Date();
+
+    for (let i = 0; i < 365; i += 1) {
       const iso = day.toISOString().slice(0, 10);
-      if (dates.includes(iso)) streak += 1;
-      else break;
+      if (!daySet.has(iso)) break;
+      streak += 1;
       day.setDate(day.getDate() - 1);
     }
+
     return streak;
   }, [results]);
 
-  // average score
-  const avgScore = results.length ? Number((results.reduce((a, r) => a + (Number(r.percentage) || 0), 0) / results.length).toFixed(2)) : 0;
+  const examLookup = useMemo(() => {
+    const map = new Map<string, ExamLike>();
+    exams.forEach((exam) => {
+      const key = String(exam._id || exam.id);
+      if (key) map.set(key, exam);
+    });
+    return map;
+  }, [exams]);
 
-  // Rank
-  const myRank = leaderboard.find((l) => String(l.studentId) === String(user?.id || (user as any)?._id))?.rank || "-";
+  const timelineData = useMemo(() => {
+    const last7 = [...results]
+      .sort((a, b) => new Date(a.submittedAt || 0).getTime() - new Date(b.submittedAt || 0).getTime())
+      .slice(-7);
 
-  // Performance per subject
-  const subjectAgg: Record<string, { sum: number; count: number }> = {};
-  results.forEach((r) => {
-    const exam = exams.find((e) => String(e._id || e.id) === String(r.examId));
-    const subjectName = exam?.subject?.name || (exam?.subject || "Unknown");
-    if (!subjectAgg[subjectName]) subjectAgg[subjectName] = { sum: 0, count: 0 };
-    subjectAgg[subjectName].sum += Number(r.percentage) || 0;
-    subjectAgg[subjectName].count += 1;
+    return last7.map((result, idx) => {
+      const submitted = result.submittedAt ? new Date(result.submittedAt) : null;
+      const label = submitted ? submitted.toLocaleDateString(undefined, { month: "short", day: "numeric" }) : `R${idx + 1}`;
+      return {
+        day: label,
+        engagement: asPercent(result.percentage),
+      };
+    });
+  }, [results]);
+
+  const upcomingExams = useMemo(() => {
+    const now = Date.now();
+    return exams
+      .map((exam) => ({ ...exam, _startAt: getExamDate(exam) }))
+      .filter((exam) => exam._startAt && exam._startAt.getTime() > now)
+      .sort((a, b) => (a._startAt?.getTime() || 0) - (b._startAt?.getTime() || 0));
+  }, [exams]);
+
+  const subjectRows = useMemo(() => {
+    const subjectStat: Record<string, { scoreSum: number; count: number }> = {};
+
+    results.forEach((result) => {
+      const examId = String(result.examId?._id || result.examId || "");
+      const exam = examLookup.get(examId) || (typeof result.examId === "object" ? result.examId : null);
+
+      const subjectName =
+        exam?.subjectId?.name ||
+        exam?.subject?.name ||
+        (typeof exam?.subjectId === "string" ? "Subject" : null) ||
+        "General";
+
+      if (!subjectStat[subjectName]) {
+        subjectStat[subjectName] = { scoreSum: 0, count: 0 };
+      }
+
+      subjectStat[subjectName].scoreSum += asPercent(result.percentage);
+      subjectStat[subjectName].count += 1;
+    });
+
+    return Object.entries(subjectStat)
+      .map(([subject, value]) => ({
+        subject,
+        progress: Number((value.scoreSum / value.count).toFixed(1)),
+      }))
+      .sort((a, b) => b.progress - a.progress)
+      .slice(0, 8);
+  }, [examLookup, results]);
+
+  const pendingEvaluation = results.filter((result) => !!result.pendingEvaluation).length;
+
+  const recentActivities = useMemo(() => {
+    return [...results]
+      .sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime())
+      .slice(0, 6)
+      .map((result) => {
+        const exam = examLookup.get(String(result.examId?._id || result.examId || "")) || (typeof result.examId === "object" ? result.examId : null);
+        const examTitle = exam?.title || result.examTitle || "Exam";
+        const percentage = asPercent(result.percentage);
+        const xpEarned = Math.max(5, Math.round(percentage / 4));
+
+        return {
+          id: String(result._id || result.id),
+          title: examTitle,
+          subtitle: `${percentage}% (${percentageToGrade(percentage)})`,
+          time: result.submittedAt ? new Date(result.submittedAt).toLocaleString() : "",
+          xpEarned,
+        };
+      });
+  }, [examLookup, results]);
+
+  const missionCards = useMemo(() => {
+    const missions: Array<{ id: string; title: string; progressLabel: string; progress: number; rewardXp: number; rewardCoins: number }> = [];
+
+    if (upcomingExams[0]) {
+      const next = upcomingExams[0];
+      missions.push({
+        id: String(readField(next, "_id") || readField(next, "id") || "next-exam"),
+        title: `Attempt ${readField(next, "title") || "next exam"}`,
+        progressLabel: "Progress: 0/1",
+        progress: 0,
+        rewardXp: 25,
+        rewardCoins: 5,
+      });
+    }
+
+    if (results.length) {
+      missions.push({
+        id: "accuracy-mission",
+        title: "Push average accuracy to 80%",
+        progressLabel: `Progress: ${Math.round(avgScore)}/80`,
+        progress: Math.min(100, (avgScore / 80) * 100),
+        rewardXp: 20,
+        rewardCoins: 4,
+      });
+    }
+
+    if (currentStreak < 7) {
+      missions.push({
+        id: "streak-mission",
+        title: "Build a 7 day streak",
+        progressLabel: `Progress: ${currentStreak}/7`,
+        progress: Math.min(100, (currentStreak / 7) * 100),
+        rewardXp: 15,
+        rewardCoins: 2,
+      });
+    }
+
+    return missions.slice(0, 3);
+  }, [avgScore, currentStreak, results.length, upcomingExams]);
+
+  const currentWeekLabel = new Date().toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
   });
-  const performanceData = Object.entries(subjectAgg).map(([k, v]) => ({ subject: k, score: Math.round(v.sum / v.count) }));
-  if (performanceData.length === 0) performanceData.push({ subject: "No data", score: 0 });
-
-  // Line chart: last 6 results
-  const lastResults = [...results].sort((a, b) => (new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())).slice(0, 6).reverse();
-  const lineData = lastResults.map((r, i) => ({ name: r.examTitle || `Exam ${i + 1}`, score: Number(r.percentage) || 0 }));
-
-  // Pie: MCQ vs CQ aggregate
-  const mcqTotal = results.reduce((a, r) => a + (Number(r.mcqScore) || 0), 0);
-  const cqTotal = results.reduce((a, r) => a + (Number(r.cqAssigned) || 0), 0);
-  const pieData = [
-    { name: "MCQ", value: mcqTotal },
-    { name: "CQ", value: cqTotal },
-  ];
-
-  const today = new Date();
-  const todayStr = today.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
-
-  const stats = [
-    { label: "Total Exams Given", value: totalGiven, icon: <ClipboardList className="h-5 w-5" /> },
-    { label: "Upcoming Exams", value: upcomingExams.length, icon: <Clock className="h-5 w-5" /> },
-    { label: "Average Score", value: `${avgScore}% (${percentageToGrade(avgScore)})`, icon: <BarChart3 className="h-5 w-5" /> },
-    { label: "Pending Results", value: pendingResults, icon: <BookOpen className="h-5 w-5" /> },
-    { label: "Current Streak", value: `${currentStreak} days`, icon: <TrendingUp className="h-5 w-5" /> },
-  ];
-
-  const recentActivities = [
-    ...results.map((r) => ({
-      id: r._id || r.id,
-      date: r.submittedAt ? new Date(r.submittedAt) : null,
-      text: `You submitted "${r.examTitle || 'an exam'}" (${Number(r.percentage || 0).toFixed(0)}% • ${percentageToGrade(r.percentage)})`,
-    })),
-  ].sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0));
 
   return (
-    <div className="space-y-6 font-sans">
-      {/* Welcome */}
-      <div className="overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 p-6 text-white">
-        <div>
-          <h1 className="text-2xl font-display font-bold">👋 Welcome back, {user?.name?.split(" ")[0] || 'Student'}</h1>
-          <div className="flex items-center gap-4 mt-2">
-            <div className="text-sm opacity-90">{todayStr}</div>
-            <div className="text-sm opacity-80">Ready for your next challenge?</div>
+    <div className="space-y-4 md:space-y-5">
+      <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-r from-card via-card to-muted/60 p-5">
+        <div className="pointer-events-none absolute -right-10 -top-14 h-44 w-44 rounded-full bg-primary/10 blur-2xl" />
+        <div className="pointer-events-none absolute -left-16 -bottom-16 h-48 w-48 rounded-full bg-emerald-400/10 blur-2xl" />
+
+        <div className="relative flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs text-primary">
+              <Rocket className="h-3.5 w-3.5" /> Student Dashboard
+            </p>
+            <h1 className="mt-3 text-2xl font-bold text-foreground">Dashboard</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{currentWeekLabel} · Welcome back, {user?.name?.split(" ")[0] || "Student"}</p>
+          </div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-orange-400/30 bg-orange-500/10 px-3 py-1 text-xs font-medium text-orange-300">
+            <Trophy className="h-3.5 w-3.5" />
+            Rank {myRank}
           </div>
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {stats.map((s) => (
-          <Card key={s.label}>
-            <CardContent className="p-4 bg-card">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">{s.label}</p>
-                  <p className="text-2xl font-bold text-foreground mt-1">{s.value}</p>
-                </div>
-                <div className="p-3 rounded-xl bg-muted/30 text-foreground">{s.icon}</div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Performance Overview */}
-        <div>
-          <Card>
-            <CardHeader><CardTitle className="text-lg">Performance Overview</CardTitle></CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-2 h-44">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={lineData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="name" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
-                      <YAxis tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} domain={[0, 100]} />
-                      <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
-                      <Line type="monotone" dataKey="score" stroke="#10B981" strokeWidth={2} dot={{ r: 3 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="h-44">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={30} outerRadius={60} label>
-                        {pieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="mt-2 text-sm text-muted-foreground">MCQ vs CQ (aggregate)</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Subject Performance (beside Performance Overview) */}
-        <div>
-          <Card>
-            <CardHeader><CardTitle className="text-lg">Subject Performance</CardTitle></CardHeader>
-            <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={performanceData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="subject" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
-                    <YAxis tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
-                    <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
-                    <Bar dataKey="score" fill="#2563EB" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* Upcoming Exams (full width under performance) */}
-      <div>
-        <Card>
-          <CardHeader><CardTitle className="text-lg">Upcoming Exams</CardTitle></CardHeader>
-          <CardContent>
-            {upcomingExams.length === 0 && <p className="text-sm text-muted-foreground">No upcoming exams.</p>}
-            <div className="space-y-3">
-              {upcomingExams.slice(0, 12).map((ex) => {
-                // robust parsing for start time
-                const possible = ex.startTime || ex.startAt || ex.start || ex.date || ex.scheduledAt || ex.startDate || ex.startsAt || ex.starts_at;
-                const start = possible ? new Date(possible) : (ex._start || null);
-                if (!start) return null;
-                const now = Date.now();
-                const startsInMs = start.getTime() - now;
-                const startsInDays = Math.ceil(startsInMs / (1000 * 60 * 60 * 24));
-                return (
-                  <div key={ex._id || ex.id} className="flex items-center justify-between p-3 rounded-lg bg-card">
-                    <div>
-                      <p className="text-sm font-medium">{ex.title || ex.name}</p>
-                      <p className="text-xs text-muted-foreground">{start.toLocaleDateString()} {start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                    </div>
-                    <div className="flex flex-col items-end">
-                      {startsInMs <= 0 ? (
-                        <span className="inline-flex items-center gap-2 text-sm text-destructive">🔴 Live Now</span>
-                      ) : (
-                        <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">Starts in {startsInDays} day{startsInDays>1?'s':''}</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent Activity */}
-      <Card>
-        <CardHeader><CardTitle className="text-lg">Recent Activity</CardTitle></CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {recentActivities.length === 0 && <p className="text-sm text-muted-foreground">No recent activity.</p>}
-            {recentActivities.map((a) => (
-              <div key={a.id} className="flex items-start gap-3">
-                <div className="h-8 w-8 rounded-full bg-muted/30 flex items-center justify-center text-foreground">●</div>
-                <div>
-                  <p className="text-sm">{a.text}</p>
-                  <p className="text-xs text-muted-foreground">{a.date ? a.date.toLocaleString() : ''}</p>
-                </div>
-              </div>
-            ))}
+      <Card className="border-border/70">
+        <CardContent className="p-3 md:p-4">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-5 md:gap-3">
+            <Link to="/self-test" className="rounded-xl border border-border/70 bg-muted/20 px-3 py-3 text-center text-xs text-foreground transition-colors hover:bg-muted/40 md:text-sm">
+              <Target className="mx-auto mb-1 h-4 w-4 text-primary" />
+              Practice
+            </Link>
+            <Link to="/questions" className="rounded-xl border border-border/70 bg-muted/20 px-3 py-3 text-center text-xs text-foreground transition-colors hover:bg-muted/40 md:text-sm">
+              <BookOpen className="mx-auto mb-1 h-4 w-4 text-primary" />
+              Question Bank
+            </Link>
+            <Link to="/leaderboard" className="rounded-xl border border-border/70 bg-muted/20 px-3 py-3 text-center text-xs text-foreground transition-colors hover:bg-muted/40 md:text-sm">
+              <Trophy className="mx-auto mb-1 h-4 w-4 text-primary" />
+              Leaderboard
+            </Link>
+            <Link to="/exams" className="rounded-xl border border-border/70 bg-muted/20 px-3 py-3 text-center text-xs text-foreground transition-colors hover:bg-muted/40 md:text-sm">
+              <ClipboardList className="mx-auto mb-1 h-4 w-4 text-primary" />
+              Exams
+            </Link>
+            <Link to="/results" className="rounded-xl border border-border/70 bg-muted/20 px-3 py-3 text-center text-xs text-foreground transition-colors hover:bg-muted/40 md:text-sm">
+              <Gauge className="mx-auto mb-1 h-4 w-4 text-primary" />
+              Results
+            </Link>
           </div>
         </CardContent>
       </Card>
+
+      <div className="grid grid-cols-1 gap-4">
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <Card className="border-border/70">
+              <CardContent className="p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Study Time</p>
+                <p className="mt-2 text-2xl font-semibold text-foreground">{studyTimeLabel}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Across {results.length} submitted exams</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/70">
+              <CardContent className="p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Accuracy</p>
+                <p className="mt-2 text-2xl font-semibold text-foreground">{avgScore}%</p>
+                <p className="mt-1 text-xs text-muted-foreground">Grade {percentageToGrade(avgScore)}</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/70">
+              <CardContent className="p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Exams Taken</p>
+                <p className="mt-2 text-2xl font-semibold text-foreground">{results.length}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Pending evaluation: {pendingEvaluation}</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <Card className="border-border/70">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Your Engagement</CardTitle>
+              </CardHeader>
+              <CardContent className="h-56 pb-4">
+                {timelineData.length ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={timelineData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                      <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="4 4" />
+                      <XAxis dataKey="day" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: "10px",
+                          border: "1px solid hsl(var(--border))",
+                          background: "hsl(var(--card))",
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="engagement"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={2.5}
+                        dot={{ r: 3 }}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No activity yet. Start an exam to see engagement trend.</div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/70">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">Current Streak</CardTitle>
+                  <Flame className="h-4 w-4 text-orange-400" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-xl border border-orange-400/20 bg-orange-500/10 p-3">
+                  <p className="text-3xl font-semibold text-foreground">{currentStreak}</p>
+                  <p className="text-sm text-muted-foreground">day{currentStreak === 1 ? "" : "s"}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">Practice at least one MCQ daily to keep streak alive.</p>
+                </div>
+
+                <div className="mt-3 space-y-2 text-sm">
+                  <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
+                    <span className="text-muted-foreground">Live Exams</span>
+                    <span className="font-medium text-foreground">{exams.filter((exam) => exam.userStatus === "live").length}</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
+                    <span className="text-muted-foreground">Upcoming Exams</span>
+                    <span className="font-medium text-foreground">{upcomingExams.length}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="border-border/70">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Missions</CardTitle>
+                <Rocket className="h-4 w-4 text-primary" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              {missionCards.length ? (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  {missionCards.map((mission) => (
+                    <div key={mission.id} className="rounded-xl border border-border/70 bg-muted/20 p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-medium text-foreground">{mission.title}</p>
+                        <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">Daily</span>
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">{mission.progressLabel}</p>
+                      <Progress className="mt-2 h-2 bg-muted" value={mission.progress} />
+                      <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+                        <span className="inline-flex items-center gap-1"><Zap className="h-3 w-3 text-amber-400" />{mission.rewardXp} XP</span>
+                        <span className="inline-flex items-center gap-1"><CircleDashed className="h-3 w-3 text-orange-400" />{mission.rewardCoins} Coins</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No active mission yet.</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <Card className="border-border/70">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Subjects Report</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {subjectRows.length ? (
+                  subjectRows.map((row) => (
+                    <div key={row.subject} className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
+                      <div className="mb-1 flex items-center justify-between text-sm">
+                        <span className="text-foreground">{row.subject}</span>
+                        <span className="font-medium text-primary">{row.progress}%</span>
+                      </div>
+                      <Progress className="h-2 bg-muted" value={row.progress} />
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">No subject progress found yet.</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/70">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">Recent Activities</CardTitle>
+                  <Link to="/results" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                    View all <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {recentActivities.length ? (
+                  recentActivities.map((activity) => (
+                    <div key={activity.id} className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{activity.title}</p>
+                        <p className="text-xs text-muted-foreground">{activity.subtitle}</p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">{activity.time}</p>
+                      </div>
+                      <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-medium text-emerald-300">+{activity.xpEarned} XP</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">No recent activity.</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+      </div>
+
+      {loading ? <p className="text-xs text-muted-foreground">Refreshing dashboard...</p> : null}
     </div>
   );
 };

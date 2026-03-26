@@ -11,12 +11,15 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
 import ExamCreationModal from "@/components/admin/ExamCreationModal";
 import { renderRichOrMathHtml } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 const ITEMS_PER_PAGE = 8;
 
 const AdminExamBuilder = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const routeBase = user?.role === "teacher" ? "/teacher" : "/admin";
 
   // Database data
   const [classes, setClasses] = useState<any[]>([]);
@@ -190,7 +193,7 @@ const AdminExamBuilder = () => {
       setExamTypeOpen(false);
       setSelectedIds([]);
       toast({ title: "Offline exam draft created", description: "Opening offline builder..." });
-      navigate(`/admin/offline-exam/create/${createdExam._id}?mode=edit`);
+      navigate(`${routeBase}/offline-exam/create/${createdExam._id}?mode=edit`);
     } catch (err) {
       console.error("Failed to create offline exam:", err);
       toast({
@@ -208,7 +211,7 @@ const AdminExamBuilder = () => {
     toast({ title: "পরীক্ষা তৈরি সফল!", description: "নতুন পরীক্ষা সফলভাবে তৈরি হয়েছে" });
 
     if (selectedExamType === "offline" && createdExam?._id) {
-      navigate(`/admin/offline-exam/create/${createdExam._id}?mode=edit`);
+      navigate(`${routeBase}/offline-exam/create/${createdExam._id}?mode=edit`);
     }
   };
 
@@ -498,7 +501,7 @@ const AdminExamBuilder = () => {
                     <div className="space-y-3">
                       <div className="flex items-start gap-2">
                         {renderQuestionHeader(idx)}
-                        <div className="flex-1 min-w-0" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(q.questionTextBn || q.questionTextEn || q.questionText || q.questionBn || "") }} />
+                        <div className="flex-1 min-w-0 text-foreground leading-relaxed" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(q.questionTextBn || q.questionTextEn || q.questionText || q.questionBn || "") }} />
                       </div>
                     </div>
                   )}
@@ -627,7 +630,7 @@ const AdminExamBuilder = () => {
                             <div className="hidden lg:block lg:w-40 lg:flex-none" aria-hidden="true" />
                           </div>
                         ) : (
-                          <div className="flex items-start gap-2"><span className="text-xs font-bold text-muted-foreground whitespace-nowrap">প্রশ্ন {i + 1}</span><div className="flex-1 min-w-0" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(q.questionTextBn || q.questionTextEn || q.questionText || q.questionBn) }} /></div>
+                          <div className="flex items-start gap-2"><span className="text-xs font-bold text-muted-foreground whitespace-nowrap">প্রশ্ন {i + 1}</span><div className="flex-1 min-w-0 text-foreground leading-relaxed" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(q.questionTextBn || q.questionTextEn || q.questionText || q.questionBn) }} /></div>
                         )}
                         {q.image && renderStem(q)}
                         {q.options && (

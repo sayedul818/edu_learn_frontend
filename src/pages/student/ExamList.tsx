@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { examsAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
-import { Clock, FileText, Play, CheckCircle, Calendar, Eye, BookOpen, Trophy } from "lucide-react";
+import { Clock, FileText, Play, CheckCircle, Calendar, Eye, BookOpen, Trophy, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 
 type Exam = {
@@ -324,12 +324,16 @@ const ExamList = () => {
   return (
     <div className="space-y-6 font-bengali">
       {/* Header Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 p-6 text-white">
-        <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10" />
-        <div className="absolute -right-4 bottom-0 h-24 w-24 rounded-full bg-white/5" />
+      <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-r from-card via-card to-muted/60 p-5 md:p-6">
+        <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-primary/10 blur-2xl" />
+        <div className="pointer-events-none absolute -left-16 -bottom-16 h-44 w-44 rounded-full bg-emerald-400/10 blur-2xl" />
+
         <div className="relative z-10">
-          <h1 className="text-2xl font-bold font-display">📝 পরীক্ষা কেন্দ্র</h1>
-          <p className="mt-1 text-sm text-white/80">লাইভ পরীক্ষায় অংশগ্রহণ করুন এবং আপনার ফলাফল দেখুন</p>
+          <p className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs text-primary">
+            <Sparkles className="h-3.5 w-3.5" /> Student Exam Center
+          </p>
+          <h1 className="mt-3 text-2xl font-bold font-display text-foreground">Exam Center</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Join live exams and track your performance with real-time status.</p>
         </div>
       </div>
 

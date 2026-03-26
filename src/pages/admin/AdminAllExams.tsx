@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { parseQuestionWithSubPoints, renderMathToHtml, renderRichOrMathHtml } from "@/lib/utils";
 import ExamCreationModal from "@/components/admin/ExamCreationModal";
+import { useAuth } from "@/contexts/AuthContext";
 
 type ExamQuestion = {
   _id: string;
@@ -53,6 +54,8 @@ type Exam = {
 const AdminAllExams = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const routeBase = user?.role === "teacher" ? "/teacher" : "/admin";
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
   const [allQuestions, setAllQuestions] = useState<ExamQuestion[]>([]);
@@ -240,7 +243,7 @@ const AdminAllExams = () => {
 
   const openEdit = (exam: Exam) => {
     if (isOfflineExam(exam)) {
-      navigate(`/admin/offline-exam/create/${exam._id}?mode=edit`);
+      navigate(`${routeBase}/offline-exam/create/${exam._id}?mode=edit`);
       return;
     }
 

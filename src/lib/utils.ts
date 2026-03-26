@@ -193,9 +193,8 @@ export function renderRichOrMathHtml(input: string | null | undefined): string {
       .join("");
 
   const allowedStyleProps = new Set([
-    "color",
-    "background",
-    "background-color",
+    "white-space",
+    "word-break",
     "font-size",
     "font-weight",
     "font-style",
@@ -227,7 +226,14 @@ export function renderRichOrMathHtml(input: string | null | undefined): string {
 
       return cleaned ? ` style=${quote}${cleaned}${quote}` : "";
     })
-    .replace(/<font\b[^>]*>/gi, (match) => match);
+    // Strip deprecated <font color="..."> attributes to avoid unreadable text in light mode.
+    .replace(/<font\b([^>]*)>/gi, (_match, attrs) => {
+      const cleanedAttrs = String(attrs)
+        .replace(/\scolor\s*=\s*(['"]).*?\1/gi, "")
+        .replace(/\sstyle\s*=\s*(['"]).*?\1/gi, "")
+        .trim();
+      return cleanedAttrs ? `<font ${cleanedAttrs}>` : "<font>";
+    });
 
   return preserveLineBreaksOutsideTags(sanitized);
 }
