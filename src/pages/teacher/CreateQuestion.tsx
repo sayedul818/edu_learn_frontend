@@ -7,6 +7,18 @@ import { PlusCircle, Trash2, CheckCircle, Upload } from "lucide-react";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { useToast } from "@/hooks/use-toast";
 import { classesAPI, groupsAPI, subjectsAPI, chaptersAPI, topicsAPI, questionsAPI, examTypesAPI } from "@/services/api";
+import Papa from "papaparse";
+
+type CsvValidationIssue = {
+  rowIndex: number;
+  errors: string[];
+  raw: Record<string, string>;
+};
+
+type CsvParseSummary = {
+  valid: any[];
+  invalid: CsvValidationIssue[];
+};
 
 const CreateQuestion = () => {
   const { toast } = useToast();
@@ -20,7 +32,7 @@ const CreateQuestion = () => {
   const [examTypes, setExamTypes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [mode, setMode] = useState<"form" | "json">("form"); // Toggle between form and JSON mode
+  const [mode, setMode] = useState<"form" | "json" | "csv">("form"); // Toggle between form, JSON and CSV mode
   const [jsonInput, setJsonInput] = useState("");
   const [jsonHierarchy, setJsonHierarchy] = useState({
     classId: "",
@@ -31,6 +43,11 @@ const CreateQuestion = () => {
   });
   const [jsonQuestions, setJsonQuestions] = useState<any[]>([]);
   const [jsonPreview, setJsonPreview] = useState(false);
+  const [csvInput, setCsvInput] = useState("");
+  const [csvFileName, setCsvFileName] = useState("");
+  const [csvValidQuestions, setCsvValidQuestions] = useState<any[]>([]);
+  const [csvInvalidRows, setCsvInvalidRows] = useState<CsvValidationIssue[]>([]);
+  const [csvPreview, setCsvPreview] = useState(false);
 
   const [form, setForm] = useState({
     classId: "",
@@ -47,6 +64,7 @@ const CreateQuestion = () => {
     difficulty: "medium",
     questionType: "MCQ",
     marks: 1,
+    boardYear: "",
     tags: [] as string[],
   });
 
@@ -119,6 +137,248 @@ const CreateQuestion = () => {
     }
   };
 
+  const getCsvCell = (row: Record<string, string>, aliases: string[]) => {
+    const rowEntries = Object.entries(row || {}).map(([k, v]) => [k.trim().toLowerCase(), v] as const);
+    for (const alias of aliases) {
+      const found = rowEntries.find(([key]) => key === alias.trim().toLowerCase());
+      if (found && found[1] != null && String(found[1]).trim() !== "") return String(found[1]).trim();
+    }
+    return "";
+  };
+
+  const parseJsonArrayField = (value: string) => {
+    if (!value || !value.trim()) return [];
+
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const detectCsvDelimiter = (text: string) => {
+    const firstLine = (text || "").split(/\r?\n/).find((line) => line.trim() !== "") || "";
+    return firstLine.includes("\t") ? "\t" : undefined;
+  };
+
+  const parseTabSeparatedRows = (csvText: string) => {
+    const lines = (csvText || "")
+      .split(/\r?\n/)
+      .map((line) => line.trimEnd())
+      .filter((line) => line.trim() !== "");
+
+    if (lines.length === 0) return [] as Record<string, string>[];
+
+    const headers = lines[0].split("\t").map((header) => header.trim());
+
+    return lines.slice(1).map((line) => {
+      const values = line.split("\t");
+      const row: Record<string, string> = {};
+
+      headers.forEach((header, index) => {
+        row[header] = (values[index] ?? "").trim();
+      });
+
+      return row;
+    });
+  };
+
+  const normalizeDifficulty = (val: string) => {
+    const normalized = (val || "").trim().toLowerCase();
+    if (normalized === "easy" || normalized === "medium" || normalized === "hard") return normalized;
+    return "medium";
+  };
+
+  const normalizeQuestionType = (val: string, hasSubQuestions = false) => {
+    const normalized = (val || "").trim().toUpperCase();
+    if (normalized === "CQ" || normalized === "MCQ") return normalized;
+    return hasSubQuestions ? "CQ" : "MCQ";
+  };
+
+  const splitTags = (val: string) => (val || "").split(/[|,]/).map((x) => x.trim()).filter(Boolean);
+
+  const parseCsvQuestions = (csvText: string): CsvParseSummary => {
+    const delimiter = detectCsvDelimiter(csvText);
+    const parsedRows = delimiter
+      ? parseTabSeparatedRows(csvText)
+      : (Papa.parse<Record<string, string>>(csvText, {
+          header: true,
+          skipEmptyLines: true,
+          transformHeader: (h) => h.trim(),
+        }).data || []);
+
+    const valid: any[] = [];
+    const invalid: CsvValidationIssue[] = [];
+
+    parsedRows.forEach((row, idx) => {
+      const rowIndex = idx + 2;
+      const errors: string[] = [];
+
+      const questionTextEn = getCsvCell(row, ["questionTextEn", "questionEn", "questionText", "question", "passageTextEn", "passage_text_en", "passage", "passageText"]);
+      const questionTextBn = getCsvCell(row, ["questionTextBn", "questionBn", "question_bangla", "questionTextBangla", "passageTextBn", "passage_text_bn"]);
+      const explanation = getCsvCell(row, ["explanation", "solution", "note"]);
+      const boardYear = getCsvCell(row, ["boardYear", "board_year", "board year", "year", "board"]);
+      const difficulty = normalizeDifficulty(getCsvCell(row, ["difficulty", "level"]));
+      const tags = splitTags(getCsvCell(row, ["tags", "tag"]));
+      const subQuestionsRaw = getCsvCell(row, ["subQuestionsJson", "subQuestions", "cqSubQuestions", "blanks"]);
+      const parsedSubQuestions = parseJsonArrayField(subQuestionsRaw);
+      const questionTypeRaw = getCsvCell(row, ["questionType", "type", "qType"]);
+      const normalizedQuestionType = normalizeQuestionType(questionTypeRaw, parsedSubQuestions.length > 0);
+
+      const basePayload: any = {
+        questionType: normalizedQuestionType,
+        questionTextEn,
+        questionTextBn,
+        explanation,
+        difficulty,
+        boardYear,
+        tags,
+      };
+
+      if (normalizedQuestionType === "MCQ") {
+        const optionColumns = [
+          getCsvCell(row, ["optionA", "A", "option1"]),
+          getCsvCell(row, ["optionB", "B", "option2"]),
+          getCsvCell(row, ["optionC", "C", "option3"]),
+          getCsvCell(row, ["optionD", "D", "option4"]),
+          getCsvCell(row, ["optionE", "E", "option5"]),
+          getCsvCell(row, ["optionF", "F", "option6"]),
+        ].filter(Boolean);
+
+        const packedOptions = getCsvCell(row, ["options", "optionText", "option_texts"])
+          .split("|")
+          .map((x) => x.trim())
+          .filter(Boolean);
+
+        const optionTexts = optionColumns.length > 0 ? optionColumns : packedOptions;
+        const correctOption = getCsvCell(row, ["correctOption", "correct", "correct_letter"]).toUpperCase();
+        const correctAnswer = getCsvCell(row, ["correctAnswer", "answer", "correct_text"]);
+
+        if (!questionTextEn && !questionTextBn) errors.push("Missing question text (English or Bengali)");
+        if (optionTexts.length < 2) errors.push("MCQ must have at least 2 options");
+        if (!correctOption && !correctAnswer) errors.push("Missing correctOption or correctAnswer");
+
+        const normalizedOptions = optionTexts.map((text, optionIdx) => {
+          const letter = String.fromCharCode(65 + optionIdx);
+          const isCorrectByLetter = !!correctOption && letter === correctOption;
+          const isCorrectByText = !!correctAnswer && text.trim() === correctAnswer.trim();
+          return {
+            text,
+            isCorrect: isCorrectByLetter || isCorrectByText,
+          };
+        });
+
+        if (!normalizedOptions.some((o) => o.isCorrect)) {
+          errors.push("No option matched as correct answer");
+        }
+
+        if (errors.length > 0) {
+          invalid.push({ rowIndex, errors, raw: row });
+          return;
+        }
+
+        valid.push({
+          ...basePayload,
+          options: normalizedOptions,
+        });
+        return;
+      }
+
+      if (!questionTextEn && !questionTextBn && parsedSubQuestions.length === 0) {
+        errors.push("CQ needs passage text or subQuestionsJson");
+      }
+
+      if (errors.length > 0) {
+        invalid.push({ rowIndex, errors, raw: row });
+        return;
+      }
+
+      valid.push({
+        ...basePayload,
+        subQuestions: parsedSubQuestions,
+      });
+    });
+
+    return { valid, invalid };
+  };
+
+  const handleCsvParse = (text: string) => {
+    if (!text.trim()) {
+      toast({ title: "CSV is empty", variant: "destructive" });
+      return;
+    }
+    const { valid, invalid } = parseCsvQuestions(text);
+    setCsvValidQuestions(valid);
+    setCsvInvalidRows(invalid);
+    setCsvPreview(true);
+    toast({
+      title: "CSV parsed",
+      description: `Valid: ${valid.length}, Invalid: ${invalid.length}`,
+    });
+  };
+
+  const handleCsvFile = async (file?: File | null) => {
+    if (!file) return;
+    setCsvFileName(file.name);
+    const text = await file.text();
+    setCsvInput(text);
+    handleCsvParse(text);
+  };
+
+  const submitCsvQuestions = async () => {
+    if (!jsonHierarchy.classId || !jsonHierarchy.groupId || !jsonHierarchy.subjectId || !jsonHierarchy.chapterId) {
+      toast({ title: "Please select hierarchy (topic optional)", variant: "destructive" });
+      return;
+    }
+
+    if (csvValidQuestions.length === 0) {
+      toast({ title: "No valid rows to import", variant: "destructive" });
+      return;
+    }
+
+    const questionsToSubmit = csvValidQuestions.map((q) => ({
+      ...q,
+      subjectId: jsonHierarchy.subjectId,
+      chapterId: jsonHierarchy.chapterId,
+      ...(jsonHierarchy.topicId && jsonHierarchy.topicId !== "" ? { topicId: jsonHierarchy.topicId } : {}),
+    }));
+
+    try {
+      setSubmitting(true);
+      const response = await questionsAPI.bulkImport(questionsToSubmit, { continueOnError: true, source: "csv" });
+      const importedCount = response.importedCount ?? response.count ?? response.data?.length ?? 0;
+      const rejectedCount = response.rejectedCount ?? 0;
+
+      toast({
+        title: "CSV import completed",
+        description: `Imported: ${importedCount}, Rejected: ${rejectedCount}`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "CSV import failed",
+        description: err?.message || "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const downloadInvalidCsvReport = () => {
+    if (csvInvalidRows.length === 0) {
+      toast({ title: "No invalid rows to export" });
+      return;
+    }
+    const blob = new Blob([JSON.stringify(csvInvalidRows, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "csv-invalid-rows-report.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   // JSON Mode: Get filtered options based on hierarchy
   const getAvailableGroups = () => groups.filter((g) => (g.classId?._id || g.classId) === jsonHierarchy.classId);
   const getAvailableSubjects = () => subjects.filter((s) => (s.groupId?._id || s.groupId) === jsonHierarchy.groupId);
@@ -170,8 +430,13 @@ const CreateQuestion = () => {
     e.preventDefault();
     
     // Validate required fields (topic is optional)
-    if (!form.subjectId || !form.chapterId || !form.questionTextEn || !form.correctAnswer || !form.questionType) {
-      toast({ title: "Missing fields", description: "Please fill required fields: subject/chapter/question/type/correct answer", variant: "destructive" });
+    if (!form.subjectId || !form.chapterId || !form.correctAnswer || !form.questionType) {
+      toast({ title: "Missing fields", description: "Please fill required fields: subject/chapter/type/correct answer", variant: "destructive" });
+      return;
+    }
+
+    if (!form.questionTextEn && !form.questionTextBn) {
+      toast({ title: "Missing question text", description: "Please provide question text in English or Bengali", variant: "destructive" });
       return;
     }
 
@@ -196,6 +461,7 @@ const CreateQuestion = () => {
         // include topic only if provided
         ...(form.topicId && form.topicId !== "" ? { topicId: form.topicId } : {}),
         ...(form.examTypeId && form.examTypeId !== "" ? { examTypeId: form.examTypeId } : {}),
+        ...(form.boardYear && form.boardYear !== "" ? { boardYear: form.boardYear } : {}),
         questionTextEn: form.questionTextEn,
         questionTextBn: form.questionTextBn || "",
         options: formattedOptions,
@@ -212,7 +478,7 @@ const CreateQuestion = () => {
       toast({ title: "Question created successfully!", description: `ID: ${response.data._id}` });
       
       // Reset form
-      setForm({ classId: form.classId, groupId: "", subjectId: "", chapterId: "", topicId: "", examTypeId: "", questionTextEn: "", questionTextBn: "", options: ["", "", "", ""], correctAnswer: "", explanation: "", difficulty: "medium", questionType: "MCQ", marks: 1, tags: [] });
+      setForm({ classId: form.classId, groupId: "", subjectId: "", chapterId: "", topicId: "", examTypeId: "", questionTextEn: "", questionTextBn: "", options: ["", "", "", ""], correctAnswer: "", explanation: "", difficulty: "medium", questionType: "MCQ", marks: 1, boardYear: "", tags: [] });
     } catch (err) {
       console.error('❌ Error creating question:', err);
       toast({ 
@@ -247,6 +513,9 @@ const CreateQuestion = () => {
         </Button>
         <Button variant={mode === "json" ? "default" : "ghost"} onClick={() => setMode("json")} className="rounded-none">
           JSON Mode (Bulk)
+        </Button>
+        <Button variant={mode === "csv" ? "default" : "ghost"} onClick={() => setMode("csv")} className="rounded-none">
+          CSV Mode (Bulk)
         </Button>
       </div>
 
@@ -327,16 +596,21 @@ const CreateQuestion = () => {
                   {examTypes.map((et) => <option key={et._id} value={et._id}>{et.examCategory} - {et.examName} - {et.year}</option>)}
                 </select>
               </div>
+              <div>
+                <Label>Board Year (Optional)</Label>
+                <Input type="text" className="mt-1" value={form.boardYear} onChange={(e) => setForm({ ...form, boardYear: e.target.value })} placeholder="e.g. 2024, 2024 S1, JSC 2024" />
+              </div>
             </div>
 
             <div>
-              <Label>Question Text (English) *</Label>
+              <Label>Question Text (English) (optional)</Label>
               <textarea className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm min-h-[80px]" value={form.questionTextEn} onChange={(e) => setForm({ ...form, questionTextEn: e.target.value })} placeholder="Enter your question in English..." />
             </div>
 
             <div>
               <Label>Question Text (Bengali) (optional)</Label>
               <textarea className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm min-h-[60px]" value={form.questionTextBn} onChange={(e) => setForm({ ...form, questionTextBn: e.target.value })} placeholder="বাংলায় প্রশ্ন লিখুন..." />
+              <p className="text-xs text-muted-foreground mt-1">Provide at least one: English or Bengali question text.</p>
             </div>
 
             <div>
@@ -381,17 +655,15 @@ const CreateQuestion = () => {
           </form>
         </CardContent>
       </Card>
-      ) : (
-        // JSON MODE
+      ) : mode === "json" ? (
         <Card>
           <CardHeader>
             <CardTitle>Bulk Import Questions via JSON</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Hierarchy Selectors */}
             <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg space-y-3 border border-blue-200 dark:border-blue-800">
               <p className="text-sm font-semibold">Select Hierarchy (applies to all questions)</p>
-              
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs">Class *</Label>
@@ -402,7 +674,7 @@ const CreateQuestion = () => {
                     {classes.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
                   </select>
                 </div>
-                
+
                 <div>
                   <Label className="text-xs">Group *</Label>
                   <select className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" value={jsonHierarchy.groupId} onChange={(e) => {
@@ -445,12 +717,11 @@ const CreateQuestion = () => {
               </div>
             </div>
 
-            {/* JSON Input */}
             <div>
               <Label>Paste JSON Data</Label>
-              <textarea 
-                className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono min-h-[200px]" 
-                value={jsonInput} 
+              <textarea
+                className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono min-h-[200px]"
+                value={jsonInput}
                 onChange={(e) => setJsonInput(e.target.value)}
                 placeholder='Paste your JSON here, e.g.:
 {
@@ -467,20 +738,18 @@ const CreateQuestion = () => {
               />
             </div>
 
-            {/* Parse Button */}
             <Button onClick={() => parseJsonQuestions(jsonInput)} className="w-full" variant="outline">
               <Upload className="h-4 w-4 mr-2" /> Parse JSON
             </Button>
 
-            {/* Preview Mode */}
             {jsonPreview && jsonQuestions.length > 0 && (
               <div className="bg-green-50 dark:bg-green-950 p-4 rounded-lg space-y-3 border border-green-200 dark:border-green-800">
                 <p className="text-sm font-semibold">✓ Preview: {jsonQuestions.length} questions ready to import</p>
-                
+
                 <div className="max-h-[300px] overflow-y-auto space-y-2 text-xs">
                   {jsonQuestions.map((q, i) => (
                     <div key={i} className="bg-white dark:bg-slate-900 p-2 rounded border border-green-300 dark:border-green-700">
-                      <p className="font-semibold truncate">{i + 1}. {q.questionTextEn}</p>
+                      <p className="font-semibold truncate">{i + 1}. {q.questionTextEn || q.questionTextBn || "Untitled question"}</p>
                       <p className="text-muted-foreground">Options: {q.options?.length || 0} | Type: {q.questionType || "MCQ"} | Difficulty: {q.difficulty || "medium"}</p>
                     </div>
                   ))}
@@ -488,6 +757,130 @@ const CreateQuestion = () => {
 
                 <Button onClick={() => submitJsonQuestions()} className="w-full" disabled={submitting}>
                   <CheckCircle className="h-4 w-4 mr-2" /> {submitting ? "Importing..." : `Import ${jsonQuestions.length} Questions`}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Bulk Import Questions via CSV</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg space-y-3 border border-blue-200 dark:border-blue-800">
+              <p className="text-sm font-semibold">Select Hierarchy (applies to all questions)</p>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Class *</Label>
+                  <select className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" value={jsonHierarchy.classId} onChange={(e) => {
+                    setJsonHierarchy({ ...jsonHierarchy, classId: e.target.value, groupId: "", subjectId: "", chapterId: "", topicId: "" });
+                  }}>
+                    <option value="">-- Select Class --</option>
+                    {classes.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <Label className="text-xs">Group *</Label>
+                  <select className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" value={jsonHierarchy.groupId} onChange={(e) => {
+                    setJsonHierarchy({ ...jsonHierarchy, groupId: e.target.value, subjectId: "", chapterId: "", topicId: "" });
+                  }} disabled={!jsonHierarchy.classId}>
+                    <option value="">-- Select Group --</option>
+                    {getAvailableGroups().map((g) => <option key={g._id} value={g._id}>{g.name}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <Label className="text-xs">Subject *</Label>
+                  <select className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" value={jsonHierarchy.subjectId} onChange={(e) => {
+                    setJsonHierarchy({ ...jsonHierarchy, subjectId: e.target.value, chapterId: "", topicId: "" });
+                  }} disabled={!jsonHierarchy.groupId}>
+                    <option value="">-- Select Subject --</option>
+                    {getAvailableSubjects().map((s) => <option key={s._id} value={s._id}>{s.name}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <Label className="text-xs">Chapter *</Label>
+                  <select className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" value={jsonHierarchy.chapterId} onChange={(e) => {
+                    setJsonHierarchy({ ...jsonHierarchy, chapterId: e.target.value, topicId: "" });
+                  }} disabled={!jsonHierarchy.subjectId}>
+                    <option value="">-- Select Chapter --</option>
+                    {getAvailableChapters().map((ch) => <option key={ch._id} value={ch._id}>{ch.name}</option>)}
+                  </select>
+                </div>
+
+                <div className="col-span-2">
+                  <Label className="text-xs">Topic (optional)</Label>
+                  <select className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" value={jsonHierarchy.topicId} onChange={(e) => {
+                    setJsonHierarchy({ ...jsonHierarchy, topicId: e.target.value || undefined });
+                  }} disabled={!jsonHierarchy.chapterId}>
+                    <option value="">-- No topic --</option>
+                    {getAvailableTopics().map((t) => <option key={t._id} value={t._id}>{t.name}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Upload CSV File</Label>
+              <Input type="file" accept=".csv,text/csv" onChange={(e) => handleCsvFile(e.target.files?.[0] || null)} />
+              {csvFileName && <p className="text-xs text-muted-foreground">Loaded file: {csvFileName}</p>}
+            </div>
+
+            <div>
+              <Label>Or paste CSV text</Label>
+              <textarea
+                className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono min-h-[220px]"
+                value={csvInput}
+                onChange={(e) => setCsvInput(e.target.value)}
+                placeholder={'Example headers:\nquestionType,questionTextEn,questionTextBn,optionA,optionB,optionC,optionD,correctOption,correctAnswer,difficulty,boardYear,tags,subQuestionsJson\n\nNotes:\n- MCQ row: provide options + correctOption (A/B/C...) or correctAnswer text\n- CQ row: provide passage (questionTextEn/Bn) or subQuestionsJson'}
+              />
+            </div>
+
+            <Button onClick={() => handleCsvParse(csvInput)} className="w-full" variant="outline">
+              <Upload className="h-4 w-4 mr-2" /> Parse CSV
+            </Button>
+
+            {csvPreview && (
+              <div className="space-y-3">
+                <div className="bg-green-50 dark:bg-green-950 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                  <p className="text-sm font-semibold">Valid rows: {csvValidQuestions.length}</p>
+                  <p className="text-sm text-muted-foreground">Invalid rows: {csvInvalidRows.length}</p>
+                </div>
+
+                {csvInvalidRows.length > 0 && (
+                  <div className="bg-destructive/5 border border-destructive/30 rounded-lg p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-destructive">Rejected rows</p>
+                      <Button type="button" variant="outline" size="sm" onClick={downloadInvalidCsvReport}>Download Error Report</Button>
+                    </div>
+                    <div className="max-h-[180px] overflow-y-auto text-xs space-y-2">
+                      {csvInvalidRows.slice(0, 30).map((row) => (
+                        <div key={row.rowIndex} className="bg-background rounded border p-2">
+                          <p className="font-semibold">Row {row.rowIndex}</p>
+                          <p className="text-muted-foreground">{row.errors.join("; ")}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {csvValidQuestions.length > 0 && (
+                  <div className="max-h-[280px] overflow-y-auto space-y-2 text-xs">
+                    {csvValidQuestions.slice(0, 100).map((q, i) => (
+                      <div key={i} className="bg-white dark:bg-slate-900 p-2 rounded border border-green-300 dark:border-green-700">
+                        <p className="font-semibold truncate">{i + 1}. {q.questionTextEn || q.questionTextBn || "Untitled question"}</p>
+                        <p className="text-muted-foreground">Type: {q.questionType} | Difficulty: {q.difficulty || "medium"} | Board: {q.boardYear || "N/A"}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <Button onClick={() => submitCsvQuestions()} className="w-full" disabled={submitting || csvValidQuestions.length === 0}>
+                  <CheckCircle className="h-4 w-4 mr-2" /> {submitting ? "Importing..." : `Import ${csvValidQuestions.length} Valid Questions`}
                 </Button>
               </div>
             )}

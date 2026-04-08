@@ -134,6 +134,61 @@ export function percentageToGrade(p: number | string | null | undefined): string
   return 'F';
 }
 
+// Shuffle word bank in a deterministic way so positions look random but stay stable per question render.
+export function shuffleWordBank(words: string[], seedSource = ""): string[] {
+  const arr = Array.isArray(words) ? [...words] : [];
+  if (arr.length < 2) return arr;
+
+  // FNV-1a style seed hash
+  let seed = 2166136261 >>> 0;
+  const seedText = `${seedSource}|${arr.join("|")}`;
+  for (let i = 0; i < seedText.length; i++) {
+    seed ^= seedText.charCodeAt(i);
+    seed = Math.imul(seed, 16777619) >>> 0;
+  }
+
+  // Deterministic Fisher-Yates
+  for (let i = arr.length - 1; i > 0; i--) {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    const j = seed % (i + 1);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+
+  return arr;
+}
+
+export function splitPipedColumns(value: string | null | undefined, expected = 3): string[] {
+  const parts = String(value || "")
+    .split("|")
+    .map((p) => p.trim());
+
+  const normalized = [...parts];
+  while (normalized.length < expected) normalized.push("");
+  return normalized.slice(0, expected);
+}
+
+// Detect CQ rows where subQuestions are only inline gap markers like (a), (b), ...
+// so UI can keep the passage intact and avoid rendering a separate sub-question list.
+export function isInlineGapPlaceholderCq(subQuestions: any[] | null | undefined): boolean {
+  if (!Array.isArray(subQuestions) || subQuestions.length === 0) return false;
+  if (subQuestions.length < 4) return false;
+
+  const markerPattern = /^\(?[a-z]\)?[\.:]?$/i;
+
+  return subQuestions.every((sq) => {
+    const typeText = String(sq?.type || sq?.subQuestionType || "").toLowerCase();
+    if (/fill\s*blank|blanks?|make\s*sentences?/.test(typeText)) return false;
+
+    const label = String(sq?.label || "").trim();
+    const text = String(sq?.questionTextBn || sq?.questionTextEn || sq?.questionText || sq?.questionBn || "").trim();
+
+    const fromText = markerPattern.test(text.replace(/\s+/g, ""));
+    const fromLabel = markerPattern.test(label.replace(/\s+/g, ""));
+
+    return fromText || fromLabel;
+  });
+}
+
 // Render text that may contain LaTeX math delimiters \(...\) or $$...$$ to HTML using KaTeX.
 // If KaTeX is not available or rendering fails, fall back to escaped plain text.
 export function renderMathToHtml(input: string | null | undefined): string {

@@ -210,8 +210,8 @@ export const questionsAPI = {
   getAll: () => fetchAPI('/questions'),
   get: (id: string) => fetchAPI(`/questions/${id}`),
   create: (data: any) => fetchAPI('/questions', { method: 'POST', body: data }),
-  bulkImport: (questions: any[]) =>
-    fetchAPI('/questions/bulk', { method: 'POST', body: { questions } }),
+  bulkImport: (questions: any[], options?: { dryRun?: boolean; continueOnError?: boolean; source?: string }) =>
+    fetchAPI('/questions/bulk', { method: 'POST', body: { questions, ...(options || {}) } }),
   search: (search: string, filters?: any) => {
     const params = new URLSearchParams({ search, ...filters });
     return fetchAPI(`/questions?${params.toString()}`);

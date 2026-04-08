@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { useToast } from "@/hooks/use-toast";
-import { parseQuestionWithSubPoints, parseInstructionAndContent, renderMathToHtml, renderRichOrMathHtml } from "@/lib/utils";
+import { isInlineGapPlaceholderCq, parseQuestionWithSubPoints, parseInstructionAndContent, renderMathToHtml, renderRichOrMathHtml, shuffleWordBank, splitPipedColumns } from "@/lib/utils";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -381,6 +381,25 @@ const QuestionListing = () => {
             const isSubQuestionDisplay = !!item.isSubQuestion;
             const questionIndex = startIdx + idx + 1;
             const hasSubQuestions = q.subQuestions && Array.isArray(q.subQuestions) && q.subQuestions.length > 0;
+            const isFillBlanksCq = hasSubQuestions && q.questionType === 'CQ' && q.subQuestions.some((sq: any) =>
+              String(sq?.type || '').toLowerCase().includes('fill blank')
+            );
+            const isMakeSentencesCq = hasSubQuestions && q.subQuestions.some((sq: any) =>
+              /make\s*sentences?/.test(String(sq?.type || sq?.subQuestionType || '').toLowerCase())
+            );
+            const isInlineGapCq = hasSubQuestions && isInlineGapPlaceholderCq(q.subQuestions);
+            const fillBlankWordBank = isFillBlanksCq
+              ? shuffleWordBank(q.subQuestions
+                  .map((sq: any) => (sq.answerEn || sq.answerBn || sq.answer || '').toString().trim())
+                  .filter((w: string) => w.length > 0)
+                  .filter((w: string, i: number, arr: string[]) => arr.findIndex((x) => x.toLowerCase() === w.toLowerCase()) === i), String(q?._id || q?.id || questionIndex))
+              : [];
+            const makeSentenceRows = isMakeSentencesCq
+              ? q.subQuestions.map((sq: any, i: number) => ({
+                  label: sq.label || String.fromCharCode(97 + i),
+                  cols: splitPipedColumns(sq.questionTextBn || sq.questionTextEn || sq.questionText || "", 3),
+                }))
+              : [];
 
             const renderQuestionHeader = () => (
               <span className="text-xs font-bold text-muted-foreground whitespace-nowrap">
@@ -408,6 +427,76 @@ const QuestionListing = () => {
 
               if (hasSubQuestions) {
                 const passage = q.questionTextBn || q.questionTextEn || q.questionText || '';
+
+                if (isFillBlanksCq) {
+                  return (
+                    <div className="rounded-lg border border-border bg-white dark:bg-slate-950 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <p className="text-foreground font-semibold leading-snug text-base">
+                          {String(questionIndex).padStart(2, '0')}. Fill in the blanks with the words from the box.
+                        </p>
+                        {q.boardYear ? (
+                          <span className="text-pink-600 dark:text-pink-300 font-bold text-sm">[{q.boardYear}]</span>
+                        ) : null}
+                      </div>
+
+                      {fillBlankWordBank.length > 0 && (
+                        <div className="overflow-x-auto mb-4">
+                          <table className="w-full border-collapse text-center text-sm">
+                            <tbody>
+                              {Array.from({ length: Math.ceil(fillBlankWordBank.length / 5) }).map((_, rowIndex) => {
+                                const rowWords = fillBlankWordBank.slice(rowIndex * 5, rowIndex * 5 + 5);
+                                return (
+                                  <tr key={rowIndex}>
+                                    {rowWords.map((word: string, colIndex: number) => (
+                                      <td key={`${rowIndex}-${colIndex}`} className="border border-border px-2 py-1.5 font-medium">
+                                        <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(word) }} />
+                                      </td>
+                                    ))}
+                                    {Array.from({ length: Math.max(0, 5 - rowWords.length) }).map((__, emptyIndex) => (
+                                      <td key={`empty-${rowIndex}-${emptyIndex}`} className="border border-border px-2 py-1.5" />
+                                    ))}
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+
+                      <div
+                        className="text-foreground leading-loose text-base font-serif"
+                        dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(passage) }}
+                      />
+                    </div>
+                  );
+                }
+
+                if (isMakeSentencesCq) {
+                  return (
+                    <div className="rounded-lg border border-border bg-white dark:bg-slate-950 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <p className="text-foreground font-semibold leading-snug text-base" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(passage || "Make sentences from the table.") }} />
+                        {q.boardYear ? <span className="text-pink-600 dark:text-pink-300 font-bold text-sm">[{q.boardYear}]</span> : null}
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse text-sm">
+                          <tbody>
+                            {makeSentenceRows.map((row: any, rowIndex: number) => (
+                              <tr key={rowIndex}>
+                                <td className="border border-border px-2 py-1.5 w-16 font-semibold">({row.label})</td>
+                                <td className="border border-border px-2 py-1.5" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(row.cols[0]) }} />
+                                <td className="border border-border px-2 py-1.5" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(row.cols[1]) }} />
+                                <td className="border border-border px-2 py-1.5" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(row.cols[2]) }} />
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                }
+
                 return passage ? (
                   <div className="rounded-lg bg-card border border-border text-foreground p-4 leading-relaxed text-sm">
                     <div className="whitespace-pre-line" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(passage) }} />
@@ -447,7 +536,7 @@ const QuestionListing = () => {
             };
 
             const renderSubQuestionRow = () => {
-              if (!hasSubQuestions || isSubQuestionDisplay) return null;
+              if (!hasSubQuestions || isSubQuestionDisplay || isFillBlanksCq || isMakeSentencesCq || isInlineGapCq) return null;
               return (
                 <div className="space-y-3">
                   {q.subQuestions.map((sq: any, i: number) => (
@@ -487,6 +576,11 @@ const QuestionListing = () => {
                         {typeof q.examTypeId === 'object' 
                           ? `${q.examTypeId.examName}${q.examTypeId.year ? ` - ${q.examTypeId.year}` : ''}`
                           : 'Exam'}
+                      </span>
+                    )}
+                    {q.boardYear && (
+                      <span className="px-2 py-0.5 bg-blue/10 text-blue text-[10px] font-bold rounded-full">
+                        {q.boardYear}
                       </span>
                     )}
                   </div>

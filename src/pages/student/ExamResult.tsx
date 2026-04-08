@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { CheckCircle, XCircle, ArrowLeft, RotateCcw, Trophy, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Paperclip, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { parseQuestionWithSubPoints, percentageToGrade, renderMathToHtml, renderRichOrMathHtml } from "@/lib/utils";
+import { isInlineGapPlaceholderCq, parseQuestionWithSubPoints, percentageToGrade, renderMathToHtml, renderRichOrMathHtml, shuffleWordBank, splitPipedColumns } from "@/lib/utils";
 
 const ExamResult = () => {
   const { examId } = useParams();
@@ -341,6 +341,8 @@ const ExamResult = () => {
 
             return {
               id: q._id,
+              boardYear: q.boardYear || "",
+              questionType: q.questionType || "",
               questionText: q.questionTextBn || q.questionTextEn || q.questionText || "",
               parentPassage: q.questionTextBn || q.questionTextEn || q.questionText || "",
               image: q.image || null,
@@ -368,6 +370,8 @@ const ExamResult = () => {
           return {
             id: q._id,
             image: q.image || null,
+            boardYear: q.boardYear || "",
+            questionType: q.questionType || "",
             questionText: q.questionTextBn || q.questionTextEn || q.questionText || "",
             options: q.options || [],
             correctAnswer: q.options?.find((opt: any) => opt.isCorrect)?.text || "",
@@ -686,6 +690,21 @@ const ExamResult = () => {
               const hasCQMarks = result?.cqMarks && q.subQuestions.some((sq: any, sidx: number) =>
                 typeof (result.cqMarks[sq.id] ?? result.cqMarks[sq.dbId] ?? result.cqMarks[`${q.id}-${sidx}`]) !== 'undefined'
               );
+              const isFillBlanksCq = q.subQuestions.some((sq: any) => String(sq?.type || '').toLowerCase().includes('fill blank'));
+              const isMakeSentencesCq = q.subQuestions.some((sq: any) => /make\s*sentences?/.test(String(sq?.type || sq?.subQuestionType || '').toLowerCase()));
+              const isInlineGapCq = isInlineGapPlaceholderCq(q.subQuestions);
+              const fillBlankWordBank = isFillBlanksCq
+                ? shuffleWordBank(q.subQuestions
+                    .map((sq: any) => (sq.correctAnswer || sq.answerEn || sq.answerBn || '').toString().trim())
+                    .filter((w: string) => w.length > 0)
+                    .filter((w: string, i: number, arr: string[]) => arr.findIndex((x) => x.toLowerCase() === w.toLowerCase()) === i), String(q?.id || idx))
+                : [];
+              const makeSentenceRows = isMakeSentencesCq
+                ? q.subQuestions.map((sq: any, i: number) => ({
+                    label: sq.label || String.fromCharCode(97 + i),
+                    cols: splitPipedColumns(sq.questionText || sq.questionTextEn || sq.questionTextBn || "", 3),
+                  }))
+                : [];
               // Attachments (teacher feedback + original uploads merged)
               const qFeedbackAtts = feedbackAttachments[q.id] || [];
               const qOriginalAtts = resultAttachments[q.id] || [];
@@ -727,15 +746,73 @@ const ExamResult = () => {
                           <img src={q.image} alt="প্রশ্নের ছবি" className="max-w-full h-auto max-h-60 object-contain rounded-lg border border-border" />
                         </div>
                       )}
-                      <div className="flex gap-3">
-                        <div className="w-1 flex-shrink-0 rounded-full bg-gradient-to-b from-violet-400 to-indigo-400 self-stretch min-h-[1rem]" />
-                        <div className="font-medium leading-relaxed text-foreground font-bangla text-sm" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(q.parentPassage) }} />
-                      </div>
+                      {isFillBlanksCq ? (
+                        <div className="rounded-lg border border-border bg-white dark:bg-slate-950 p-4">
+                          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                            <p className="text-foreground font-semibold leading-snug text-base">
+                              {String(idx + 1).padStart(2, '0')}. Fill in the blanks with the words from the box.
+                            </p>
+                            {q.boardYear ? <span className="text-pink-600 dark:text-pink-300 font-bold text-sm">[{q.boardYear}]</span> : null}
+                          </div>
+
+                          {fillBlankWordBank.length > 0 && (
+                            <div className="overflow-x-auto mb-4">
+                              <table className="w-full border-collapse text-center text-sm">
+                                <tbody>
+                                  {Array.from({ length: Math.ceil(fillBlankWordBank.length / 5) }).map((_, rowIndex) => {
+                                    const rowWords = fillBlankWordBank.slice(rowIndex * 5, rowIndex * 5 + 5);
+                                    return (
+                                      <tr key={rowIndex}>
+                                        {rowWords.map((word: string, colIndex: number) => (
+                                          <td key={`${rowIndex}-${colIndex}`} className="border border-border px-2 py-1.5 font-medium">
+                                            <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(word) }} />
+                                          </td>
+                                        ))}
+                                        {Array.from({ length: Math.max(0, 5 - rowWords.length) }).map((__, emptyIndex) => (
+                                          <td key={`empty-${rowIndex}-${emptyIndex}`} className="border border-border px-2 py-1.5" />
+                                        ))}
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+
+                          <div className="text-foreground leading-loose text-base font-serif" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(q.parentPassage) }} />
+                        </div>
+                      ) : isMakeSentencesCq ? (
+                        <div className="rounded-lg border border-border bg-white dark:bg-slate-950 p-4">
+                          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                            <p className="text-foreground font-semibold leading-snug text-base" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(q.parentPassage || "Make sentences from the table.") }} />
+                            {q.boardYear ? <span className="text-pink-600 dark:text-pink-300 font-bold text-sm">[{q.boardYear}]</span> : null}
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="w-full border-collapse text-sm">
+                              <tbody>
+                                {makeSentenceRows.map((row: any, rowIndex: number) => (
+                                  <tr key={rowIndex}>
+                                    <td className="border border-border px-2 py-1.5 w-16 font-semibold">({row.label})</td>
+                                    <td className="border border-border px-2 py-1.5" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(row.cols[0]) }} />
+                                    <td className="border border-border px-2 py-1.5" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(row.cols[1]) }} />
+                                    <td className="border border-border px-2 py-1.5" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(row.cols[2]) }} />
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex gap-3">
+                          <div className="w-1 flex-shrink-0 rounded-full bg-gradient-to-b from-violet-400 to-indigo-400 self-stretch min-h-[1rem]" />
+                          <div className="font-medium leading-relaxed text-foreground font-bangla text-sm" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(q.parentPassage) }} />
+                        </div>
+                      )}
                     </div>
                   )}
 
                   {/* ── Sub-questions ── */}
-                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {!isFillBlanksCq && !isMakeSentencesCq && !isInlineGapCq && <div className="divide-y divide-slate-100 dark:divide-slate-800">
                     {q.subQuestions.map((sq: any, sidx: number) => {
                       const userAns = answers[sq.id];
                       const assignedMarkRaw = (() => {
@@ -841,7 +918,7 @@ const ExamResult = () => {
                         </div>
                       );
                     })}
-                  </div>
+                  </div>}
 
                   {/* ── Teacher feedback image slider ── */}
                   {qAtts.length > 0 && (

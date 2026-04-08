@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
-import { parseQuestionWithSubPoints, renderMathToHtml, renderRichOrMathHtml } from "@/lib/utils";
+import { isInlineGapPlaceholderCq, parseQuestionWithSubPoints, renderMathToHtml, renderRichOrMathHtml, shuffleWordBank, splitPipedColumns } from "@/lib/utils";
 import ExamCreationModal from "@/components/admin/ExamCreationModal";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -222,6 +222,8 @@ const AdminAllExams = () => {
       if (qObj.subQuestions && Array.isArray(qObj.subQuestions) && qObj.subQuestions.length > 0) {
         resolved.push({
           _id: qObj._id,
+          boardYear: qObj.boardYear || "",
+          questionType: qObj.questionType || "",
           questionTextBn: qObj.questionTextBn || qObj.questionText || "",
           parentPassage: qObj.questionTextBn || qObj.questionTextEn || qObj.questionText || "",
           subQuestions: (qObj.subQuestions || []).map((sq: any, idx: number) => ({
@@ -230,8 +232,11 @@ const AdminAllExams = () => {
             image: sq.image || qObj.image || null,
             questionTextBn: sq.questionTextBn || sq.questionTextEn || sq.questionText || sq.questionBn || "",
             options: sq.options || [],
+            answer: sq.answer || "",
+            answerBn: sq.answerBn || "",
+            answerEn: sq.answerEn || "",
             explanation: sq.explanation || qObj.explanation || "",
-            type: sq.type,
+            type: sq.type || sq.subQuestionType || "",
           })),
         });
       } else {
@@ -262,6 +267,106 @@ const AdminAllExams = () => {
         <div className="whitespace-pre-line" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(text) }} />
       </div>
     ) : null;
+  };
+
+  const isFillBlanksCqQuestion = (question: any) => {
+    if (!Array.isArray(question?.subQuestions) || question.subQuestions.length === 0) return false;
+    const byType = question.subQuestions.some((sq: any) => {
+      const t = String(sq?.type || sq?.subQuestionType || '').toLowerCase();
+      return /fill\s*blank|blanks?/.test(t);
+    });
+    if (byType) return true;
+    const passage = String(question?.parentPassage || question?.questionTextBn || question?.questionTextEn || question?.questionText || '');
+    return /\([a-z]\)\s*_{2,}|_{2,}/i.test(passage) && question.subQuestions.length >= 4;
+  };
+
+  const isMakeSentencesCqQuestion = (question: any) => {
+    return Array.isArray(question?.subQuestions)
+      && question.subQuestions.length > 0
+      && question.subQuestions.some((sq: any) => /make\s*sentences?/.test(String(sq?.type || sq?.subQuestionType || '').toLowerCase()));
+  };
+
+  const isInlineGapCqQuestion = (question: any) => isInlineGapPlaceholderCq(question?.subQuestions);
+
+  const getFillBlankWordBank = (question: any) => {
+    if (!Array.isArray(question?.subQuestions)) return [] as string[];
+    const uniqueWords = question.subQuestions
+      .map((sq: any) => (sq.answerEn || sq.answerBn || sq.answer || '').toString().trim())
+      .filter((w: string) => w.length > 0)
+      .filter((w: string, i: number, arr: string[]) => arr.findIndex((x) => x.toLowerCase() === w.toLowerCase()) === i);
+
+    return shuffleWordBank(uniqueWords, String(question?._id || question?.id || question?.boardYear || ""));
+  };
+
+  const renderFillBlanksPaper = (question: any, index: number) => {
+    const text = question.parentPassage || question.questionTextBn || question.questionTextEn || question.questionText || "";
+    const words = getFillBlankWordBank(question);
+    return (
+      <div className="rounded-lg border border-border bg-white dark:bg-slate-950 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <p className="text-foreground font-semibold leading-snug text-base">
+            {String(index + 1).padStart(2, '0')}. Fill in the blanks with the words from the box.
+          </p>
+          {question.boardYear ? <span className="text-pink-600 dark:text-pink-300 font-bold text-sm">[{question.boardYear}]</span> : null}
+        </div>
+
+        {words.length > 0 && (
+          <div className="overflow-x-auto mb-4">
+            <table className="w-full border-collapse text-center text-sm">
+              <tbody>
+                {Array.from({ length: Math.ceil(words.length / 5) }).map((_, rowIndex) => {
+                  const rowWords = words.slice(rowIndex * 5, rowIndex * 5 + 5);
+                  return (
+                    <tr key={rowIndex}>
+                      {rowWords.map((word: string, colIndex: number) => (
+                        <td key={`${rowIndex}-${colIndex}`} className="border border-border px-2 py-1.5 font-medium">
+                          <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(word) }} />
+                        </td>
+                      ))}
+                      {Array.from({ length: Math.max(0, 5 - rowWords.length) }).map((__, emptyIndex) => (
+                        <td key={`empty-${rowIndex}-${emptyIndex}`} className="border border-border px-2 py-1.5" />
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div className="text-foreground leading-loose text-base font-serif" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(text) }} />
+      </div>
+    );
+  };
+
+  const renderMakeSentencesPaper = (question: any, index: number) => {
+    const text = question.parentPassage || question.questionTextBn || question.questionTextEn || question.questionText || "";
+    const rows = (question.subQuestions || []).map((sq: any, i: number) => ({
+      label: sq.label || String.fromCharCode(97 + i),
+      cols: splitPipedColumns(sq.questionTextBn || sq.questionTextEn || sq.questionText || "", 3),
+    }));
+    return (
+      <div className="rounded-lg border border-border bg-white dark:bg-slate-950 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <p className="text-foreground font-semibold leading-snug text-base" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(text || "Make sentences from the table.") }} />
+          {question.boardYear ? <span className="text-pink-600 dark:text-pink-300 font-bold text-sm">[{question.boardYear}]</span> : null}
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
+            <tbody>
+              {rows.map((row: any, rowIndex: number) => (
+                <tr key={rowIndex}>
+                  <td className="border border-border px-2 py-1.5 w-16 font-semibold">({row.label})</td>
+                  <td className="border border-border px-2 py-1.5" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(row.cols[0]) }} />
+                  <td className="border border-border px-2 py-1.5" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(row.cols[1]) }} />
+                  <td className="border border-border px-2 py-1.5" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(row.cols[2]) }} />
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -425,6 +530,9 @@ const AdminAllExams = () => {
                           <p className="text-sm text-muted-foreground">{exam.duration} mins • {exam.totalMarks} marks</p>
                           <div className="mt-2 space-y-2">
                             {getQuestionsForExam(exam).map((q:any, i:number) => {
+                              const isFillBlanksCq = isFillBlanksCqQuestion(q);
+                              const isMakeSentencesCq = isMakeSentencesCqQuestion(q);
+                              const isInlineGapCq = isInlineGapCqQuestion(q);
                               // If grouped CQ parent
                               if (q.subQuestions && Array.isArray(q.subQuestions)) {
                                 return (
@@ -438,16 +546,16 @@ const AdminAllExams = () => {
                                           </div>
                                           <div className="hidden lg:block lg:w-40 lg:flex-none" aria-hidden="true" />
                                         </div>
-                                        {renderStem(q)}
+                                        {isFillBlanksCq ? renderFillBlanksPaper(q, i) : isMakeSentencesCq ? renderMakeSentencesPaper(q, i) : renderStem(q)}
                                       </div>
                                     ) : (
                                       <div className="mb-3">
                                         <div className="flex items-start gap-2 mb-3">{renderQuestionHeader(i)}<div className="flex-1 min-w-0" /></div>
-                                        {renderStem(q)}
+                                        {isFillBlanksCq ? renderFillBlanksPaper(q, i) : isMakeSentencesCq ? renderMakeSentencesPaper(q, i) : renderStem(q)}
                                       </div>
                                     )}
 
-                                    <div className="space-y-2">
+                                    {!isFillBlanksCq && !isMakeSentencesCq && !isInlineGapCq && <div className="space-y-2">
                                       {q.subQuestions.map((sq:any, idx:number) => (
                                         <div key={sq._id} className="border-l-2 border-success/30 pl-3">
                                           <div className="flex items-start gap-2">
@@ -472,7 +580,7 @@ const AdminAllExams = () => {
                                           </div>
                                         </div>
                                       ))}
-                                    </div>
+                                    </div>}
                                   </div>
                                 );
                               }

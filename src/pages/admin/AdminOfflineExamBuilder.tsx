@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { examsAPI } from "@/services/api";
-import { cn, renderRichOrMathHtml } from "@/lib/utils";
+import { cn, isInlineGapPlaceholderCq, renderRichOrMathHtml, shuffleWordBank, splitPipedColumns } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import {
   FileDown,
@@ -542,6 +542,31 @@ const AdminOfflineExamBuilder = () => {
 
   const renderQuestion = (question: any, index: number) => {
     const hasSubQuestions = Array.isArray(question.subQuestions) && question.subQuestions.length > 0;
+    const passageText = question.parentPassage || question.questionTextBn || question.questionTextEn || question.questionText || question.questionBn || "";
+    const isFillBlanksCq = hasSubQuestions && (() => {
+      const byType = question.subQuestions.some((sq: any) => {
+        const t = String(sq?.type || sq?.subQuestionType || '').toLowerCase();
+        return /fill\s*blank|blanks?/.test(t);
+      });
+      if (byType) return true;
+      return /\([a-z]\)\s*_{2,}|_{2,}/i.test(String(passageText)) && question.subQuestions.length >= 4;
+    })();
+    const isMakeSentencesCq = hasSubQuestions && question.subQuestions.some((sq: any) =>
+      /make\s*sentences?/.test(String(sq?.type || sq?.subQuestionType || '').toLowerCase())
+    );
+    const isInlineGapCq = hasSubQuestions && isInlineGapPlaceholderCq(question.subQuestions);
+    const fillBlankWordBank = isFillBlanksCq
+      ? shuffleWordBank(question.subQuestions
+          .map((sq: any) => (sq.answerEn || sq.answerBn || sq.answer || sq.correctAnswer || '').toString().trim())
+          .filter((w: string) => w.length > 0)
+          .filter((w: string, i: number, arr: string[]) => arr.findIndex((x) => x.toLowerCase() === w.toLowerCase()) === i), String(question?._id || question?.id || index))
+      : [];
+    const makeSentenceRows = isMakeSentencesCq
+      ? question.subQuestions.map((sq: any, i: number) => ({
+          label: sq.label || String.fromCharCode(97 + i),
+          cols: splitPipedColumns(sq.questionTextBn || sq.questionTextEn || sq.questionText || "", 3),
+        }))
+      : [];
     const marks = getQuestionMarks(question._id || question.id);
 
     return (
@@ -554,7 +579,7 @@ const AdminOfflineExamBuilder = () => {
           <div className="shrink-0 whitespace-nowrap pr-2 font-semibold leading-tight">{getQuestionNumber(index)}.</div>
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3">
-              {style.showQuestion ? (
+              {style.showQuestion && !isFillBlanksCq && !isMakeSentencesCq ? (
                 <div
                   className="flex-1 whitespace-pre-wrap break-words"
                   dangerouslySetInnerHTML={{
@@ -567,13 +592,67 @@ const AdminOfflineExamBuilder = () => {
               {style.showMarks ? <div className="text-xs font-semibold text-gray-600">[{marks || question.marks || 0}]</div> : null}
             </div>
 
-            {style.showStem && question.parentPassage ? (
-              <div className="mt-2 rounded border border-gray-200 bg-gray-50 px-2 py-1 text-[0.9em] whitespace-pre-wrap break-words" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(question.parentPassage) }} />
+            {style.showStem && passageText ? (
+              isFillBlanksCq ? (
+                <div className="mt-2 rounded border border-gray-200 bg-white px-3 py-2">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <strong className="text-[0.95em]">{String(index + 1).padStart(2, '0')}. Fill in the blanks with the words from the box.</strong>
+                    {question.boardYear ? <span className="text-[0.9em] font-bold text-pink-700">[{question.boardYear}]</span> : null}
+                  </div>
+                  {fillBlankWordBank.length > 0 && (
+                    <div className="mb-2 overflow-x-auto">
+                      <table className="w-full border-collapse text-center text-[0.9em]">
+                        <tbody>
+                          {Array.from({ length: Math.ceil(fillBlankWordBank.length / 5) }).map((_, rowIndex) => {
+                            const rowWords = fillBlankWordBank.slice(rowIndex * 5, rowIndex * 5 + 5);
+                            return (
+                              <tr key={rowIndex}>
+                                {rowWords.map((word: string, colIndex: number) => (
+                                  <td key={`${rowIndex}-${colIndex}`} className="border border-gray-300 px-2 py-1 font-medium">
+                                    <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(word) }} />
+                                  </td>
+                                ))}
+                                {Array.from({ length: Math.max(0, 5 - rowWords.length) }).map((__, emptyIndex) => (
+                                  <td key={`empty-${rowIndex}-${emptyIndex}`} className="border border-gray-300 px-2 py-1" />
+                                ))}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  <div className="text-[0.95em] leading-relaxed" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(passageText) }} />
+                </div>
+              ) : isMakeSentencesCq ? (
+                <div className="mt-2 rounded border border-gray-200 bg-white px-3 py-2">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <strong className="text-[0.95em]" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(passageText || "Make sentences from the table.") }} />
+                    {question.boardYear ? <span className="text-[0.9em] font-bold text-pink-700">[{question.boardYear}]</span> : null}
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-[0.9em]">
+                      <tbody>
+                        {makeSentenceRows.map((row: any, rowIndex: number) => (
+                          <tr key={rowIndex}>
+                            <td className="border border-gray-300 px-2 py-1 font-semibold w-16">({row.label})</td>
+                            <td className="border border-gray-300 px-2 py-1" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(row.cols[0]) }} />
+                            <td className="border border-gray-300 px-2 py-1" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(row.cols[1]) }} />
+                            <td className="border border-gray-300 px-2 py-1" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(row.cols[2]) }} />
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-2 rounded border border-gray-200 bg-gray-50 px-2 py-1 text-[0.9em] whitespace-pre-wrap break-words" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(passageText) }} />
+              )
             ) : null}
 
             {question.image ? <img src={question.image} alt="Question" className="mt-3 max-h-56 w-auto rounded-sm object-contain" /> : null}
 
-            {hasSubQuestions ? (
+            {hasSubQuestions && !isFillBlanksCq && !isMakeSentencesCq && !isInlineGapCq ? (
               <div className="mt-3 space-y-3">
                 {question.subQuestions.map((sq: any, sqIndex: number) => (
                   <div key={`${question._id || index}-${sqIndex}`} className="break-inside-avoid pl-2">

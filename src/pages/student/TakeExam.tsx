@@ -7,7 +7,7 @@ import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Clock, ChevronLeft, ChevronRight, Flag, AlertTriangle } from "lucide-react";
-import { parseQuestionWithSubPoints, renderMathToHtml, renderRichOrMathHtml } from "@/lib/utils";
+import { isInlineGapPlaceholderCq, parseQuestionWithSubPoints, renderMathToHtml, renderRichOrMathHtml, shuffleWordBank, splitPipedColumns } from "@/lib/utils";
 
 const TakeExam = () => {
   const { examId } = useParams();
@@ -195,6 +195,8 @@ const TakeExam = () => {
               transformedQuestions.push({
                 id: q._id,
                 image: q.image || null,
+                boardYear: q.boardYear || "",
+                questionType: q.questionType || "",
                 parentPassage: parentPassage || undefined,
                 subQuestions: subs,
               });
@@ -205,6 +207,8 @@ const TakeExam = () => {
             transformedQuestions.push({
               id: q._id,
               image: q.image || null,
+              boardYear: q.boardYear || "",
+              questionType: q.questionType || "",
               questionText: parentPassage,
               options,
               correctAnswer: normalizedOptions.find((opt: any) => opt.isCorrect)?.text || "",
@@ -572,57 +576,152 @@ const TakeExam = () => {
 
               {qq.subQuestions ? (
                 <div>
-                  {/* Question image (parent) */}
-                  {qq.image && (
-                    <div className="w-full flex justify-center bg-gray-50 py-3 mb-3 border border-border rounded">
-                      <img src={qq.image} alt="Question" className="max-w-full h-auto max-h-60 object-contain rounded" />
-                    </div>
-                  )}
+                  {(() => {
+                    const isFillBlanksCq = Array.isArray(qq.subQuestions)
+                      && qq.subQuestions.length > 0
+                      && qq.subQuestions.some((sq: any) => String(sq?.type || '').toLowerCase().includes('fill blank'));
+                    const fillBlankWordBank = isFillBlanksCq
+                      ? shuffleWordBank(qq.subQuestions
+                          .map((sq: any) => (sq.correctAnswer || sq.answerEn || sq.answerBn || '').toString().trim())
+                          .filter((w: string) => w.length > 0)
+                          .filter((w: string, i: number, arr: string[]) => arr.findIndex((x) => x.toLowerCase() === w.toLowerCase()) === i), String(qq?.id || examId || idx))
+                      : [];
+                    const isMakeSentencesCq = Array.isArray(qq.subQuestions)
+                      && qq.subQuestions.length > 0
+                      && qq.subQuestions.some((sq: any) => /make\s*sentences?/.test(String(sq?.type || sq?.subQuestionType || '').toLowerCase()));
+                    const isInlineGapCq = Array.isArray(qq.subQuestions) && isInlineGapPlaceholderCq(qq.subQuestions);
+                    const makeSentenceRows = isMakeSentencesCq
+                      ? qq.subQuestions.map((sq: any, i: number) => ({
+                          label: sq.label || String.fromCharCode(97 + i),
+                          cols: splitPipedColumns(sq.questionText || sq.questionTextEn || sq.questionTextBn || "", 3),
+                        }))
+                      : [];
 
-                  {qq.parentPassage ? (
-                    <div className="mb-4 rounded-lg bg-card border border-border text-foreground p-4 leading-relaxed text-sm">
-                      <div className="whitespace-pre-line" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(qq.parentPassage) }} />
-                    </div>
-                  ) : null}
+                    if (!isFillBlanksCq && !isMakeSentencesCq) return null;
 
-                  <div className="space-y-3">
-                    {qq.subQuestions.map((sq: any, sidx: number) => (
-                      <div key={sq.id || sidx} className="mb-4">
-                        <div className="text-lg font-medium mb-2 flex items-start gap-3">
-                          <div className="font-semibold min-w-[2.5rem]">{sq.label || ['ক','খ','গ','ঘ'][sidx] || `${sidx+1}.`}</div>
-                          <div className="flex-1">
-                            {/* Sub-question image (falls back to parent image) */}
-                            {sq.image && (
-                              <div className="w-full flex justify-center mb-2">
-                                <img src={sq.image} alt="Sub-question" className="max-w-full h-auto max-h-48 object-contain rounded" />
-                              </div>
-                            )}
-                            <div className="mb-2"><span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.questionText) }} /></div>
-                            {sq.options && (
-                              <div className="space-y-2">
-                                {sq.options.map((opt: any, oi: number) => {
-                                  const optText = typeof opt === 'string' ? opt : opt.text;
-                                  const isSelected = answers[sq.id] === optText;
-                                  const isLocked = exam.allowAnswerChange === false && Boolean(answers[sq.id]) && !isSelected;
+                    return (
+                      <div className="mb-4 rounded-lg border border-border bg-white dark:bg-slate-950 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                          <p className="text-foreground font-semibold leading-snug text-base">
+                            {String(exam.questionPresentation === "one-by-one" ? currentQ + 1 : idx + 1).padStart(2, '0')}. Fill in the blanks with the words from the box.
+                          </p>
+                          {qq.boardYear ? <span className="text-pink-600 dark:text-pink-300 font-bold text-sm">[{qq.boardYear}]</span> : null}
+                        </div>
+
+                        {isFillBlanksCq && fillBlankWordBank.length > 0 && (
+                          <div className="overflow-x-auto mb-4">
+                            <table className="w-full border-collapse text-center text-sm">
+                              <tbody>
+                                {Array.from({ length: Math.ceil(fillBlankWordBank.length / 5) }).map((_, rowIndex) => {
+                                  const rowWords = fillBlankWordBank.slice(rowIndex * 5, rowIndex * 5 + 5);
                                   return (
-                                    <button
-                                      key={oi}
-                                      disabled={isLocked}
-                                      onClick={() => setAnswers({ ...answers, [sq.id]: optText })}
-                                      className={`w-full text-left p-3 rounded-xl border text-sm ${isSelected ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border hover:border-primary/50 hover:bg-muted/50'} ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
-                                    >
-                                      <span className="font-bold mr-3">{String.fromCharCode(65 + oi)}</span>
-                                      <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(optText) }} />
-                                    </button>
+                                    <tr key={rowIndex}>
+                                      {rowWords.map((word: string, colIndex: number) => (
+                                        <td key={`${rowIndex}-${colIndex}`} className="border border-border px-2 py-1.5 font-medium">
+                                          <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(word) }} />
+                                        </td>
+                                      ))}
+                                      {Array.from({ length: Math.max(0, 5 - rowWords.length) }).map((__, emptyIndex) => (
+                                        <td key={`empty-${rowIndex}-${emptyIndex}`} className="border border-border px-2 py-1.5" />
+                                      ))}
+                                    </tr>
                                   );
                                 })}
-                              </div>
-                            )}
+                              </tbody>
+                            </table>
                           </div>
-                        </div>
+                        )}
+
+                        {qq.parentPassage ? (
+                          <div className="text-foreground leading-loose text-base font-serif" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(qq.parentPassage) }} />
+                        ) : null}
+
+                        {isMakeSentencesCq && (
+                          <div className="overflow-x-auto mt-3">
+                            <table className="w-full border-collapse text-sm">
+                              <tbody>
+                                {makeSentenceRows.map((row: any, rowIndex: number) => (
+                                  <tr key={rowIndex}>
+                                    <td className="border border-border px-2 py-1.5 w-16 font-semibold">({row.label})</td>
+                                    <td className="border border-border px-2 py-1.5" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(row.cols[0]) }} />
+                                    <td className="border border-border px-2 py-1.5" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(row.cols[1]) }} />
+                                    <td className="border border-border px-2 py-1.5" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(row.cols[2]) }} />
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })()}
+
+                  {(() => {
+                    const isFillBlanksCq = Array.isArray(qq.subQuestions)
+                      && qq.subQuestions.length > 0
+                      && qq.subQuestions.some((sq: any) => String(sq?.type || '').toLowerCase().includes('fill blank'));
+                    const isMakeSentencesCq = Array.isArray(qq.subQuestions)
+                      && qq.subQuestions.length > 0
+                      && qq.subQuestions.some((sq: any) => /make\s*sentences?/.test(String(sq?.type || sq?.subQuestionType || '').toLowerCase()));
+                    const isInlineGapCq = Array.isArray(qq.subQuestions) && isInlineGapPlaceholderCq(qq.subQuestions);
+                    if (isFillBlanksCq || isMakeSentencesCq || isInlineGapCq) return null;
+
+                    return (
+                      <>
+                        {/* Question image (parent) */}
+                        {qq.image && (
+                          <div className="w-full flex justify-center bg-gray-50 py-3 mb-3 border border-border rounded">
+                            <img src={qq.image} alt="Question" className="max-w-full h-auto max-h-60 object-contain rounded" />
+                          </div>
+                        )}
+
+                        {qq.parentPassage ? (
+                          <div className="mb-4 rounded-lg bg-card border border-border text-foreground p-4 leading-relaxed text-sm">
+                            <div className="whitespace-pre-line" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(qq.parentPassage) }} />
+                          </div>
+                        ) : null}
+
+                        <div className="space-y-3">
+                          {qq.subQuestions.map((sq: any, sidx: number) => (
+                            <div key={sq.id || sidx} className="mb-4">
+                              <div className="text-lg font-medium mb-2 flex items-start gap-3">
+                                <div className="font-semibold min-w-[2.5rem]">{sq.label || ['ক','খ','গ','ঘ'][sidx] || `${sidx+1}.`}</div>
+                                <div className="flex-1">
+                                  {/* Sub-question image (falls back to parent image) */}
+                                  {sq.image && (
+                                    <div className="w-full flex justify-center mb-2">
+                                      <img src={sq.image} alt="Sub-question" className="max-w-full h-auto max-h-48 object-contain rounded" />
+                                    </div>
+                                  )}
+                                  <div className="mb-2"><span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.questionText) }} /></div>
+                                  {sq.options && (
+                                    <div className="space-y-2">
+                                      {sq.options.map((opt: any, oi: number) => {
+                                        const optText = typeof opt === 'string' ? opt : opt.text;
+                                        const isSelected = answers[sq.id] === optText;
+                                        const isLocked = exam.allowAnswerChange === false && Boolean(answers[sq.id]) && !isSelected;
+                                        return (
+                                          <button
+                                            key={oi}
+                                            disabled={isLocked}
+                                            onClick={() => setAnswers({ ...answers, [sq.id]: optText })}
+                                            className={`w-full text-left p-3 rounded-xl border text-sm ${isSelected ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border hover:border-primary/50 hover:bg-muted/50'} ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                          >
+                                            <span className="font-bold mr-3">{String.fromCharCode(65 + oi)}</span>
+                                            <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(optText) }} />
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               ) : (
                 <div>

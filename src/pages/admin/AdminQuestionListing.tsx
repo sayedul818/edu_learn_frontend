@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { Search, ArrowLeft, CheckCircle, Info, BarChart3, Flag, Bookmark, BookOpen, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { parseQuestionWithSubPoints, renderRichOrMathHtml } from "@/lib/utils";
+import { isInlineGapPlaceholderCq, parseQuestionWithSubPoints, renderRichOrMathHtml, shuffleWordBank, splitPipedColumns } from "@/lib/utils";
 import { uploadImageToCloudinary } from "@/services/cloudinary";
 
 const ITEMS_PER_PAGE = 5;
@@ -105,6 +105,14 @@ const RichTextEditor = ({
       />
     </div>
   );
+};
+
+const resolveQuestionText = (...values: Array<any>) => {
+  for (const value of values) {
+    const text = String(value ?? "").trim();
+    if (text) return text;
+  }
+  return "";
 };
 
 const AdminQuestionListing = () => {
@@ -733,6 +741,26 @@ const AdminQuestionListing = () => {
         {visible.map((item, idx) => {
           const q = item.isSubQuestion ? item.parentQuestion : item;
           const isSubQuestionDisplay = item.isSubQuestion;
+          const hasSubQuestions = (q as any).subQuestions && Array.isArray((q as any).subQuestions) && (q as any).subQuestions.length > 0;
+          const isFillBlanksCq = hasSubQuestions && (q as any).questionType === 'CQ' && (q as any).subQuestions.some((sq: any) =>
+            String(sq?.type || '').toLowerCase().includes('fill blank')
+          );
+          const isMakeSentencesCq = hasSubQuestions && (q as any).subQuestions.some((sq: any) =>
+            /make\s*sentences?/.test(String(sq?.type || sq?.subQuestionType || '').toLowerCase())
+          );
+          const isInlineGapCq = hasSubQuestions && isInlineGapPlaceholderCq((q as any).subQuestions);
+          const fillBlankWordBank = isFillBlanksCq
+            ? shuffleWordBank((q as any).subQuestions
+                .map((sq: any) => (sq.answerEn || sq.answerBn || sq.answer || '').toString().trim())
+                .filter((w: string) => w.length > 0)
+                .filter((w: string, i: number, arr: string[]) => arr.findIndex((x) => x.toLowerCase() === w.toLowerCase()) === i), String((q as any)?._id || (q as any)?.id || startIdx + idx + 1))
+            : [];
+          const makeSentenceRows = isMakeSentencesCq
+            ? (q as any).subQuestions.map((sq: any, i: number) => ({
+                label: sq.label || String.fromCharCode(97 + i),
+                cols: splitPipedColumns(sq.questionTextBn || sq.questionTextEn || sq.questionText || "", 3),
+              }))
+            : [];
 
           return (
           <motion.div key={item._id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }} className="bg-muted/30 rounded-xl border border-border p-5 shadow-sm hover:shadow-md transition-shadow">
@@ -783,12 +811,81 @@ const AdminQuestionListing = () => {
                     );
                   }
 
-                  // Check if question has subQuestions array
-                  const hasSubQuestions = (q as any).subQuestions && Array.isArray((q as any).subQuestions) && (q as any).subQuestions.length > 0;
-
                   // For questions with subQuestions (CQ, জ্ঞানমূলক, etc.)
                   if (hasSubQuestions) {
                     const passage = (q as any).questionTextBn || (q as any).questionTextEn || '';
+
+                    if (isFillBlanksCq) {
+                      return (
+                        <div className="rounded-lg border border-border bg-white dark:bg-slate-950 p-4">
+                          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                            <p className="text-foreground font-semibold leading-snug text-base">
+                              {String(startIdx + idx + 1).padStart(2, '0')}. Fill in the blanks with the words from the box.
+                            </p>
+                            {(q as any).boardYear ? (
+                              <span className="text-pink-600 dark:text-pink-300 font-bold text-sm">[{(q as any).boardYear}]</span>
+                            ) : null}
+                          </div>
+
+                          {fillBlankWordBank.length > 0 && (
+                            <div className="overflow-x-auto mb-4">
+                              <table className="w-full border-collapse text-center text-sm">
+                                <tbody>
+                                  {Array.from({ length: Math.ceil(fillBlankWordBank.length / 5) }).map((_, rowIndex) => {
+                                    const rowWords = fillBlankWordBank.slice(rowIndex * 5, rowIndex * 5 + 5);
+                                    return (
+                                      <tr key={rowIndex}>
+                                        {rowWords.map((word: string, colIndex: number) => (
+                                          <td key={`${rowIndex}-${colIndex}`} className="border border-border px-2 py-1.5 font-medium">
+                                            <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(word) }} />
+                                          </td>
+                                        ))}
+                                        {Array.from({ length: Math.max(0, 5 - rowWords.length) }).map((__, emptyIndex) => (
+                                          <td key={`empty-${rowIndex}-${emptyIndex}`} className="border border-border px-2 py-1.5" />
+                                        ))}
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+
+                          {passage ? (
+                            <div
+                              className="text-foreground leading-loose text-base font-serif"
+                              dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(passage) }}
+                            />
+                          ) : null}
+                        </div>
+                      );
+                    }
+
+                    if (isMakeSentencesCq) {
+                      return (
+                        <div className="rounded-lg border border-border bg-white dark:bg-slate-950 p-4">
+                          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                            <p className="text-foreground font-semibold leading-snug text-base" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(passage || "Make sentences from the table.") }} />
+                            {(q as any).boardYear ? <span className="text-pink-600 dark:text-pink-300 font-bold text-sm">[{(q as any).boardYear}]</span> : null}
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="w-full border-collapse text-sm">
+                              <tbody>
+                                {makeSentenceRows.map((row: any, rowIndex: number) => (
+                                  <tr key={rowIndex}>
+                                    <td className="border border-border px-2 py-1.5 w-16 font-semibold">({row.label})</td>
+                                    <td className="border border-border px-2 py-1.5" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(row.cols[0]) }} />
+                                    <td className="border border-border px-2 py-1.5" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(row.cols[1]) }} />
+                                    <td className="border border-border px-2 py-1.5" dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(row.cols[2]) }} />
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      );
+                    }
+
                     return (
                       <div>
                         {passage ? (
@@ -796,34 +893,35 @@ const AdminQuestionListing = () => {
                             <div dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(passage) }} />
                           </div>
                         ) : null}
-
-                        <div className="space-y-3">
-                          {(q as any).subQuestions.map((sq: any, i: number) => (
-                            <div key={i} className="border-l-2 border-success/30 pl-3">
-                              <div className="flex items-start gap-2">
-                                <div className="w-6 flex-none font-semibold text-foreground text-base leading-tight">{sq.label || (['ক','খ','গ','ঘ','ঙ'][i] || `${i+1}.`)}</div>
-                                <div className="flex-1 flex flex-wrap items-center gap-2">
-                                  <div
-                                    className="text-foreground leading-relaxed text-sm"
-                                    dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.questionTextBn || sq.questionTextEn || "") }}
-                                  />
-                                  {sq.type && (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200">
-                                      {sq.type}
-                                    </span>
-                                  )}
+                        {!isInlineGapCq && (
+                          <div className="space-y-3">
+                            {(q as any).subQuestions.map((sq: any, i: number) => (
+                              <div key={i} className="border-l-2 border-success/30 pl-3">
+                                <div className="flex items-start gap-2">
+                                  <div className="w-6 flex-none font-semibold text-foreground text-base leading-tight">{sq.label || (['ক','খ','গ','ঘ','ঙ'][i] || `${i+1}.`)}</div>
+                                  <div className="flex-1 flex flex-wrap items-center gap-2">
+                                    <div
+                                      className="text-foreground leading-relaxed text-sm"
+                                      dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.questionTextBn || sq.questionTextEn || "") }}
+                                    />
+                                    {sq.type && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200">
+                                        {sq.type}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
+                                {sq.image && (
+                                  <img
+                                    src={sq.image}
+                                    alt="Sub-question"
+                                    className="mt-2 max-h-52 w-auto rounded-sm object-contain"
+                                  />
+                                )}
                               </div>
-                              {sq.image && (
-                                <img
-                                  src={sq.image}
-                                  alt="Sub-question"
-                                  className="mt-2 max-h-52 w-auto rounded-sm object-contain"
-                                />
-                              )}
-                            </div>
-                          ))}
-                        </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   }
@@ -877,6 +975,13 @@ const AdminQuestionListing = () => {
                   }
                 </span>
               )}
+                {/* Board Year Badge (if exists) */}
+                {(q as any).boardYear && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200">
+                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                    {(q as any).boardYear}
+                  </span>
+                )}
                 {/* Topic Badge (optional) */}
                 {(() => {
                   const topicIdVal = (q as any).topicId?._id || (q as any).topicId;
@@ -891,7 +996,7 @@ const AdminQuestionListing = () => {
             </div>
 
             {/* Options */}
-            {(q as any).options && !isSubQuestionDisplay && (
+            {(q as any).options && !isSubQuestionDisplay && !isMakeSentencesCq && (
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {(q as any).options.map((opt: any, i: number) => (
                   <div key={i} className={`px-4 py-2.5 rounded-lg border text-sm transition-all ${opt.isCorrect ? "border-success/50 bg-success/5" : "border-border bg-card hover:border-success/50 hover:bg-success/5"}`}>
@@ -945,7 +1050,7 @@ const AdminQuestionListing = () => {
                     ) : (
                       <>
                         {/* CQ answers */}
-                        {(q as any).subQuestions && Array.isArray((q as any).subQuestions) && (q as any).subQuestions.length > 0 && (
+                        {(q as any).subQuestions && Array.isArray((q as any).subQuestions) && (q as any).subQuestions.length > 0 && !isMakeSentencesCq && (
                           <div className="mt-2">
                             <p className="text-sm font-bold text-success mb-2">Sub-questions & Answers:</p>
                             <div className="space-y-2">
@@ -1270,11 +1375,15 @@ const AdminQuestionListing = () => {
                           <option value="অনুধাবনমূলক">অনুধাবনমূলক</option>
                           <option value="প্রয়োগমূলক">প্রয়োগমূলক</option>
                           <option value="উচ্চতর দক্ষতা">উচ্চতর দক্ষতা</option>
+                          <option value="Fill blanks">Fill blanks</option>
+                          <option value="Make sentences">Make sentences</option>
+                          <option value="Change narrative style">Change narrative style</option>
+                          <option value="Tag questions">Tag questions</option>
                         </select>
                         <div className="col-span-6">
                         <RichTextEditor
                           fieldKey={`subQuestionText:${i}`}
-                          value={sq.questionTextBn || ''}
+                          value={resolveQuestionText(sq.questionTextBn, sq.questionTextEn, sq.questionText, sq.questionBn)}
                           placeholder="Sub-question (Bengali)"
                           registerRef={registerEditorRef}
                           onFocus={() => setActiveEditorField(`subQuestionText:${i}`)}
@@ -1302,7 +1411,7 @@ const AdminQuestionListing = () => {
                       </div>
                       <RichTextEditor
                         fieldKey={`subQuestionAnswer:${i}`}
-                        value={sq.answerBn || sq.answer || ''}
+                        value={resolveQuestionText(sq.answerBn, sq.answerEn, sq.answer, sq.answerText)}
                         placeholder="Answer (Bengali)"
                         registerRef={registerEditorRef}
                         onFocus={() => setActiveEditorField(`subQuestionAnswer:${i}`)}
@@ -1424,6 +1533,15 @@ const AdminQuestionListing = () => {
                     <option key={t._id} value={t._id}>{t.name}</option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <Label>Board Year (Optional)</Label>
+                <Input
+                  placeholder="e.g. 2024, 2024 S1, JSC 2024"
+                  value={form.boardYear || ""}
+                  onChange={(e) => setForm({ ...form, boardYear: e.target.value })}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                />
               </div>
               <div>
                 <Label>Exam Type (Optional)</Label>
