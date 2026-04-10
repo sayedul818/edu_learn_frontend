@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { examsAPI } from "@/services/api";
-import { cn, isInlineGapPlaceholderCq, renderRichOrMathHtml, shuffleWordBank, splitPipedColumns } from "@/lib/utils";
+import { cn, isInlineGapPlaceholderCq, renderMathToHtml, renderRichOrMathHtml, shuffleWordBank, splitPipedColumns } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import {
   FileDown,
@@ -510,7 +510,7 @@ const AdminOfflineExamBuilder = () => {
         {options.map((opt: any, idx: number) => (
           <div key={idx} className="rounded-sm border border-transparent px-2 py-1 text-[0.95em]">
             {style.showOptionLabel ? <span className="mr-2 font-medium">{getOptionLabel(idx)}</span> : null}
-            <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(opt?.text || opt || "") }} />
+            <span dangerouslySetInnerHTML={{ __html: renderMathToHtml(opt?.text || opt || "") }} />
           </div>
         ))}
       </div>

@@ -618,7 +618,7 @@ const QuestionListing = () => {
                       <span className="font-bold text-muted-foreground mr-2">
                         {String.fromCharCode(2453 + i)}.
                       </span>
-                      <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(typeof opt === 'string' ? opt : opt.text || opt) }} />
+                      <span dangerouslySetInnerHTML={{ __html: renderMathToHtml(typeof opt === 'string' ? opt : opt.text || opt) }} />
                     </div>
                   ))}
                 </div>

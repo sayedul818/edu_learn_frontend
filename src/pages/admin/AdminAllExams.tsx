@@ -628,7 +628,7 @@ const AdminAllExams = () => {
                                         return (
                                           <div key={idx} className="px-3 py-2 rounded border border-border bg-card text-sm">
                                             <span className="font-medium mr-2">{String.fromCharCode(65+idx)}.</span>
-                                            <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(text) }} />
+                                            <span dangerouslySetInnerHTML={{ __html: renderMathToHtml(text) }} />
                                           </div>
                                         );
                                       })}

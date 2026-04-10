@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
 import ExamCreationModal from "@/components/admin/ExamCreationModal";
-import { isInlineGapPlaceholderCq, renderRichOrMathHtml, shuffleWordBank, splitPipedColumns } from "@/lib/utils";
+import { isInlineGapPlaceholderCq, renderMathToHtml, renderRichOrMathHtml, shuffleWordBank, splitPipedColumns } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
 const ITEMS_PER_PAGE = 8;
@@ -657,7 +657,7 @@ const AdminExamBuilder = () => {
                       ))}
                     </div>
                   ) : (
-                    q.options && (<div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">{q.options.map((opt:any,i:number)=>(<div key={i} className="px-3 py-2 rounded border border-border text-sm"><span className="font-medium">{String.fromCharCode(65+i)}.</span> <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(opt.text || opt) }} /></div>))}</div>)
+                    q.options && (<div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">{q.options.map((opt:any,i:number)=>(<div key={i} className="px-3 py-2 rounded border border-border text-sm"><span className="font-medium">{String.fromCharCode(65+i)}.</span> <span dangerouslySetInnerHTML={{ __html: renderMathToHtml(opt.text || opt) }} /></div>))}</div>)
                   )}
                 </div>
               </div>
@@ -742,7 +742,7 @@ const AdminExamBuilder = () => {
                                   )}
                                   {sq.options && sq.options.length > 0 && (
                                     <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                      {sq.options.map((opt:any, oi:number)=>(<div key={oi} className="px-3 py-2 rounded border border-border text-sm"><span className="font-medium">{String.fromCharCode(65+oi)}.</span> <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(opt.text || opt) }} /></div>))}
+                                      {sq.options.map((opt:any, oi:number)=>(<div key={oi} className="px-3 py-2 rounded border border-border text-sm"><span className="font-medium">{String.fromCharCode(65+oi)}.</span> <span dangerouslySetInnerHTML={{ __html: renderMathToHtml(opt.text || opt) }} /></div>))}
                                     </div>
                                   )}
                                   {sq.explanation && <div className="mt-2 text-sm text-muted-foreground">Explanation: <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.explanation) }} /></div>}
@@ -769,7 +769,7 @@ const AdminExamBuilder = () => {
                         {q.options && (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
                             {q.options.map((opt:any, idx:number) => (
-                              <div key={idx} className="px-3 py-2 rounded border border-border bg-card text-sm"><span className="font-medium">{String.fromCharCode(65+idx)}.</span> <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(opt.text || opt) }} /></div>
+                              <div key={idx} className="px-3 py-2 rounded border border-border bg-card text-sm"><span className="font-medium">{String.fromCharCode(65+idx)}.</span> <span dangerouslySetInnerHTML={{ __html: renderMathToHtml(opt.text || opt) }} /></div>
                             ))}
                           </div>
                         )}

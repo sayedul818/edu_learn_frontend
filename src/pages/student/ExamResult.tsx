@@ -866,7 +866,7 @@ const ExamResult = () => {
                                         <div className="flex items-center justify-between gap-2">
                                           <span>
                                             <span className="font-bold text-muted-foreground mr-1.5">{String.fromCharCode(65 + i)}.</span>
-                                            <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(optionText) }} />
+                                            <span dangerouslySetInnerHTML={{ __html: renderMathToHtml(optionText) }} />
                                           </span>
                                           {isCorrectOption && <CheckCircle className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />}
                                           {isUserAnswer && !isCorrectOption && <XCircle className="h-3.5 w-3.5 text-red-600 flex-shrink-0" />}
@@ -1017,7 +1017,7 @@ const ExamResult = () => {
                           <div className="flex items-center justify-between">
                             <span>
                               <span className="font-bold text-muted-foreground mr-2">{String.fromCharCode(65 + i)}.</span>
-                              <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(optionText) }} />
+                              <span dangerouslySetInnerHTML={{ __html: renderMathToHtml(optionText) }} />
                             </span>
                             {isCorrectOption && (
                               <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0 ml-2" />

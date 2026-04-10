@@ -708,7 +708,7 @@ const TakeExam = () => {
                                             className={`w-full text-left p-3 rounded-xl border text-sm ${isSelected ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border hover:border-primary/50 hover:bg-muted/50'} ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
                                           >
                                             <span className="font-bold mr-3">{String.fromCharCode(65 + oi)}</span>
-                                            <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(optText) }} />
+                                            <span dangerouslySetInnerHTML={{ __html: renderMathToHtml(optText) }} />
                                           </button>
                                         );
                                       })}
@@ -785,7 +785,7 @@ const TakeExam = () => {
                             className={`w-full text-left p-3 rounded-xl border text-sm ${isSelected ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border hover:border-primary/50 hover:bg-muted/50'} ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
                           >
                             <span className="font-bold mr-3">{String.fromCharCode(65 + oi)}</span>
-                            <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(optText) }} />
+                            <span dangerouslySetInnerHTML={{ __html: renderMathToHtml(optText) }} />
                           </button>
                         );
                       })}

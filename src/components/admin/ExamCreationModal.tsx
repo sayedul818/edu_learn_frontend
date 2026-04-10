@@ -1334,7 +1334,7 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
                           key={optIdx} 
                           className={`p-2 rounded border transition ${bgColor}`}
                         >
-                          <span className="font-medium">{optionLetter}.</span> <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(optText) }} />
+                          <span className="font-medium">{optionLetter}.</span> <span dangerouslySetInnerHTML={{ __html: renderMathToHtml(optText) }} />
                           {isStudentAnswer && isCorrect && <span className="ml-2 text-success">✓</span>}
                           {isStudentAnswer && !isCorrect && <span className="ml-2 text-destructive">✗</span>}
                           {!isStudentAnswer && isCorrect && <span className="ml-2 text-yellow-600">( সঠিক )</span>}

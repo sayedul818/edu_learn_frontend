@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { Search, ArrowLeft, CheckCircle, Info, BarChart3, Flag, Bookmark, BookOpen, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { isInlineGapPlaceholderCq, parseQuestionWithSubPoints, renderRichOrMathHtml, shuffleWordBank, splitPipedColumns } from "@/lib/utils";
+import { isInlineGapPlaceholderCq, parseQuestionWithSubPoints, renderMathToHtml, renderRichOrMathHtml, shuffleWordBank, splitPipedColumns } from "@/lib/utils";
 import { uploadImageToCloudinary } from "@/services/cloudinary";
 
 const ITEMS_PER_PAGE = 5;
@@ -1001,7 +1001,7 @@ const AdminQuestionListing = () => {
                 {(q as any).options.map((opt: any, i: number) => (
                   <div key={i} className={`px-4 py-2.5 rounded-lg border text-sm transition-all ${opt.isCorrect ? "border-success/50 bg-success/5" : "border-border bg-card hover:border-success/50 hover:bg-success/5"}`}>
                     <span className="font-bold text-muted-foreground mr-2">{String.fromCharCode(65 + i)}.</span>
-                    <span dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(opt.text || opt) }} />
+                    <span dangerouslySetInnerHTML={{ __html: renderMathToHtml(opt.text || opt) }} />
                     {opt.isCorrect && <span className="ml-2 text-success font-bold">✓</span>}
                   </div>
                 ))}
