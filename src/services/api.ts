@@ -234,7 +234,22 @@ export const examsAPI = {
 
 // ============ LEADERBOARD API ============
 export const leaderboardAPI = {
-  get: (period?: string) => fetchAPI(`/leaderboard${period ? `?period=${period}` : ''}`),
+  get: (period?: string, month?: string) => {
+    const params = new URLSearchParams();
+    if (period) params.set('period', period);
+    if (month) params.set('month', month);
+    const query = params.toString();
+    return fetchAPI(`/leaderboard${query ? `?${query}` : ''}`);
+  },
+  getWithRange: (options: { period?: string; month?: string; start?: string; end?: string }) => {
+    const params = new URLSearchParams();
+    if (options.period) params.set('period', options.period);
+    if (options.month) params.set('month', options.month);
+    if (options.start) params.set('start', options.start);
+    if (options.end) params.set('end', options.end);
+    const query = params.toString();
+    return fetchAPI(`/leaderboard${query ? `?${query}` : ''}`);
+  },
 };
 
 // ============ EXAM TYPES API ============
