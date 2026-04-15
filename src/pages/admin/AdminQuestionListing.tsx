@@ -748,6 +748,9 @@ const AdminQuestionListing = () => {
           const isMakeSentencesCq = hasSubQuestions && (q as any).subQuestions.some((sq: any) =>
             /make\s*sentences?/.test(String(sq?.type || sq?.subQuestionType || '').toLowerCase())
           );
+          const isSentenceCorrectionCq = hasSubQuestions && (q as any).subQuestions.some((sq: any) =>
+            /sentence\s*correction/.test(String(sq?.type || sq?.subQuestionType || '').toLowerCase())
+          );
           const isInlineGapCq = hasSubQuestions && isInlineGapPlaceholderCq((q as any).subQuestions);
           const fillBlankWordBank = isFillBlanksCq
             ? shuffleWordBank((q as any).subQuestions
@@ -881,6 +884,31 @@ const AdminQuestionListing = () => {
                                 ))}
                               </tbody>
                             </table>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (isSentenceCorrectionCq) {
+                      return (
+                        <div>
+                          {passage ? (
+                            <div className="mb-4 rounded-lg bg-card border border-border text-foreground p-4 leading-relaxed text-sm">
+                              <div dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(passage) }} />
+                            </div>
+                          ) : null}
+                          <div className="space-y-3">
+                            {(q as any).subQuestions.map((sq: any, i: number) => (
+                              <div key={i} className="border-l-2 border-success/30 pl-3">
+                                <div className="flex items-start gap-2">
+                                  <div className="w-6 flex-none font-semibold text-foreground text-base leading-tight">{sq.label || (['ক','খ','গ','ঘ','ঙ'][i] || `${i + 1}.`)}</div>
+                                  <div
+                                    className="text-foreground leading-relaxed text-sm"
+                                    dangerouslySetInnerHTML={{ __html: renderRichOrMathHtml(sq.questionTextBn || sq.questionTextEn || sq.question || "") }}
+                                  />
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       );
@@ -1027,7 +1055,7 @@ const AdminQuestionListing = () => {
               {expandedAnswer === item._id && (
                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
                   <div className="mt-3 p-4 bg-success/5 border border-success/20 rounded-xl">
-                    {!isSubQuestionDisplay && (q as any).options && (
+                    {!isSubQuestionDisplay && !hasSubQuestions && Array.isArray((q as any).options) && (q as any).options.length > 0 && (
                       <>
                         <p className="text-sm font-bold text-success mb-2">
                           Correct Answer:
@@ -1052,14 +1080,14 @@ const AdminQuestionListing = () => {
                         {/* CQ answers */}
                         {(q as any).subQuestions && Array.isArray((q as any).subQuestions) && (q as any).subQuestions.length > 0 && !isMakeSentencesCq && (
                           <div className="mt-2">
-                            <p className="text-sm font-bold text-success mb-2">Sub-questions & Answers:</p>
+                            <p className="text-sm font-bold text-success mb-2">{isSentenceCorrectionCq ? "শুদ্ধ বাক্য" : "Sub-questions & Answers:"}</p>
                             <div className="space-y-2">
                               {(q as any).subQuestions.map((sq: any, i: number) => (
                                 <div key={i} className="text-sm">
                                   <div className="flex items-start gap-2">
                                     <span className="inline-block w-6 font-semibold text-foreground leading-tight">{sq.label || (i + 1) + '.'}</span>
                                     <div className="flex-1 flex flex-wrap items-center gap-2">
-                                      {sq.type && (
+                                      {!isSentenceCorrectionCq && sq.type && (
                                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200">
                                           {sq.type}
                                         </span>

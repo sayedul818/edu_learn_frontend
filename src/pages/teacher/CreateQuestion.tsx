@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PlusCircle, Trash2, CheckCircle, Upload } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { PlusCircle, Trash2, CheckCircle, Upload, Info, Copy } from "lucide-react";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
 import { useToast } from "@/hooks/use-toast";
 import { classesAPI, groupsAPI, subjectsAPI, chaptersAPI, topicsAPI, questionsAPI, examTypesAPI } from "@/services/api";
@@ -18,6 +19,100 @@ type CsvValidationIssue = {
 type CsvParseSummary = {
   valid: any[];
   invalid: CsvValidationIssue[];
+};
+
+const mcqJsonTemplate = {
+  questions: [
+    {
+      questionType: "MCQ",
+      questionTextEn: "What is 2 + 2?",
+      questionTextBn: "২ + ২ কত?",
+      options: [
+        { text: "3", isCorrect: false },
+        { text: "4", isCorrect: true },
+        { text: "5", isCorrect: false },
+        { text: "6", isCorrect: false }
+      ],
+      explanation: "2 + 2 equals 4.",
+      difficulty: "easy",
+      boardYear: "2025",
+      tags: ["math", "arithmetic"]
+    }
+  ]
+};
+
+const cqJsonTemplate = {
+  questions: [
+    {
+      questionType: "CQ",
+      questionTextEn: "Read the passage and answer the questions.",
+      questionTextBn: "অনুচ্ছেদটি পড়ে প্রশ্নগুলোর উত্তর দাও।",
+      subQuestions: [
+        { question: "Define photosynthesis", answer: "Process by which plants prepare food." },
+        { question: "Why is sunlight needed?", answer: "It provides the energy for the reaction." }
+      ],
+      explanation: "Students should explain conceptually in their own words.",
+      difficulty: "medium",
+      boardYear: "2024",
+      tags: ["biology", "chapter-3"]
+    }
+  ]
+};
+
+const csvTemplate = [
+  "questionType,questionTextEn,questionTextBn,optionA,optionB,optionC,optionD,correctOption,correctAnswer,difficulty,boardYear,tags,subQuestionsJson",
+  "MCQ,What is the capital of Bangladesh?,বাংলাদেশের রাজধানী কোনটি?,Dhaka,Chattogram,Khulna,Rajshahi,A,,easy,2023,geography|bangladesh,",
+  "CQ,Read the passage and answer,অনুচ্ছেদ পড়ে উত্তর দাও,,,,,,,medium,2024,comprehension,\"[{\"\"question\"\":\"\"What is the main idea?\"\",\"\"answer\"\":\"\"Climate change affects weather patterns.\"\"}]\""
+].join("\n");
+
+const englishSecondFillBlankSubQuestions = [
+  { type: "fill blank", question: "(a)", answer: "river", wordBank: ["river", "village", "green", "flow"] },
+  { type: "fill blank", question: "(b)", answer: "flow", wordBank: ["river", "village", "green", "flow"] },
+  { type: "fill blank", question: "(c)", answer: "village", wordBank: ["river", "village", "green", "flow"] },
+  { type: "fill blank", question: "(d)", answer: "green", wordBank: ["river", "village", "green", "flow"] }
+];
+
+const englishSecondMakeSentenceSubQuestions = [
+  { type: "make sentence", question: "Make a sentence with 'honest'", answer: "An honest man is respected by all." },
+  { type: "make sentence", question: "Make a sentence with 'journey'", answer: "Our journey started at dawn." },
+  { type: "make sentence", question: "Make a sentence with 'future'", answer: "Students are the future of a nation." }
+];
+
+const englishSecondComprehensionSubQuestions = [
+  { type: "short question", question: "What is the central idea of the passage?", answer: "The value of discipline in student life." },
+  { type: "short question", question: "Why is discipline important?", answer: "It helps students stay focused and successful." }
+];
+
+const escapeCsvField = (value: string) => `"${value.replace(/"/g, '""')}"`;
+
+const englishSecondCsvTemplate = [
+  "questionType,questionTextEn,questionTextBn,optionA,optionB,optionC,optionD,correctOption,correctAnswer,difficulty,boardYear,tags,subQuestionsJson",
+  `CQ,Complete the paragraph with suitable words (a) ____ (b) ____ (c) ____ (d) ____,উপযুক্ত শব্দ বসিয়ে অনুচ্ছেদটি পূরণ কর (ক) ____ (খ) ____ (গ) ____ (ঘ) ____,,,,,,,medium,2024,english-2nd|fill-blank,${escapeCsvField(JSON.stringify(englishSecondFillBlankSubQuestions))}`,
+  `CQ,Make meaningful sentences using the given words,দেওয়া শব্দগুলো দিয়ে অর্থপূর্ণ বাক্য তৈরি কর,,,,,,,easy,2024,english-2nd|make-sentence,${escapeCsvField(JSON.stringify(englishSecondMakeSentenceSubQuestions))}`,
+  `CQ,Read the passage and answer the questions,অনুচ্ছেদটি পড়ে প্রশ্নগুলোর উত্তর দাও,,,,,,,medium,2023,english-2nd|comprehension,${escapeCsvField(JSON.stringify(englishSecondComprehensionSubQuestions))}`
+].join("\n");
+
+const englishSecondJsonTemplate = {
+  questions: [
+    {
+      questionType: "CQ",
+      questionTextEn: "Complete the paragraph with suitable words (a) ____ (b) ____ (c) ____ (d) ____.",
+      questionTextBn: "উপযুক্ত শব্দ বসিয়ে অনুচ্ছেদটি পূরণ কর (ক) ____ (খ) ____ (গ) ____ (ঘ) ____।",
+      subQuestions: englishSecondFillBlankSubQuestions,
+      difficulty: "medium",
+      boardYear: "2024",
+      tags: ["english-2nd", "fill-blank"]
+    },
+    {
+      questionType: "CQ",
+      questionTextEn: "Make meaningful sentences using the given words.",
+      questionTextBn: "দেওয়া শব্দগুলো দিয়ে অর্থপূর্ণ বাক্য তৈরি কর।",
+      subQuestions: englishSecondMakeSentenceSubQuestions,
+      difficulty: "easy",
+      boardYear: "2024",
+      tags: ["english-2nd", "make-sentence"]
+    }
+  ]
 };
 
 const CreateQuestion = () => {
@@ -119,6 +214,28 @@ const CreateQuestion = () => {
     const opts = [...form.options];
     opts[idx] = val;
     setForm({ ...form, options: opts });
+  };
+
+  const copyTemplateText = async (text: string, label: string) => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "absolute";
+        textarea.style.left = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+
+      toast({ title: `${label} copied` });
+    } catch {
+      toast({ title: `Failed to copy ${label}`, variant: "destructive" });
+    }
   };
 
   // JSON Mode: Parse and validate JSON
@@ -255,7 +372,6 @@ const CreateQuestion = () => {
         const correctOption = getCsvCell(row, ["correctOption", "correct", "correct_letter"]).toUpperCase();
         const correctAnswer = getCsvCell(row, ["correctAnswer", "answer", "correct_text"]);
 
-        if (!questionTextEn && !questionTextBn) errors.push("Missing question text (English or Bengali)");
         if (optionTexts.length < 2) errors.push("MCQ must have at least 2 options");
         if (!correctOption && !correctAnswer) errors.push("Missing correctOption or correctAnswer");
 
@@ -324,6 +440,40 @@ const CreateQuestion = () => {
     const text = await file.text();
     setCsvInput(text);
     handleCsvParse(text);
+  };
+
+  const updateCsvQuestion = (questionIndex: number, updater: (question: any) => any) => {
+    setCsvValidQuestions((prev) => prev.map((q, idx) => (idx === questionIndex ? updater(q) : q)));
+  };
+
+  const updateCsvQuestionField = (questionIndex: number, field: string, value: any) => {
+    updateCsvQuestion(questionIndex, (q) => ({ ...q, [field]: value }));
+  };
+
+  const updateCsvMcqOptionText = (questionIndex: number, optionIndex: number, text: string) => {
+    updateCsvQuestion(questionIndex, (q) => {
+      const options = Array.isArray(q.options) ? [...q.options] : [];
+      options[optionIndex] = { ...(options[optionIndex] || { isCorrect: false }), text };
+      return { ...q, options };
+    });
+  };
+
+  const setCsvMcqCorrectOption = (questionIndex: number, optionIndex: number) => {
+    updateCsvQuestion(questionIndex, (q) => {
+      const options = Array.isArray(q.options)
+        ? q.options.map((opt: any, idx: number) => ({ ...opt, isCorrect: idx === optionIndex }))
+        : [];
+      return { ...q, options };
+    });
+  };
+
+  const updateCsvSubQuestionField = (questionIndex: number, subIndex: number, field: string, value: string) => {
+    updateCsvQuestion(questionIndex, (q) => {
+      const subQuestions = Array.isArray(q.subQuestions) ? [...q.subQuestions] : [];
+      const current = subQuestions[subIndex] || {};
+      subQuestions[subIndex] = { ...current, [field]: value };
+      return { ...q, subQuestions };
+    });
   };
 
   const submitCsvQuestions = async () => {
@@ -435,11 +585,6 @@ const CreateQuestion = () => {
       return;
     }
 
-    if (!form.questionTextEn && !form.questionTextBn) {
-      toast({ title: "Missing question text", description: "Please provide question text in English or Bengali", variant: "destructive" });
-      return;
-    }
-
     // Validate at least 2 options
     const nonEmptyOptions = form.options.filter(Boolean);
     if (nonEmptyOptions.length < 2) {
@@ -517,6 +662,84 @@ const CreateQuestion = () => {
         <Button variant={mode === "csv" ? "default" : "ghost"} onClick={() => setMode("csv")} className="rounded-none">
           CSV Mode (Bulk)
         </Button>
+        {(mode === "json" || mode === "csv") && (
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button type="button" variant="outline" className="ml-auto gap-2" title="View MCQ and CQ format">
+                <Info className="h-4 w-4" />
+                Format Guide
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>MCQ, CQ and English 2nd Format Guide (JSON + CSV)</DialogTitle>
+                <DialogDescription>
+                  Use these templates in bulk import. Hierarchy fields (class/group/subject/chapter/topic) are selected from the form and applied to all rows.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                <div className="rounded-md border p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold">MCQ JSON Example</p>
+                    <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => copyTemplateText(JSON.stringify(mcqJsonTemplate, null, 2), "MCQ JSON template")}>
+                      <Copy className="mr-1 h-3.5 w-3.5" /> Copy
+                    </Button>
+                  </div>
+                  <pre className="text-xs overflow-x-auto bg-muted/40 p-3 rounded-md">{JSON.stringify(mcqJsonTemplate, null, 2)}</pre>
+                </div>
+
+                <div className="rounded-md border p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold">CQ JSON Example</p>
+                    <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => copyTemplateText(JSON.stringify(cqJsonTemplate, null, 2), "CQ JSON template")}>
+                      <Copy className="mr-1 h-3.5 w-3.5" /> Copy
+                    </Button>
+                  </div>
+                  <pre className="text-xs overflow-x-auto bg-muted/40 p-3 rounded-md">{JSON.stringify(cqJsonTemplate, null, 2)}</pre>
+                </div>
+
+                <div className="rounded-md border p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold">CSV Example (MCQ + CQ rows)</p>
+                    <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => copyTemplateText(csvTemplate, "MCQ + CQ CSV template")}>
+                      <Copy className="mr-1 h-3.5 w-3.5" /> Copy
+                    </Button>
+                  </div>
+                  <pre className="text-xs overflow-x-auto bg-muted/40 p-3 rounded-md">{csvTemplate}</pre>
+                </div>
+
+                <div className="rounded-md border p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold">English 2nd JSON Example (Fill Blank + Make Sentence)</p>
+                    <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => copyTemplateText(JSON.stringify(englishSecondJsonTemplate, null, 2), "English 2nd JSON template")}>
+                      <Copy className="mr-1 h-3.5 w-3.5" /> Copy
+                    </Button>
+                  </div>
+                  <pre className="text-xs overflow-x-auto bg-muted/40 p-3 rounded-md">{JSON.stringify(englishSecondJsonTemplate, null, 2)}</pre>
+                </div>
+
+                <div className="rounded-md border p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold">English 2nd CSV Example (Fill Blank + Make Sentence + Comprehension)</p>
+                    <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => copyTemplateText(englishSecondCsvTemplate, "English 2nd CSV template")}>
+                      <Copy className="mr-1 h-3.5 w-3.5" /> Copy
+                    </Button>
+                  </div>
+                  <pre className="text-xs overflow-x-auto bg-muted/40 p-3 rounded-md">{englishSecondCsvTemplate}</pre>
+                </div>
+
+                <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-1">
+                  <p><strong>MCQ rule:</strong> Provide at least 2 options and either <strong>correctOption</strong> (A/B/C/...) or <strong>correctAnswer</strong> text.</p>
+                  <p><strong>CQ rule:</strong> Provide valid JSON in <strong>subQuestionsJson</strong>. Passage text (questionTextEn/questionTextBn) is optional.</p>
+                  <p><strong>questionTextEn/questionTextBn:</strong> Both are optional in all modes (Form/JSON/CSV).</p>
+                  <p><strong>English 2nd (CQ) rule:</strong> Put <strong>type</strong> in each sub-question (for example <strong>fill blank</strong>, <strong>make sentence</strong>, <strong>short question</strong>).</p>
+                  <p><strong>Tags:</strong> Use pipe-separated values like <strong>math|algebra</strong>.</p>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       {mode === "form" ? (
@@ -610,7 +833,7 @@ const CreateQuestion = () => {
             <div>
               <Label>Question Text (Bengali) (optional)</Label>
               <textarea className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm min-h-[60px]" value={form.questionTextBn} onChange={(e) => setForm({ ...form, questionTextBn: e.target.value })} placeholder="বাংলায় প্রশ্ন লিখুন..." />
-              <p className="text-xs text-muted-foreground mt-1">Provide at least one: English or Bengali question text.</p>
+              <p className="text-xs text-muted-foreground mt-1">Both question text fields are optional.</p>
             </div>
 
             <div>
@@ -728,6 +951,7 @@ const CreateQuestion = () => {
   "questions": [
     {
       "questionTextEn": "What is 2+2?",
+      "questionTextBn": "২+২ কত? (optional)",
       "options": [
         { "text": "4", "isCorrect": true },
         { "text": "5", "isCorrect": false }
@@ -836,7 +1060,7 @@ const CreateQuestion = () => {
                 className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono min-h-[220px]"
                 value={csvInput}
                 onChange={(e) => setCsvInput(e.target.value)}
-                placeholder={'Example headers:\nquestionType,questionTextEn,questionTextBn,optionA,optionB,optionC,optionD,correctOption,correctAnswer,difficulty,boardYear,tags,subQuestionsJson\n\nNotes:\n- MCQ row: provide options + correctOption (A/B/C...) or correctAnswer text\n- CQ row: provide passage (questionTextEn/Bn) or subQuestionsJson'}
+                placeholder={'Example headers:\nquestionType,questionTextEn,questionTextBn,optionA,optionB,optionC,optionD,correctOption,correctAnswer,difficulty,boardYear,tags,subQuestionsJson\n\nNotes:\n- questionTextEn and questionTextBn are optional\n- MCQ row: provide options + correctOption (A/B/C...) or correctAnswer text\n- CQ row: provide subQuestionsJson (passage text is optional)'}
               />
             </div>
 
@@ -869,11 +1093,86 @@ const CreateQuestion = () => {
                 )}
 
                 {csvValidQuestions.length > 0 && (
-                  <div className="max-h-[280px] overflow-y-auto space-y-2 text-xs">
+                  <div className="max-h-[520px] overflow-y-auto space-y-3 text-xs">
                     {csvValidQuestions.slice(0, 100).map((q, i) => (
-                      <div key={i} className="bg-white dark:bg-slate-900 p-2 rounded border border-green-300 dark:border-green-700">
-                        <p className="font-semibold truncate">{i + 1}. {q.questionTextEn || q.questionTextBn || "Untitled question"}</p>
-                        <p className="text-muted-foreground">Type: {q.questionType} | Difficulty: {q.difficulty || "medium"} | Board: {q.boardYear || "N/A"}</p>
+                      <div key={i} className="bg-white dark:bg-slate-900 p-3 rounded border border-green-300 dark:border-green-700 space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-semibold">{i + 1}. {q.questionType || "MCQ"} Preview</p>
+                          <p className="text-muted-foreground">Difficulty: {q.difficulty || "medium"} | Board: {q.boardYear || "N/A"}</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-2">
+                          <div>
+                            <Label className="text-xs">Question Text (English)</Label>
+                            <textarea
+                              className="mt-1 w-full rounded-lg border border-input bg-background px-2 py-1.5 text-xs min-h-[58px]"
+                              value={q.questionTextEn || ""}
+                              onChange={(e) => updateCsvQuestionField(i, "questionTextEn", e.target.value)}
+                              placeholder="Optional English text"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Question Text (Bengali)</Label>
+                            <textarea
+                              className="mt-1 w-full rounded-lg border border-input bg-background px-2 py-1.5 text-xs min-h-[58px]"
+                              value={q.questionTextBn || ""}
+                              onChange={(e) => updateCsvQuestionField(i, "questionTextBn", e.target.value)}
+                              placeholder="Optional Bengali text"
+                            />
+                          </div>
+                        </div>
+
+                        {String(q.questionType || "MCQ").toUpperCase() === "MCQ" ? (
+                          <div className="space-y-2">
+                            <p className="font-medium">MCQ Options</p>
+                            {(Array.isArray(q.options) ? q.options : []).map((opt: any, optIdx: number) => (
+                              <div key={optIdx} className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setCsvMcqCorrectOption(i, optIdx)}
+                                  className={`h-6 w-6 rounded-full border text-[11px] ${opt?.isCorrect ? "bg-primary text-primary-foreground border-primary" : "border-input text-muted-foreground"}`}
+                                  title="Mark as correct"
+                                >
+                                  {String.fromCharCode(65 + optIdx)}
+                                </button>
+                                <Input
+                                  value={opt?.text || ""}
+                                  onChange={(e) => updateCsvMcqOptionText(i, optIdx, e.target.value)}
+                                  placeholder={`Option ${String.fromCharCode(65 + optIdx)}`}
+                                  className="h-8 text-xs"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <p className="font-medium">CQ Sub-questions</p>
+                            {(Array.isArray(q.subQuestions) ? q.subQuestions : []).map((sq: any, subIdx: number) => (
+                              <div key={subIdx} className="rounded border p-2 space-y-2">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                  <Input
+                                    value={sq?.type || ""}
+                                    onChange={(e) => updateCsvSubQuestionField(i, subIdx, "type", e.target.value)}
+                                    placeholder="Type (fill blank / make sentence / short question)"
+                                    className="h-8 text-xs"
+                                  />
+                                  <Input
+                                    value={sq?.question || ""}
+                                    onChange={(e) => updateCsvSubQuestionField(i, subIdx, "question", e.target.value)}
+                                    placeholder="Sub-question"
+                                    className="h-8 text-xs md:col-span-2"
+                                  />
+                                </div>
+                                <Input
+                                  value={sq?.answer || ""}
+                                  onChange={(e) => updateCsvSubQuestionField(i, subIdx, "answer", e.target.value)}
+                                  placeholder="Expected answer"
+                                  className="h-8 text-xs"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

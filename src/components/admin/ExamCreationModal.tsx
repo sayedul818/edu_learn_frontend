@@ -477,16 +477,55 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
     ctx.moveTo(x, y);
   };
 
-  const getCanvasCoords = (evt: React.MouseEvent<HTMLCanvasElement>) => {
+  const getCanvasCoords = (point: { clientX: number; clientY: number }) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     return {
-      x: (evt.clientX - rect.left) * scaleX,
-      y: (evt.clientY - rect.top) * scaleY,
+      x: (point.clientX - rect.left) * scaleX,
+      y: (point.clientY - rect.top) * scaleY,
     };
+  };
+
+  const startDrawingAt = (x: number, y: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    isDrawingRef.current = true;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  };
+
+  const handleCanvasPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    // Ignore non-primary mouse buttons but allow pen/touch input.
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault();
+    const { x, y } = getCanvasCoords(e);
+    startDrawingAt(x, y);
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // Some browsers/devices may not support pointer capture here.
+    }
+  };
+
+  const handleCanvasPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isDrawingRef.current) return;
+    e.preventDefault();
+    const { x, y } = getCanvasCoords(e);
+    drawPoint(x, y);
+  };
+
+  const handleCanvasPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // Safe no-op when capture was not set.
+    }
+    stopDrawing();
   };
 
   const stopDrawing = () => {
@@ -526,7 +565,8 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
     if (!ctx) return;
     const img = new Image();
     img.onload = () => {
-      const maxW = 1000;
+      // Keep annotation canvas reasonably small to reduce upload/save payload.
+      const maxW = 800;
       const ratio = img.naturalWidth > maxW ? maxW / img.naturalWidth : 1;
       canvas.width = Math.max(1, Math.floor(img.naturalWidth * ratio));
       canvas.height = Math.max(1, Math.floor(img.naturalHeight * ratio));
@@ -562,11 +602,27 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
 
     try {
       setIsSavingFeedbackImage(true);
-      const dataUrl = canvas.toDataURL('image/png');
+
+      const toJpegBlob = (quality = 0.75) =>
+        new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob((blob) => {
+            if (!blob) return reject(new Error('Unable to export edited image'));
+            resolve(blob);
+          }, 'image/jpeg', quality);
+        });
+
+      const jpegBlob = await toJpegBlob(0.75);
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('Failed to read edited image'));
+        reader.readAsDataURL(jpegBlob);
+      });
+
       const editedNameBase = (editingAttachment?.name || `feedback-${editingAttachmentIndex + 1}`).replace(/\.[^/.]+$/, '');
       const editedAttachment: any = {
-        name: `${editedNameBase}-feedback.png`,
-        type: 'image/png',
+        name: `${editedNameBase}-feedback.jpg`,
+        type: 'image/jpeg',
         dataUrl,
         edited: true,
         originalName: editingAttachment?.name,
@@ -574,9 +630,7 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
 
       try {
         const { uploadFileToCloudinary } = await import('@/services/cloudinary');
-        const resp = await fetch(dataUrl);
-        const blob = await resp.blob();
-        const file = new File([blob], editedAttachment.name, { type: 'image/png' });
+        const file = new File([jpegBlob], editedAttachment.name, { type: 'image/jpeg' });
         const url = await uploadFileToCloudinary(file);
         editedAttachment.url = url;
         // Prefer URL storage to keep grade-save payload small.
@@ -1565,24 +1619,13 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
           <div className="overflow-auto border rounded bg-white">
             <canvas
               ref={canvasRef}
-              className="max-w-full h-auto cursor-crosshair"
-              onMouseDown={(e: any) => {
-                isDrawingRef.current = true;
-                const { x, y } = getCanvasCoords(e);
-                const canvas = canvasRef.current;
-                if (!canvas) return;
-                const ctx = canvas.getContext('2d');
-                if (!ctx) return;
-                ctx.beginPath();
-                ctx.moveTo(x, y);
-              }}
-              onMouseMove={(e: any) => {
-                if (!isDrawingRef.current) return;
-                const { x, y } = getCanvasCoords(e);
-                drawPoint(x, y);
-              }}
-              onMouseUp={stopDrawing}
-              onMouseLeave={stopDrawing}
+              className="max-w-full h-auto cursor-crosshair touch-none"
+              onPointerDown={handleCanvasPointerDown}
+              onPointerMove={handleCanvasPointerMove}
+              onPointerUp={handleCanvasPointerUp}
+              onPointerCancel={handleCanvasPointerUp}
+              onPointerLeave={stopDrawing}
+              onContextMenu={(e) => e.preventDefault()}
             />
           </div>
 

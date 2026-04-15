@@ -317,7 +317,7 @@ const TakeExam = () => {
     if (questions.length === 0) return;
     setCurrentQ((prev) => (prev >= 0 && prev < questions.length ? prev : 0));
   }, [questions.length]);
-
+  
   useEffect(() => {
     if (!examId || !exam || isLoading || submitted || !examDraftKey) return;
 
