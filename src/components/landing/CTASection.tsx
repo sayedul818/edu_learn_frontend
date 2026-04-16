@@ -17,21 +17,23 @@ const CTASection = () => {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1),transparent)]" />
           <div className="relative z-10">
             <h2 className="text-3xl md:text-4xl font-display font-bold text-primary-foreground mb-4">
-              Ready to Ace Your Next Exam?
+              আজই আপনার শেখার যাত্রা শুরু করুন
             </h2>
             <p className="text-primary-foreground/80 text-lg max-w-xl mx-auto mb-8">
-              Join thousands of students already using ExamPathshala to boost their scores. Start your free practice today.
+              এখনই যোগ দিন, MCQ ও CQ প্র্যাকটিস করুন, নিজের অগ্রগতি দেখুন, এবং শিক্ষক হিসেবে ক্লাস ম্যানেজ করুন।
             </p>
-            <Button
-              size="lg"
-              variant="secondary"
-              className="text-base px-8 h-12 font-semibold"
-              asChild
-            >
-              <Link to="/signup">
-                Get Started Free <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button size="lg" variant="secondary" className="text-base px-8 h-12 font-semibold" asChild>
+                <Link to="/signup">
+                  🎯 শিক্ষার্থী হিসেবে যোগ দিন <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+              <Button size="lg" variant="outline" className="text-base px-8 h-12 font-semibold border-white/40 text-primary-foreground hover:bg-white/10" asChild>
+                <Link to="/signup?role=teacher">
+                  👨‍🏫 শিক্ষক হিসেবে যোগ দিন
+                </Link>
+              </Button>
+            </div>
           </div>
         </motion.div>
       </div>

@@ -22,10 +22,11 @@ const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const navLinks = [
-    { label: "Features", href: "#features" },
-    { label: "How It Works", href: "#how-it-works" },
-    { label: "Pricing", href: "#pricing" },
-    { label: "Testimonials", href: "#testimonials" },
+    { label: "বৈশিষ্ট্য", href: "#features" },
+    { label: "কিভাবে কাজ করে", href: "#how-it-works" },
+    { label: "কোর্স", href: "#courses" },
+    { label: "র‍্যাঙ্কিং", href: "#leaderboard" },
+    { label: "মতামত", href: "#testimonials" },
   ];
 
   return (
@@ -37,7 +38,7 @@ const Navbar = () => {
           </div>
           <div className="leading-tight">
             <span className="block text-xl font-display font-bold text-foreground">ExamPathshala</span>
-            <span className="hidden sm:block text-[11px] text-muted-foreground">Practice smarter, score better.</span>
+            <span className="hidden sm:block text-[11px] text-muted-foreground">স্মার্ট লার্নিং, দ্রুত অগ্রগতি</span>
           </div>
         </Link>
 
@@ -56,10 +57,10 @@ const Navbar = () => {
         <div className="hidden md:flex items-center gap-3">
           <ThemeToggle />
           <Button variant="ghost" asChild>
-            <Link to="/login">Log In</Link>
+            <Link to="/login">লগ ইন</Link>
           </Button>
           <Button asChild>
-            <Link to="/signup">Get Started Free</Link>
+            <Link to="/signup">শুরু করুন</Link>
           </Button>
         </div>
 
@@ -88,10 +89,10 @@ const Navbar = () => {
           </div>
           <div className="flex flex-col gap-2 pt-2">
             <Button variant="outline" asChild>
-              <Link to="/login">Log In</Link>
+              <Link to="/login">লগ ইন</Link>
             </Button>
             <Button asChild>
-              <Link to="/signup">Get Started Free</Link>
+              <Link to="/signup">শুরু করুন</Link>
             </Button>
           </div>
         </div>

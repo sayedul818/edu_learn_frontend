@@ -14,44 +14,44 @@ const Footer = () => {
               <span className="text-lg font-display font-bold">ExamPathshala</span>
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Practice smarter, score better.
+              স্মার্ট লার্নিং, পরীক্ষা জয়ের সেরা পথ।
             </p>
           </div>
 
           <div>
-            <h4 className="font-display font-semibold text-sm mb-4">Product</h4>
+            <h4 className="font-display font-semibold text-sm mb-4">আমাদের সম্পর্কে</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><a href="#features" className="hover:text-foreground transition-colors">Features</a></li>
-              <li><a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Question Bank</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Mock Exams</a></li>
+              <li><a href="#features" className="hover:text-foreground transition-colors">বৈশিষ্ট্য</a></li>
+              <li><a href="#courses" className="hover:text-foreground transition-colors">কোর্স</a></li>
+              <li><a href="#leaderboard" className="hover:text-foreground transition-colors">লিডারবোর্ড</a></li>
+              <li><a href="#dashboard-preview" className="hover:text-foreground transition-colors">ড্যাশবোর্ড</a></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="font-display font-semibold text-sm mb-4">Resources</h4>
+            <h4 className="font-display font-semibold text-sm mb-4">যোগাযোগ</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><a href="#" className="hover:text-foreground transition-colors">Blog</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Help Center</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Study Tips</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">API Docs</a></li>
+              <li><a href="#" className="hover:text-foreground transition-colors">সাহায্য কেন্দ্র</a></li>
+              <li><a href="#" className="hover:text-foreground transition-colors">ইমেইল</a></li>
+              <li><a href="#" className="hover:text-foreground transition-colors">ফেসবুক</a></li>
+              <li><a href="#" className="hover:text-foreground transition-colors">ফোন</a></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="font-display font-semibold text-sm mb-4">Company</h4>
+            <h4 className="font-display font-semibold text-sm mb-4">নীতিমালা</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><a href="#" className="hover:text-foreground transition-colors">About Us</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Careers</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Terms of Service</a></li>
+              <li><a href="#" className="hover:text-foreground transition-colors">গোপনীয়তা নীতি</a></li>
+              <li><a href="#" className="hover:text-foreground transition-colors">শর্তাবলী</a></li>
+              <li><a href="#" className="hover:text-foreground transition-colors">ব্যবহার নির্দেশিকা</a></li>
+              <li><a href="#" className="hover:text-foreground transition-colors">কুকি নীতি</a></li>
             </ul>
           </div>
         </div>
 
         <div className="border-t border-border pt-6 text-center">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} ExamPathshala. All rights reserved.
+            © {new Date().getFullYear()} ExamPathshala. সর্বস্বত্ব সংরক্ষিত।
           </p>
         </div>
       </div>

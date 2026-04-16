@@ -3,27 +3,27 @@ import { Star } from "lucide-react";
 
 const testimonials = [
   {
-    name: "Rahim Ahmed",
-    role: "SSC Student, Dhaka",
-    content: "ExamPathshala helped me score A+ in my SSC exams. The question bank is incredibly well-organized and the analytics showed me exactly where I needed to improve.",
+    name: "রাহিম আহমেদ",
+    role: "এসএসসি শিক্ষার্থী, ঢাকা",
+    content: "এই প্ল্যাটফর্ম ব্যবহার করে আমার পরীক্ষার রেজাল্ট অনেক উন্নতি হয়েছে! প্রশ্ন ব্যাংক আর প্রগ্রেস ট্র্যাকিং অসাধারণ।",
     rating: 5,
   },
   {
-    name: "Fatima Akter",
-    role: "HSC Candidate",
-    content: "The timed mock exams feel exactly like the real thing. I was so well-prepared that the actual exam felt easy. Best platform for exam prep!",
+    name: "ফাতেমা আক্তার",
+    role: "এইচএসসি পরীক্ষার্থী",
+    content: "শিক্ষার্থীদের পারফরম্যান্স ট্র্যাক করা এখন অনেক সহজ! লাইভ পরীক্ষা আর র‌্যাঙ্কিং আমাকে খুব অনুপ্রাণিত করেছে।",
     rating: 5,
   },
   {
-    name: "Prof. Karim Hassan",
-    role: "Physics Teacher",
-    content: "As a teacher, this platform saves me hours of work. I can create exams, track student performance, and identify weak students — all in one place.",
+    name: "প্রফেসর করিম হাসান",
+    role: "শিক্ষক",
+    content: "শিক্ষক ড্যাশবোর্ডটি খুবই কার্যকর। প্রশ্ন তৈরি, পরীক্ষা নেওয়া, এবং পারফরম্যান্স বিশ্লেষণ সব এক জায়গায়।",
     rating: 5,
   },
   {
-    name: "Nadia Islam",
-    role: "University Admission Prep",
-    content: "I tried multiple platforms but ExamPathshala's adaptive difficulty and detailed explanations made the biggest difference in my preparation journey.",
+    name: "নাদিয়া ইসলাম",
+    role: "ভর্তি প্রস্তুতি",
+    content: "রেজাল্ট, চ্যালেঞ্জ আর লিডারবোর্ড—সবকিছু একসাথে থাকায় প্রস্তুতি অনেক বেশি মজার ও নিয়মিত হয়েছে।",
     rating: 5,
   },
 ];
@@ -33,12 +33,12 @@ const TestimonialsSection = () => {
     <section id="testimonials" className="py-20 md:py-28">
       <div className="container mx-auto px-4">
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <span className="text-sm font-semibold text-primary uppercase tracking-wider">Testimonials</span>
+          <span className="text-sm font-semibold text-primary uppercase tracking-wider">মতামত</span>
           <h2 className="text-3xl md:text-4xl font-display font-bold mt-3 mb-4">
-            Loved by Students & Teachers
+            শিক্ষার্থী ও শিক্ষকদের পছন্দের প্ল্যাটফর্ম
           </h2>
           <p className="text-muted-foreground text-lg">
-            Join thousands of students who have improved their exam performance with ExamPathshala.
+            হাজারো শিক্ষার্থী ও শিক্ষক ইতিমধ্যেই ExamPathshala ব্যবহার করছেন।
           </p>
         </div>
 

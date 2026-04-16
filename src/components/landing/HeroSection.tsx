@@ -1,50 +1,72 @@
 import { motion } from "framer-motion";
-import { ArrowRight, Play } from "lucide-react";
+import { ArrowRight, Play, Sparkles, Trophy, Brain, BookOpen, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import studentPanelOverview from "@/assets/student-panel-overview.svg";
-import teacherPanelOverview from "@/assets/teacher-panel-overview.svg";
 
 const HeroSection = () => {
   return (
-    <section className="relative pt-28 pb-20 md:pt-36 md:pb-28 overflow-hidden">
-      {/* Background decoration */}
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute top-20 left-1/4 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-10 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl" />
-      </div>
+    <section className="relative pt-28 pb-10 md:pt-36 md:pb-14 overflow-hidden">
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.10),transparent_30%),radial-gradient(circle_at_top_right,rgba(34,211,238,0.08),transparent_24%),linear-gradient(180deg,rgba(2,6,23,0.015),transparent)]" />
+      <motion.div
+        className="absolute -z-10 top-20 left-10 h-72 w-72 rounded-full bg-emerald-500/6 blur-3xl"
+        animate={{ y: [0, 12, 0], x: [0, 6, 0] }}
+        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute -z-10 bottom-10 right-6 h-80 w-80 rounded-full bg-cyan-400/6 blur-3xl"
+        animate={{ y: [0, -10, 0], x: [0, -6, 0] }}
+        transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
+      />
 
       <div className="container mx-auto px-4">
-        <div className="max-w-4xl mx-auto text-center mb-12">
+        <div className="max-w-6xl mx-auto text-center mb-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
-              🚀 The Future of Exam Preparation
+            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-emerald-500/15 bg-emerald-500/8 text-emerald-700 dark:text-emerald-300 text-sm font-medium mb-6 backdrop-blur-sm shadow-sm">
+              <Sparkles className="h-4 w-4" /> স্মার্ট লার্নিং, লাইভ পরীক্ষা, লিডারবোর্ড
             </span>
           </motion.div>
 
           <motion.h1
-            className="text-4xl md:text-6xl lg:text-7xl font-display font-extrabold leading-tight mb-6"
+            className="text-4xl md:text-5xl lg:text-5xl xl:text-[4.25rem] font-display font-bold tracking-[-0.06em] leading-[1.02] mb-6 xl:whitespace-nowrap"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            Master Every Exam with{" "}
-            <span className="text-gradient">Smart Practice</span>
+            স্মার্ট লার্নিং দিয়ে পরীক্ষায়{" "}
+            <span className="text-gradient">এগিয়ে থাকুন</span>
           </motion.h1>
 
           <motion.p
-            className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8"
+            className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-8 leading-relaxed"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            Digital question banks, timed mock exams, and AI-powered analytics — 
-            everything you need to ace SSC, HSC, university admissions, and job exams.
+            MCQ ও CQ প্র্যাকটিস করুন, লাইভ এক্সাম দিন, নিজের প্রগ্রেস ট্র্যাক করুন এবং লিডারবোর্ডে প্রতিযোগিতা করুন।
           </motion.p>
+
+          <motion.div
+            className="flex flex-wrap justify-center gap-3 mb-8"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.22 }}
+          >
+            {[
+              { icon: BookOpen, label: "প্রশ্ন ব্যাংক" },
+              { icon: Brain, label: "CQ/MCQ প্রস্তুতি" },
+              { icon: Trophy, label: "লিডারবোর্ড" },
+              { icon: Users, label: "শিক্ষক ড্যাশবোর্ড" },
+            ].map((tag) => (
+              <div key={tag.label} className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/70 px-4 py-2 text-sm shadow-sm backdrop-blur-md text-foreground/90">
+                <tag.icon className="h-4 w-4 text-primary" />
+                <span>{tag.label}</span>
+              </div>
+            ))}
+          </motion.div>
 
           <motion.div
             className="flex flex-col sm:flex-row gap-4 justify-center"
@@ -54,11 +76,13 @@ const HeroSection = () => {
           >
             <Button size="lg" className="text-base px-8 h-12" asChild>
               <Link to="/signup">
-                Start Practicing Free <ArrowRight className="ml-2 h-4 w-4" />
+                🚀 শুরু করুন <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
-            <Button size="lg" variant="outline" className="text-base px-8 h-12">
-              <Play className="mr-2 h-4 w-4" /> Watch Demo
+            <Button size="lg" variant="outline" className="text-base px-8 h-12" asChild>
+              <Link to="/signup?role=teacher">
+                👨‍🏫 শিক্ষক হিসেবে যোগ দিন <Play className="ml-2 h-4 w-4" />
+              </Link>
             </Button>
           </motion.div>
 
@@ -68,42 +92,10 @@ const HeroSection = () => {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.4 }}
           >
-            ✓ No credit card required &nbsp; ✓ 500+ free questions &nbsp; ✓ Instant results
+            ✓ কোনো কার্ড দরকার নেই &nbsp; ✓ ৫০,০০০+ প্রশ্ন &nbsp; ✓ লাইভ ফলাফল
           </motion.p>
         </div>
 
-        <motion.div
-          className="max-w-6xl mx-auto"
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.4 }}
-        >
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="relative rounded-2xl overflow-hidden shadow-card-hover border border-border bg-card">
-              <div className="px-5 py-4 border-b border-border">
-                <p className="text-sm font-semibold text-foreground">Student Panel Overview</p>
-              </div>
-              <img
-                src={studentPanelOverview}
-                alt="Student panel overview with progress trends and exam performance insights"
-                className="w-full h-auto"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-background/20 to-transparent pointer-events-none" />
-            </div>
-
-            <div className="relative rounded-2xl overflow-hidden shadow-card-hover border border-border bg-card">
-              <div className="px-5 py-4 border-b border-border">
-                <p className="text-sm font-semibold text-foreground">Teacher Panel Overview</p>
-              </div>
-              <img
-                src={teacherPanelOverview}
-                alt="Teacher panel overview with class analytics and performance management tools"
-                className="w-full h-auto"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-background/20 to-transparent pointer-events-none" />
-            </div>
-          </div>
-        </motion.div>
       </div>
     </section>
   );
