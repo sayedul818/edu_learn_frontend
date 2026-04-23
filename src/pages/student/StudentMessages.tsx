@@ -4,6 +4,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import MessageActionsMenu from "@/components/chat/MessageActionsMenu";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +27,7 @@ import {
   Paperclip,
   Phone,
   Search,
+  Plus,
   SendHorizontal,
   Smile,
   Video,
@@ -68,6 +76,16 @@ type MessageItem = {
   editedAt?: string | null;
 };
 
+type CourseMember = {
+  _id: string;
+  name: string;
+  email?: string;
+  avatar?: string;
+  role: "teacher" | "student";
+  isOnline?: boolean;
+  lastSeenLabel?: string;
+};
+
 const dayLabel = (value: string) => {
   const now = new Date();
   const date = new Date(value);
@@ -107,12 +125,15 @@ const StudentMessages = () => {
   const [activeConversationId, setActiveConversationId] = useState<string>("");
   const [activeConversation, setActiveConversation] = useState<any>(null);
   const [activeCourseId, setActiveCourseId] = useState<string>("");
+  const [activeMemberId, setActiveMemberId] = useState<string>("");
 
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [sharedFiles, setSharedFiles] = useState<Attachment[]>([]);
   const [messageText, setMessageText] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([]);
   const [composerMode, setComposerMode] = useState<null | { type: "reply" | "forward" | "edit"; message: MessageItem }>(null);
+  const [courseMembers, setCourseMembers] = useState<CourseMember[]>([]);
+  const [selectedMemberId, setSelectedMemberId] = useState<string>("none");
 
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -163,10 +184,33 @@ const StudentMessages = () => {
   }, [messages, meId]);
 
   const coursesWithConversation = useMemo(() => {
-    return courses.map((course) => {
-      const conversation = conversations.find((item) => String(item.course?._id || item.course?.title || "") === String(course.courseId));
-      return { course, conversation };
-    });
+    const courseMap = new Map(courses.map((course) => [String(course.courseId), course]));
+
+    const conversationRows = conversations
+      .filter((conversation) => {
+        const courseId = String(conversation.course?._id || "");
+        return courseMap.has(courseId);
+      })
+      .map((conversation) => {
+        const courseId = String(conversation.course?._id || "");
+        const course = courseMap.get(courseId)!;
+        return {
+          rowKey: `${courseId}:${String(conversation.peer?._id || conversation._id)}`,
+          course,
+          conversation,
+        };
+      });
+
+    const courseIdsWithConversations = new Set(conversationRows.map((row) => String(row.course.courseId)));
+    const emptyRows = courses
+      .filter((course) => !courseIdsWithConversations.has(String(course.courseId)))
+      .map((course) => ({
+        rowKey: `${String(course.courseId)}:empty`,
+        course,
+        conversation: undefined as ConversationItem | undefined,
+      }));
+
+    return [...conversationRows, ...emptyRows];
   }, [courses, conversations]);
 
   const filteredCourseRows = useMemo(() => {
@@ -241,11 +285,63 @@ const StudentMessages = () => {
   }, [activeCourseId, courses, selectedCourseId]);
 
   useEffect(() => {
-    const activeCourseConversation = conversations.find((conversation) => String(conversation.course?._id || "") === String(activeCourseId));
+    if (!activeCourseId) return;
+
+    // If a specific member is selected, keep that member's chat active.
+    if (activeMemberId) {
+      const memberConversation = conversations.find(
+        (conversation) =>
+          String(conversation.course?._id || "") === String(activeCourseId) &&
+          String(conversation.peer?._id || "") === String(activeMemberId)
+      );
+      if (memberConversation?._id && memberConversation._id !== activeConversationId) {
+        setActiveConversationId(memberConversation._id);
+      }
+      return;
+    }
+
+    // Fallback: pick a conversation for this course only when none is currently active for the course.
+    const currentBelongsToCourse = conversations.some(
+      (conversation) =>
+        String(conversation._id) === String(activeConversationId) &&
+        String(conversation.course?._id || "") === String(activeCourseId)
+    );
+    if (currentBelongsToCourse) return;
+
+    const activeCourseConversation = conversations.find(
+      (conversation) => String(conversation.course?._id || "") === String(activeCourseId)
+    );
     if (activeCourseConversation?._id) {
       setActiveConversationId(activeCourseConversation._id);
+      setActiveMemberId(String(activeCourseConversation.peer?._id || ""));
     }
-  }, [activeCourseId, conversations]);
+  }, [activeCourseId, activeConversationId, activeMemberId, conversations]);
+
+  useEffect(() => {
+    const loadCourseMembers = async () => {
+      if (!activeCourseId) {
+        setCourseMembers([]);
+        setSelectedMemberId("none");
+        return;
+      }
+
+      try {
+        const res = await messagesAPI.listCourseMembers(activeCourseId);
+        const rows = Array.isArray(res?.data) ? res.data : [];
+        setCourseMembers(rows);
+        setSelectedMemberId((prev) => {
+          if (prev !== "none" && rows.some((member) => String(member._id) === prev)) return prev;
+          return "none";
+        });
+      } catch (error: any) {
+        setCourseMembers([]);
+        setSelectedMemberId("none");
+        toast({ title: "Failed to load course members", description: error?.message, variant: "destructive" });
+      }
+    };
+
+    loadCourseMembers();
+  }, [activeCourseId, toast]);
 
   useEffect(() => {
     if (!activeConversationId) return;
@@ -289,9 +385,11 @@ const StudentMessages = () => {
 
   const openCourseChat = async (courseId: string) => {
     setActiveCourseId(courseId);
+    setActiveMemberId("");
     const existing = conversations.find((conversation) => String(conversation.course?._id || "") === String(courseId));
     if (existing?._id) {
       setActiveConversationId(existing._id);
+      setActiveMemberId(String(existing.peer?._id || ""));
       setMobileView("chat");
       return;
     }
@@ -301,6 +399,7 @@ const StudentMessages = () => {
       const created = res?.data;
       if (created?._id) {
         setActiveConversationId(String(created._id));
+        setActiveMemberId(String(created?.peer?._id || ""));
         await loadConversations(search, true);
         await loadMessages(String(created._id), false);
       }
@@ -308,6 +407,73 @@ const StudentMessages = () => {
     } catch (error: any) {
       toast({ title: "Unable to open course chat", description: error?.message, variant: "destructive" });
     }
+  };
+
+  const handleStartMemberChat = async () => {
+    if (!activeCourseId) {
+      toast({ title: "Select a course", description: "Choose one of your enrolled courses first." });
+      return;
+    }
+    if (!selectedMemberId || selectedMemberId === "none") {
+      toast({ title: "Select member", description: "Choose a course member to start chat." });
+      return;
+    }
+
+    const existing = conversations.find(
+      (conversation) =>
+        String(conversation.course?._id || "") === String(activeCourseId) &&
+        String(conversation.peer?._id || "") === String(selectedMemberId)
+    );
+
+    if (existing?._id) {
+      setActiveConversationId(existing._id);
+      setActiveMemberId(String(selectedMemberId));
+      setMobileView("chat");
+      return;
+    }
+
+    try {
+      const res = await messagesAPI.createConversation({ courseId: activeCourseId, studentId: selectedMemberId });
+      const created = res?.data;
+      if (created?._id) {
+        const createdId = String(created._id);
+        setActiveConversationId(createdId);
+        setActiveMemberId(String(selectedMemberId));
+        await loadConversations(search, true);
+        await loadMessages(createdId, false);
+      }
+      setMobileView("chat");
+      setSelectedMemberId("none");
+    } catch (error: any) {
+      toast({ title: "Unable to start member chat", description: error?.message, variant: "destructive" });
+    }
+  };
+
+  const ensureMemberConversation = async () => {
+    if (!activeCourseId || !selectedMemberId || selectedMemberId === "none") return null;
+
+    const existing = conversations.find(
+      (conversation) =>
+        String(conversation.course?._id || "") === String(activeCourseId) &&
+        String(conversation.peer?._id || "") === String(selectedMemberId)
+    );
+
+    if (existing?._id) {
+      if (String(activeConversationId) !== String(existing._id)) {
+        setActiveConversationId(existing._id);
+      }
+      setActiveMemberId(String(selectedMemberId));
+      return String(existing._id);
+    }
+
+    const created = await messagesAPI.createConversation({ courseId: activeCourseId, studentId: selectedMemberId });
+    const createdId = String(created?.data?._id || "");
+    if (!createdId) return null;
+
+    setActiveConversationId(createdId);
+    setActiveMemberId(String(selectedMemberId));
+    await loadConversations(search, true);
+    return createdId;
   };
 
   const handleUploadAttachments = async (files: FileList | null) => {
@@ -364,6 +530,18 @@ const StudentMessages = () => {
     }
 
     let conversationId = activeConversationId;
+
+    // If a specific member is selected, always send to that member's conversation.
+    if (selectedMemberId && selectedMemberId !== "none") {
+      try {
+        const memberConversationId = await ensureMemberConversation();
+        if (memberConversationId) conversationId = memberConversationId;
+      } catch (error: any) {
+        toast({ title: "Unable to open selected member chat", description: error?.message, variant: "destructive" });
+        return;
+      }
+    }
+
     if (!conversationId && activeCourseId) {
       try {
         const created = await messagesAPI.createConversation({ courseId: activeCourseId });
@@ -478,7 +656,7 @@ const StudentMessages = () => {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h1 className="text-3xl font-extrabold tracking-tight text-black">Messages</h1>
-              <p className="mt-1 text-sm text-black/55">Chat with the teacher of each enrolled course.</p>
+              <p className="mt-1 text-sm text-black/55">Chat with course teachers and classmates.</p>
             </div>
             <div className="rounded-2xl bg-black px-3 py-2 text-white shadow-sm">
               <MessageCircle className="h-5 w-5" />
@@ -493,6 +671,29 @@ const StudentMessages = () => {
               placeholder="Search courses or teachers"
               className="h-11 rounded-full border-black/10 bg-[#f3f3f3] pl-9 text-black placeholder:text-black/45"
             />
+          </div>
+
+          <div className="mt-3 flex items-center gap-2">
+            <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
+              <SelectTrigger className="h-10 rounded-full border-black/10 bg-white">
+                <SelectValue placeholder="Select member" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Select member</SelectItem>
+                {courseMembers.map((member) => (
+                  <SelectItem key={member._id} value={String(member._id)}>
+                    {member.name} {member.role === "teacher" ? "(Teacher)" : "(Student)"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              className="h-10 rounded-full bg-black px-4 text-white hover:bg-black/90"
+              onClick={handleStartMemberChat}
+            >
+              <Plus className="mr-1 h-4 w-4" /> Start
+            </Button>
           </div>
         </div>
 
@@ -514,13 +715,24 @@ const StudentMessages = () => {
             </div>
           ) : (
             <div className="space-y-1.5">
-              {filteredCourseRows.map(({ course, conversation }) => {
-                const active = course.courseId === activeCourseId;
+              {filteredCourseRows.map(({ rowKey, course, conversation }) => {
+                const active = conversation
+                  ? String(conversation._id) === String(activeConversationId)
+                  : String(course.courseId) === String(activeCourseId) && !activeConversationId;
                 return (
                   <button
-                    key={course.courseId}
+                    key={rowKey}
                     type="button"
-                    onClick={() => openCourseChat(course.courseId)}
+                    onClick={() => {
+                      if (conversation?._id) {
+                        setActiveCourseId(course.courseId);
+                        setActiveConversationId(conversation._id);
+                        setActiveMemberId(String(conversation.peer?._id || ""));
+                        setMobileView("chat");
+                        return;
+                      }
+                      openCourseChat(course.courseId);
+                    }}
                     className={`w-full rounded-2xl px-3 py-2 text-left transition-all ${active ? "bg-white shadow-sm ring-1 ring-black/10" : "hover:bg-white/80"}`}
                   >
                     <div className="flex items-start gap-3">
@@ -533,13 +745,15 @@ const StudentMessages = () => {
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="truncate text-[15px] font-bold text-black">{course.courseTitle}</p>
+                          <p className="truncate text-[15px] font-bold text-black">
+                            {conversation?.displayName || conversation?.peer?.name || course.courseTitle}
+                          </p>
                           <span className="text-[11px] text-black/55">{formatConversationTime(conversation?.lastMessageAt)}</span>
                         </div>
-                        <p className="truncate text-xs text-black/55">{course.teacherName || "Teacher"}</p>
+                        <p className="truncate text-xs text-black/55">{course.courseTitle}</p>
                         <p className="truncate text-xs text-black/45">
                           {conversation?.othersTyping
-                            ? `${course.teacherName || "Teacher"} is typing...`
+                            ? `${conversation?.displayName || conversation?.peer?.name || "Member"} is typing...`
                             : conversation?.lastMessagePreview || "Tap to start chatting"}
                         </p>
                       </div>
@@ -573,11 +787,11 @@ const StudentMessages = () => {
                 </Avatar>
 
                 <div className="min-w-0">
-                  <p className="truncate text-[15px] font-bold text-black">{activeCourse.courseTitle}</p>
+                  <p className="truncate text-[15px] font-bold text-black">{activeSummary?.displayName || activeCourse.courseTitle}</p>
                   <p className="truncate text-xs text-black/55">
                     {activeSummary?.othersTyping
-                      ? `${activeCourse.teacherName || "Teacher"} is typing...`
-                      : activeCourse.teacherName || "Teacher"}
+                      ? `${activeSummary?.displayName || activeCourse.teacherName || "Member"} is typing...`
+                      : `${activeCourse.courseTitle}${activeSummary?.displayName ? ` • ${activeSummary.displayName}` : ""}`}
                     {activeSummary?.course?.title ? ` • ${activeSummary.course.title}` : ""}
                   </p>
                 </div>
@@ -659,7 +873,7 @@ const StudentMessages = () => {
                   {activeOthersTyping ? (
                     <div className="flex justify-start">
                       <div className="rounded-2xl rounded-bl-md bg-white px-3 py-2 text-xs text-black/55 shadow-sm">
-                        {activeCourse.teacherName || "Teacher"} is typing...
+                        {activeSummary?.displayName || activeCourse.teacherName || "Member"} is typing...
                       </div>
                     </div>
                   ) : null}
@@ -718,7 +932,7 @@ const StudentMessages = () => {
 
                 <Input
                   value={messageText}
-                  placeholder={composerMode?.type === "edit" ? "Edit message..." : `Message ${activeCourse.teacherName || "teacher"}...`}
+                  placeholder={composerMode?.type === "edit" ? "Edit message..." : `Message ${activeSummary?.displayName || "member"}...`}
                   className="h-10 rounded-full border-black/10 bg-[#f7f7f7]"
                   onChange={(event) => onTypingChange(event.target.value)}
                   onKeyDown={(event) => {

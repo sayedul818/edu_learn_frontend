@@ -396,6 +396,8 @@ export const teacherAPI = {
 
 // ============ MESSAGES API ============
 export const messagesAPI = {
+  listCourseMembers: (courseId: string) =>
+    fetchAPI(`/messages/course-members${buildQueryString({ courseId })}`),
   listConversations: (params?: { search?: string }) => {
     const qs = params ? buildQueryString(params) : '';
     return fetchAPI(`/messages/conversations${qs}`);
