@@ -204,7 +204,12 @@ const StudentMessages = () => {
       setMessages(Array.isArray(payload?.messages) ? payload.messages : []);
       setSharedFiles(Array.isArray(payload?.sharedFiles) ? payload.sharedFiles : []);
       setActiveConversation(payload?.conversation || null);
-      await messagesAPI.markRead(conversationId);
+
+      try {
+        await messagesAPI.markRead(conversationId);
+      } catch {
+        // Keep chat usable even if read-receipt update fails.
+      }
     } catch (error: any) {
       toast({ title: "Failed to load messages", description: error?.message, variant: "destructive" });
     } finally {
