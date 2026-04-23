@@ -14,6 +14,7 @@ type Student = {
   email: string;
   phone?: string;
   status: "active" | "inactive";
+  courseStatus?: "active" | "inactive" | "pending" | "hold";
   enrolledCourses: number;
   examsGiven: number;
   averageScore: number;
@@ -156,9 +157,22 @@ const TeacherStudents = () => {
                     <td>{student.examsGiven || 0}</td>
                     <td>{student.averageScore || 0}%</td>
                     <td>
-                      <span className={`rounded-full px-2.5 py-1 text-xs ${student.status === "active" ? "bg-emerald-500/15 text-emerald-400" : "bg-zinc-500/20 text-zinc-300"}`}>
-                        {student.status}
-                      </span>
+                      {(() => {
+                        const displayStatus = student.courseStatus || student.status;
+                        const statusClass =
+                          displayStatus === "pending"
+                            ? "bg-amber-500/15 text-amber-500"
+                            : displayStatus === "hold"
+                              ? "bg-orange-500/15 text-orange-500"
+                              : displayStatus === "active"
+                                ? "bg-emerald-500/15 text-emerald-400"
+                                : "bg-zinc-500/20 text-zinc-300";
+                        return (
+                          <span className={`rounded-full px-2.5 py-1 text-xs ${statusClass}`}>
+                            {displayStatus}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td>
                       <div className="flex justify-end gap-2">

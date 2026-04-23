@@ -2,8 +2,9 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/contexts/AuthContext";
+import { useStudentCourse } from "@/contexts/StudentCourseContext";
 import { useEffect, useMemo, useState } from "react";
-import { examsAPI, examResultsAPI, leaderboardAPI } from "@/services/api";
+import { coursesAPI, examsAPI, examResultsAPI } from "@/services/api";
 import {
   Flame,
   Gauge,
@@ -64,26 +65,23 @@ const readField = (value: unknown, key: string) => {
 
 const StudentDashboard = () => {
   const { user } = useAuth();
+  const { selectedCourseId, selectedCourseExamIds } = useStudentCourse();
   const [exams, setExams] = useState<ExamLike[]>([]);
   const [results, setResults] = useState<ResultLike[]>([]);
-  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [courseLeaderboardRows, setCourseLeaderboardRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
-        const [resultsRes, leaderboardRes, examsRes] = await Promise.allSettled([
+        const [resultsRes, examsRes] = await Promise.allSettled([
           examResultsAPI.getMine(),
-          leaderboardAPI.get("weekly"),
           examsAPI.getMine(),
         ]);
 
         if (resultsRes.status === "fulfilled") {
           setResults(resultsRes.value?.data || []);
-        }
-        if (leaderboardRes.status === "fulfilled") {
-          setLeaderboard(leaderboardRes.value?.data || []);
         }
 
         let examsList: ExamLike[] = [];
@@ -109,21 +107,59 @@ const StudentDashboard = () => {
     load();
   }, [user?.id]);
 
+  useEffect(() => {
+    const loadCourseRankings = async () => {
+      if (!selectedCourseId) {
+        setCourseLeaderboardRows([]);
+        return;
+      }
+      try {
+        const res = await coursesAPI.getCourseLeaderboard(selectedCourseId, { timeRange: "weekly", type: "overall" });
+        setCourseLeaderboardRows(Array.isArray(res?.data?.rows) ? res.data.rows : []);
+      } catch {
+        setCourseLeaderboardRows([]);
+      }
+    };
+
+    loadCourseRankings();
+  }, [selectedCourseId]);
+
   const userId = String(user?.id || (user as any)?._id || "");
 
+  const scopedExamIdSet = useMemo(
+    () => new Set((selectedCourseExamIds || []).map((id) => String(id))),
+    [selectedCourseExamIds]
+  );
+
+  const scopedExams = useMemo(() => {
+    if (!selectedCourseId) return exams;
+    if (!scopedExamIdSet.size) return [];
+    return exams.filter((exam) => scopedExamIdSet.has(String((exam as any)._id || (exam as any).id || "")));
+  }, [exams, scopedExamIdSet, selectedCourseId]);
+
+  const scopedResults = useMemo(() => {
+    if (!selectedCourseId) return results;
+    if (!scopedExamIdSet.size) return [];
+    return results.filter((result) => {
+      const examId = String((result as any).examId?._id || (result as any).examId || (result as any).exam || "");
+      return scopedExamIdSet.has(examId);
+    });
+  }, [results, scopedExamIdSet, selectedCourseId]);
+
   const myRank = useMemo(() => {
-    return leaderboard.find((item) => String(item.studentId) === userId)?.rank || "-";
-  }, [leaderboard, userId]);
+    const courseRank = courseLeaderboardRows.find((item) => String(item.studentId) === userId)?.rank;
+    return courseRank || "-";
+  }, [courseLeaderboardRows, userId]);
 
   const avgScore = useMemo(() => {
-    if (!results.length) return 0;
-    const sum = results.reduce((acc, result) => acc + asPercent(result.percentage), 0);
-    return Number((sum / results.length).toFixed(1));
-  }, [results]);
+    if (!scopedResults.length) return 0;
+    const sum = scopedResults.reduce((acc, result) => acc + asPercent(result.percentage), 0);
+    return Number((sum / scopedResults.length).toFixed(1));
+  }, [scopedResults]);
 
   const totalStudySeconds = useMemo(() => {
-    return results.reduce((acc, result) => acc + (Number(result.timeTaken) || 0), 0);
-  }, [results]);
+    return scopedResults.reduce((acc, result) => acc + (Number(result.timeTaken) || 0), 0);
+  }, [scopedResults]);
 
   const studyTimeLabel = useMemo(() => {
     if (!totalStudySeconds) return "0m";
@@ -136,7 +172,7 @@ const StudentDashboard = () => {
 
   const currentStreak = useMemo(() => {
     const daySet = new Set(
-      results
+      scopedResults
         .map((result) => {
           if (!result.submittedAt) return null;
           const d = new Date(result.submittedAt);
@@ -158,19 +194,19 @@ const StudentDashboard = () => {
     }
 
     return streak;
-  }, [results]);
+  }, [scopedResults]);
 
   const examLookup = useMemo(() => {
     const map = new Map<string, ExamLike>();
-    exams.forEach((exam) => {
+    scopedExams.forEach((exam) => {
       const key = String(exam._id || exam.id);
       if (key) map.set(key, exam);
     });
     return map;
-  }, [exams]);
+  }, [scopedExams]);
 
   const timelineData = useMemo(() => {
-    const last7 = [...results]
+    const last7 = [...scopedResults]
       .sort((a, b) => new Date(a.submittedAt || 0).getTime() - new Date(b.submittedAt || 0).getTime())
       .slice(-7);
 
@@ -182,20 +218,20 @@ const StudentDashboard = () => {
         engagement: asPercent(result.percentage),
       };
     });
-  }, [results]);
+  }, [scopedResults]);
 
   const upcomingExams = useMemo(() => {
     const now = Date.now();
-    return exams
+    return scopedExams
       .map((exam) => ({ ...exam, _startAt: getExamDate(exam) }))
       .filter((exam) => exam._startAt && exam._startAt.getTime() > now)
       .sort((a, b) => (a._startAt?.getTime() || 0) - (b._startAt?.getTime() || 0));
-  }, [exams]);
+  }, [scopedExams]);
 
   const subjectRows = useMemo(() => {
     const subjectStat: Record<string, { scoreSum: number; count: number }> = {};
 
-    results.forEach((result) => {
+    scopedResults.forEach((result) => {
       const examId = String(result.examId?._id || result.examId || "");
       const exam = examLookup.get(examId) || (typeof result.examId === "object" ? result.examId : null);
 
@@ -220,12 +256,12 @@ const StudentDashboard = () => {
       }))
       .sort((a, b) => b.progress - a.progress)
       .slice(0, 8);
-  }, [examLookup, results]);
+  }, [examLookup, scopedResults]);
 
-  const pendingEvaluation = results.filter((result) => !!result.pendingEvaluation).length;
+  const pendingEvaluation = scopedResults.filter((result) => !!result.pendingEvaluation).length;
 
   const recentActivities = useMemo(() => {
-    return [...results]
+    return [...scopedResults]
       .sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime())
       .slice(0, 6)
       .map((result) => {
@@ -242,7 +278,7 @@ const StudentDashboard = () => {
           xpEarned,
         };
       });
-  }, [examLookup, results]);
+  }, [examLookup, scopedResults]);
 
   const missionCards = useMemo(() => {
     const missions: Array<{ id: string; title: string; progressLabel: string; progress: number; rewardXp: number; rewardCoins: number }> = [];
@@ -259,7 +295,7 @@ const StudentDashboard = () => {
       });
     }
 
-    if (results.length) {
+    if (scopedResults.length) {
       missions.push({
         id: "accuracy-mission",
         title: "Push average accuracy to 80%",
@@ -282,7 +318,7 @@ const StudentDashboard = () => {
     }
 
     return missions.slice(0, 3);
-  }, [avgScore, currentStreak, results.length, upcomingExams]);
+  }, [avgScore, currentStreak, scopedResults.length, upcomingExams]);
 
   const currentWeekLabel = new Date().toLocaleDateString(undefined, {
     weekday: "short",

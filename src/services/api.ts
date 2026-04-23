@@ -64,15 +64,14 @@ async function parseJsonSafely(response: Response) {
 }
 
 async function fetchAPI(endpoint: string, options: FetchOptions = {}) {
-  const defaultHeaders = {
-    'Content-Type': 'application/json',
-  };
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+  const defaultHeaders: Record<string, string> = isFormData ? {} : { 'Content-Type': 'application/json' };
 
   const config: RequestInit = {
     ...options,
     headers: {
       ...defaultHeaders,
-      ...options.headers,
+      ...(options.headers as Record<string, string>),
     },
   };
 
@@ -87,8 +86,8 @@ async function fetchAPI(endpoint: string, options: FetchOptions = {}) {
     // ignore when running server-side
   }
 
-  if (options.body) {
-    config.body = JSON.stringify(options.body);
+  if (options.body !== undefined) {
+    config.body = isFormData ? options.body : JSON.stringify(options.body);
   }
 
   const cacheKey = buildCacheKey(API_URL, endpoint, token);
@@ -316,17 +315,87 @@ export const coursesAPI = {
   update: (id: string, data: any) => fetchAPI(`/courses/${id}`, { method: 'PUT', body: data }),
   delete: (id: string) => fetchAPI(`/courses/${id}`, { method: 'DELETE' }),
   getStudents: (courseId: string) => fetchAPI(`/courses/${courseId}/students`),
-  addStudent: (courseId: string, data: { studentId: string; enrollmentDate?: string; status?: 'active' | 'pending' }) =>
+  addStudent: (courseId: string, data: { studentId: string; enrollmentDate?: string; status?: 'active' | 'pending' | 'hold' }) =>
     fetchAPI(`/courses/${courseId}/students`, { method: 'POST', body: data }),
+  updateStudentStatus: (courseId: string, studentId: string, status: 'active' | 'pending' | 'hold') =>
+    fetchAPI(`/courses/${courseId}/students/${studentId}/status`, { method: 'PATCH', body: { status } }),
   removeStudent: (courseId: string, studentId: string) => fetchAPI(`/courses/${courseId}/students/${studentId}`, { method: 'DELETE' }),
   linkExam: (courseId: string, examId: string) => fetchAPI(`/courses/${courseId}/exams`, { method: 'POST', body: { examId } }),
   unlinkExam: (courseId: string, examId: string) => fetchAPI(`/courses/${courseId}/exams/${examId}`, { method: 'DELETE' }),
-  addMaterial: (courseId: string, data: { title: string; url: string; type?: 'link' | 'pdf' | 'video' | 'doc' }) =>
+  addMaterial: (courseId: string, data: { title: string; url: string; type?: 'link' | 'pdf' | 'video' | 'doc'; category?: string; description?: string }) =>
     fetchAPI(`/courses/${courseId}/materials`, { method: 'POST', body: data }),
+  updateMaterial: (courseId: string, materialId: string, data: { title: string; url: string; type?: 'link' | 'pdf' | 'video' | 'doc'; category?: string; description?: string }) =>
+    fetchAPI(`/courses/${courseId}/materials/${materialId}`, { method: 'PUT', body: data }),
   removeMaterial: (courseId: string, materialId: string) => fetchAPI(`/courses/${courseId}/materials/${materialId}`, { method: 'DELETE' }),
-  addAnnouncement: (courseId: string, message: string) => fetchAPI(`/courses/${courseId}/announcements`, { method: 'POST', body: { message } }),
+  addAnnouncement: (courseId: string, data: any) => fetchAPI(`/courses/${courseId}/announcements`, { method: 'POST', body: data }),
+  updateAnnouncement: (courseId: string, announcementId: string, data: any) =>
+    fetchAPI(`/courses/${courseId}/announcements/${announcementId}`, { method: 'PUT', body: data }),
+  duplicateAnnouncement: (courseId: string, announcementId: string) =>
+    fetchAPI(`/courses/${courseId}/announcements/${announcementId}/duplicate`, { method: 'POST' }),
   removeAnnouncement: (courseId: string, announcementId: string) =>
     fetchAPI(`/courses/${courseId}/announcements/${announcementId}`, { method: 'DELETE' }),
+  generateInviteLink: (courseId: string) => fetchAPI(`/courses/${courseId}/invite-link`, { method: 'POST' }),
+  joinByInviteToken: (token: string) => fetchAPI(`/courses/join/${token}`, { method: 'POST' }),
+  listMyMaterials: () => fetchAPI('/courses/my/materials'),
+  listMyEnrolled: () => fetchAPI('/courses/my/enrolled'),
+  getCourseLeaderboard: (courseId: string, params?: { timeRange?: 'weekly' | 'monthly' | 'all'; type?: 'overall' | 'exams' | 'assignments' }) => {
+    const qs = params
+      ? `?${new URLSearchParams(
+          Object.entries(params).reduce((acc, [k, v]) => {
+            if (v !== undefined && v !== null && v !== '') acc[k] = String(v);
+            return acc;
+          }, {} as Record<string, string>)
+        ).toString()}`
+      : '';
+    return fetchAPI(`/courses/${courseId}/leaderboard${qs}`);
+  },
+  listMyAnnouncements: () => fetchAPI('/courses/my/announcements'),
+  markMyAnnouncementSeen: (courseId: string, announcementId: string) =>
+    fetchAPI(`/courses/my/announcements/${courseId}/${announcementId}/seen`, { method: 'POST' }),
+  toggleMyAnnouncementLike: (courseId: string, announcementId: string) =>
+    fetchAPI(`/courses/my/announcements/${courseId}/${announcementId}/like`, { method: 'POST' }),
+  getStudentPerformance: (courseId: string, studentId: string) => fetchAPI(`/courses/${courseId}/students/${studentId}/performance`),
+  listMyAssignments: (params?: { search?: string; status?: 'all' | 'active' | 'closed' }) => {
+    const qs = params
+      ? `?${new URLSearchParams(
+          Object.entries(params).reduce((acc, [k, v]) => {
+            if (v !== undefined && v !== null && v !== '') acc[k] = String(v);
+            return acc;
+          }, {} as Record<string, string>)
+        ).toString()}`
+      : '';
+    return fetchAPI(`/courses/my/assignments${qs}`);
+  },
+  getMyAssignment: (assignmentId: string) => fetchAPI(`/courses/my/assignments/${assignmentId}`),
+  listAssignments: (courseId: string, params?: { search?: string; status?: 'draft' | 'active' | 'closed' | 'all' }) => {
+    const qs = params
+      ? `?${new URLSearchParams(
+          Object.entries(params).reduce((acc, [k, v]) => {
+            if (v !== undefined && v !== null && v !== '') acc[k] = String(v);
+            return acc;
+          }, {} as Record<string, string>)
+        ).toString()}`
+      : '';
+    return fetchAPI(`/courses/${courseId}/assignments${qs}`);
+  },
+  createAssignment: (courseId: string, data: any) => fetchAPI(`/courses/${courseId}/assignments`, { method: 'POST', body: data }),
+  uploadAssignmentAttachments: (courseId: string, assignmentId: string, files: File[]) => {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+    return fetchAPI(`/courses/${courseId}/assignments/${assignmentId}/attachments`, { method: 'POST', body: formData });
+  },
+  submitAssignment: (courseId: string, assignmentId: string, data: { writtenAnswer?: string; attachments?: any[] }) =>
+    fetchAPI(`/courses/${courseId}/assignments/${assignmentId}/submit`, { method: 'POST', body: data }),
+  updateAssignment: (courseId: string, assignmentId: string, data: any) =>
+    fetchAPI(`/courses/${courseId}/assignments/${assignmentId}`, { method: 'PUT', body: data }),
+  publishAssignment: (courseId: string, assignmentId: string) => fetchAPI(`/courses/${courseId}/assignments/${assignmentId}/publish`, { method: 'PATCH' }),
+  closeAssignment: (courseId: string, assignmentId: string) => fetchAPI(`/courses/${courseId}/assignments/${assignmentId}/close`, { method: 'PATCH' }),
+  deleteAssignment: (courseId: string, assignmentId: string) => fetchAPI(`/courses/${courseId}/assignments/${assignmentId}`, { method: 'DELETE' }),
+  getAssignmentSubmissions: (courseId: string, assignmentId: string) => fetchAPI(`/courses/${courseId}/assignments/${assignmentId}/submissions`),
+  getStudentSubmission: (courseId: string, assignmentId: string, studentId: string) =>
+    fetchAPI(`/courses/${courseId}/assignments/${assignmentId}/submissions/${studentId}`),
+  gradeStudentSubmission: (courseId: string, assignmentId: string, studentId: string, data: { marks?: number; feedback?: string; returnToStudent?: boolean }) =>
+    fetchAPI(`/courses/${courseId}/assignments/${assignmentId}/submissions/${studentId}/grade`, { method: 'PUT', body: data }),
 };
 
 // ============ ENROLLMENTS API ============
@@ -365,4 +434,44 @@ export const teacherAPI = {
   changeStudentStatus: (id: string, status: 'active' | 'inactive') =>
     fetchAPI(`/teacher/students/${id}/status`, { method: 'PATCH', body: { status } }),
   deleteStudent: (id: string) => fetchAPI(`/teacher/students/${id}`, { method: 'DELETE' }),
+};
+
+// ============ MESSAGES API ============
+export const messagesAPI = {
+  listConversations: (params?: { search?: string }) => {
+    const qs = params
+      ? `?${new URLSearchParams(
+          Object.entries(params).reduce((acc, [k, v]) => {
+            if (v !== undefined && v !== null && v !== '') acc[k] = String(v);
+            return acc;
+          }, {} as Record<string, string>)
+        ).toString()}`
+      : '';
+    return fetchAPI(`/messages/conversations${qs}`);
+  },
+      createConversation: (data: { studentId?: string; courseId?: string; text?: string; attachments?: any[] }) =>
+    fetchAPI('/messages/conversations', { method: 'POST', body: data }),
+  getMessages: (conversationId: string, params?: { limit?: number }) => {
+    const qs = params
+      ? `?${new URLSearchParams(
+          Object.entries(params).reduce((acc, [k, v]) => {
+            if (v !== undefined && v !== null && v !== '') acc[k] = String(v);
+            return acc;
+          }, {} as Record<string, string>)
+        ).toString()}`
+      : '';
+    return fetchAPI(`/messages/conversations/${conversationId}/messages${qs}`);
+  },
+  sendMessage: (conversationId: string, data: { text?: string; attachments?: any[] }) =>
+    fetchAPI(`/messages/conversations/${conversationId}/messages`, { method: 'POST', body: data }),
+  editMessage: (conversationId: string, messageId: string, data: { text: string }) =>
+    fetchAPI(`/messages/conversations/${conversationId}/messages/${messageId}`, { method: 'PATCH', body: data }),
+  deleteMessage: (conversationId: string, messageId: string, scope: 'me' | 'everyone') =>
+    fetchAPI(`/messages/conversations/${conversationId}/messages/${messageId}`, { method: 'DELETE', body: { scope } }),
+  markRead: (conversationId: string) =>
+    fetchAPI(`/messages/conversations/${conversationId}/read`, { method: 'POST' }),
+  setTyping: (conversationId: string, isTyping: boolean) =>
+    fetchAPI(`/messages/conversations/${conversationId}/typing`, { method: 'POST', body: { isTyping } }),
+  setMute: (conversationId: string, muted: boolean) =>
+    fetchAPI(`/messages/conversations/${conversationId}/mute`, { method: 'POST', body: { muted } }),
 };

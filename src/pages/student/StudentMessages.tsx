@@ -1,35 +1,31 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import MessageActionsMenu from "@/components/chat/MessageActionsMenu";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { messagesAPI, teacherAPI } from "@/services/api";
+import { useStudentCourse } from "@/contexts/StudentCourseContext";
+import { messagesAPI } from "@/services/api";
 import { uploadFileToCloudinary } from "@/services/cloudinary";
 import {
-  ChevronLeft,
   Check,
   CheckCheck,
+  ChevronLeft,
   FileText,
   Image as ImageIcon,
   Paperclip,
   Phone,
-  Plus,
   Search,
   SendHorizontal,
   Smile,
   Video,
   VolumeX,
+  MessageCircle,
+  BookOpen,
 } from "lucide-react";
 
 type ConversationItem = {
@@ -100,15 +96,17 @@ const formatConversationTime = (value?: string) => {
 
 const getSenderId = (sender: any) => String(sender?._id || sender || "");
 
-const TeacherMessages = () => {
+const StudentMessages = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { courses, selectedCourseId } = useStudentCourse();
   const meId = String(user?.id || "");
 
   const [search, setSearch] = useState("");
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string>("");
   const [activeConversation, setActiveConversation] = useState<any>(null);
+  const [activeCourseId, setActiveCourseId] = useState<string>("");
 
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [sharedFiles, setSharedFiles] = useState<Attachment[]>([]);
@@ -120,9 +118,6 @@ const TeacherMessages = () => {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
-
-  const [students, setStudents] = useState<any[]>([]);
-  const [newChatStudentId, setNewChatStudentId] = useState<string>("none");
   const [mobileView, setMobileView] = useState<"list" | "chat">("list");
 
   const typingStopTimer = useRef<any>(null);
@@ -146,6 +141,11 @@ const TeacherMessages = () => {
     return conversations.find((conversation) => conversation._id === activeConversationId) || null;
   }, [activeConversationId, conversations]);
 
+  const activeCourse = useMemo(() => {
+    if (!activeCourseId) return null;
+    return courses.find((course) => course.courseId === activeCourseId) || null;
+  }, [courses, activeCourseId]);
+
   const activeOthersTyping = useMemo(() => {
     if (activeSummary?.othersTyping) return true;
     const participants = Array.isArray(activeConversation?.participants) ? activeConversation.participants : [];
@@ -162,28 +162,35 @@ const TeacherMessages = () => {
     return latestOwn?.status || "sent";
   }, [messages, meId]);
 
-  const loadConversations = async (query = search, keepSelected = true) => {
+  const coursesWithConversation = useMemo(() => {
+    return courses.map((course) => {
+      const conversation = conversations.find((item) => String(item.course?._id || item.course?.title || "") === String(course.courseId));
+      return { course, conversation };
+    });
+  }, [courses, conversations]);
+
+  const filteredCourseRows = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return coursesWithConversation;
+    return coursesWithConversation.filter(({ course, conversation }) => {
+      return (
+        course.courseTitle.toLowerCase().includes(query) ||
+        String(course.teacherName || "").toLowerCase().includes(query) ||
+        String(conversation?.lastMessagePreview || "").toLowerCase().includes(query)
+      );
+    });
+  }, [coursesWithConversation, search]);
+
+  const loadConversations = async (query = search, keepLoading = true) => {
     try {
-      if (!keepSelected) setLoadingConversations(true);
+      if (!keepLoading) setLoadingConversations(true);
       const res = await messagesAPI.listConversations(query ? { search: query } : undefined);
       const rows = Array.isArray(res?.data) ? res.data : [];
       setConversations(rows);
-      if (!activeConversationId && rows.length > 0) {
-        setActiveConversationId(String(rows[0]._id));
-      }
     } catch (error: any) {
       toast({ title: "Failed to load conversations", description: error?.message, variant: "destructive" });
     } finally {
       setLoadingConversations(false);
-    }
-  };
-
-  const loadStudents = async () => {
-    try {
-      const res = await teacherAPI.getStudents();
-      setStudents(Array.isArray(res?.data) ? res.data : []);
-    } catch (error: any) {
-      toast({ title: "Failed to load students", description: error?.message, variant: "destructive" });
     }
   };
 
@@ -207,7 +214,6 @@ const TeacherMessages = () => {
 
   useEffect(() => {
     loadConversations("", false);
-    loadStudents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -218,6 +224,23 @@ const TeacherMessages = () => {
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, activeConversationId]);
+
+  useEffect(() => {
+    const nextCourseId = selectedCourseId || courses[0]?.courseId || "";
+    if (!activeCourseId && nextCourseId) {
+      setActiveCourseId(nextCourseId);
+    }
+    if (activeCourseId && !courses.some((course) => course.courseId === activeCourseId)) {
+      setActiveCourseId(nextCourseId);
+    }
+  }, [activeCourseId, courses, selectedCourseId]);
+
+  useEffect(() => {
+    const activeCourseConversation = conversations.find((conversation) => String(conversation.course?._id || "") === String(activeCourseId));
+    if (activeCourseConversation?._id) {
+      setActiveConversationId(activeCourseConversation._id);
+    }
+  }, [activeCourseId, conversations]);
 
   useEffect(() => {
     if (!activeConversationId) return;
@@ -259,16 +282,26 @@ const TeacherMessages = () => {
     }, 1200);
   };
 
-  const handleCreateConversation = async () => {
-    if (!newChatStudentId || newChatStudentId === "none") return;
+  const openCourseChat = async (courseId: string) => {
+    setActiveCourseId(courseId);
+    const existing = conversations.find((conversation) => String(conversation.course?._id || "") === String(courseId));
+    if (existing?._id) {
+      setActiveConversationId(existing._id);
+      setMobileView("chat");
+      return;
+    }
+
     try {
-      const res = await messagesAPI.createConversation({ studentId: newChatStudentId });
+      const res = await messagesAPI.createConversation({ courseId });
       const created = res?.data;
-      if (created?._id) setActiveConversationId(String(created._id));
-      setNewChatStudentId("none");
-      await loadConversations(search, true);
+      if (created?._id) {
+        setActiveConversationId(String(created._id));
+        await loadConversations(search, true);
+        await loadMessages(String(created._id), false);
+      }
+      setMobileView("chat");
     } catch (error: any) {
-      toast({ title: "Failed to start chat", description: error?.message, variant: "destructive" });
+      toast({ title: "Unable to open course chat", description: error?.message, variant: "destructive" });
     }
   };
 
@@ -326,19 +359,19 @@ const TeacherMessages = () => {
     }
 
     let conversationId = activeConversationId;
-    if (!conversationId && newChatStudentId && newChatStudentId !== "none") {
+    if (!conversationId && activeCourseId) {
       try {
-        const created = await messagesAPI.createConversation({ studentId: newChatStudentId });
+        const created = await messagesAPI.createConversation({ courseId: activeCourseId });
         conversationId = String(created?.data?._id || "");
         setActiveConversationId(conversationId);
       } catch (error: any) {
-        toast({ title: "Failed to start conversation", description: error?.message, variant: "destructive" });
+        toast({ title: "Unable to start conversation", description: error?.message, variant: "destructive" });
         return;
       }
     }
 
     if (!conversationId) {
-      toast({ title: "Select a conversation", description: "Pick a student or existing chat first." });
+      toast({ title: "Select a course", description: "Choose one of your enrolled courses first." });
       return;
     }
 
@@ -346,7 +379,7 @@ const TeacherMessages = () => {
     const localId = `local-${Date.now()}`;
     const optimistic: MessageItem = {
       localId,
-      senderId: { _id: meId, name: user?.name || "Teacher", avatar: user?.avatar || "" },
+      senderId: { _id: meId, name: user?.name || "Student", avatar: user?.avatar || "" },
       text,
       attachments: pendingAttachments,
       status: "sent",
@@ -377,15 +410,10 @@ const TeacherMessages = () => {
     }
   };
 
-  const toggleMute = async () => {
-    if (!activeConversationId) return;
-    try {
-      const current = Boolean(activeSummary?.muted);
-      await messagesAPI.setMute(activeConversationId, !current);
-      await loadConversations(search, true);
-    } catch (error: any) {
-      toast({ title: "Failed to update mute", description: error?.message, variant: "destructive" });
-    }
+  const statusIcon = (status: string) => {
+    if (status === "seen") return <CheckCheck className="h-3.5 w-3.5 text-emerald-500" />;
+    if (status === "delivered") return <CheckCheck className="h-3.5 w-3.5 text-muted-foreground" />;
+    return <Check className="h-3.5 w-3.5 text-muted-foreground" />;
   };
 
   const clearComposerMode = () => {
@@ -433,96 +461,85 @@ const TeacherMessages = () => {
     }
   };
 
-  const statusIcon = (status: string) => {
-    if (status === "seen") return <CheckCheck className="h-3.5 w-3.5 text-emerald-500" />;
-    if (status === "delivered") return <CheckCheck className="h-3.5 w-3.5 text-muted-foreground" />;
-    return <Check className="h-3.5 w-3.5 text-muted-foreground" />;
-  };
-
-  const selectConversation = (conversationId: string) => {
-    setActiveConversationId(conversationId);
-    setMobileView("chat");
-  };
+  const currentChatCourse = useMemo(() => {
+    if (!activeCourseId) return null;
+    return courses.find((course) => course.courseId === activeCourseId) || null;
+  }, [activeCourseId, courses]);
 
   const conversationList = (
     <Card className="h-full min-h-0 overflow-hidden border-black/10 bg-white shadow-[0_18px_45px_-30px_rgba(0,0,0,0.5)]">
       <CardContent className="flex h-full min-h-0 flex-col p-0">
         <div className="border-b border-black/10 px-4 pb-3 pt-4">
-          <h1 className="text-3xl font-extrabold tracking-tight text-black">Messages</h1>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-tight text-black">Messages</h1>
+              <p className="mt-1 text-sm text-black/55">Chat with the teacher of each enrolled course.</p>
+            </div>
+            <div className="rounded-2xl bg-black px-3 py-2 text-white shadow-sm">
+              <MessageCircle className="h-5 w-5" />
+            </div>
+          </div>
 
           <div className="relative mt-3">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black/50" />
             <Input
               value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                loadConversations(event.target.value, true);
-              }}
-              placeholder="Search"
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search courses or teachers"
               className="h-11 rounded-full border-black/10 bg-[#f3f3f3] pl-9 text-black placeholder:text-black/45"
             />
           </div>
-
-          <div className="mt-3 flex items-center gap-2">
-            <Select value={newChatStudentId} onValueChange={setNewChatStudentId}>
-              <SelectTrigger className="h-10 rounded-full border-black/10 bg-white">
-                <SelectValue placeholder="New chat" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Select student</SelectItem>
-                {students.map((student) => (
-                  <SelectItem key={student._id} value={String(student._id)}>{student.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button size="sm" className="h-10 rounded-full bg-black px-4 text-white hover:bg-black/90" onClick={handleCreateConversation}>
-              <Plus className="mr-1 h-4 w-4" /> Start
-            </Button>
-          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto bg-[#fbfbfb] p-2">
+        <div className="flex-1 min-h-0 overflow-y-auto bg-[#fbfbfb] p-2">
           {loadingConversations ? (
             <div className="space-y-2 p-2">
               <Skeleton className="h-16 w-full rounded-xl" />
               <Skeleton className="h-16 w-full rounded-xl" />
               <Skeleton className="h-16 w-full rounded-xl" />
             </div>
-          ) : conversations.length === 0 ? (
-            <div className="p-6 text-center text-sm text-black/50">No conversations yet</div>
+          ) : filteredCourseRows.length === 0 ? (
+            <div className="p-6 text-center text-sm text-black/50">
+              No enrolled courses found.
+              <div className="mt-3">
+                <Link to="/dashboard" className="text-sm font-semibold text-black underline-offset-4 hover:underline">
+                  Open dashboard to join a course
+                </Link>
+              </div>
+            </div>
           ) : (
             <div className="space-y-1.5">
-              {conversations.map((conversation) => {
-                const active = conversation._id === activeConversationId;
+              {filteredCourseRows.map(({ course, conversation }) => {
+                const active = course.courseId === activeCourseId;
                 return (
                   <button
-                    key={conversation._id}
+                    key={course.courseId}
                     type="button"
-                    onClick={() => selectConversation(conversation._id)}
+                    onClick={() => openCourseChat(course.courseId)}
                     className={`w-full rounded-2xl px-3 py-2 text-left transition-all ${active ? "bg-white shadow-sm ring-1 ring-black/10" : "hover:bg-white/80"}`}
                   >
                     <div className="flex items-start gap-3">
                       <div className="relative mt-0.5">
                         <Avatar className="h-11 w-11 border border-black/10">
-                          <AvatarImage src={conversation.peer?.avatar || ""} alt={conversation.displayName || conversation.peer?.name || "Conversation"} />
-                          <AvatarFallback>{(conversation.displayName || conversation.peer?.name || "C").slice(0, 1).toUpperCase()}</AvatarFallback>
+                          <AvatarFallback>{course.courseTitle.slice(0, 1).toUpperCase()}</AvatarFallback>
                         </Avatar>
-                        <span className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2 ring-white ${conversation.peer?.isOnline ? "bg-emerald-500" : "bg-black/30"}`} />
+                        <span className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2 ring-white ${conversation?.peer?.isOnline ? "bg-emerald-500" : "bg-black/30"}`} />
                       </div>
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="truncate text-[15px] font-bold text-black">{conversation.displayName || conversation.peer?.name || "Conversation"}</p>
-                          <span className="text-[11px] text-black/55">{formatConversationTime(conversation.lastMessageAt)}</span>
+                          <p className="truncate text-[15px] font-bold text-black">{course.courseTitle}</p>
+                          <span className="text-[11px] text-black/55">{formatConversationTime(conversation?.lastMessageAt)}</span>
                         </div>
-                        <p className="truncate text-xs text-black/55">
-                          {conversation.othersTyping
-                            ? `${conversation.displayName || conversation.peer?.name || "Participant"} is typing...`
-                            : conversation.lastMessagePreview || "No messages yet"}
+                        <p className="truncate text-xs text-black/55">{course.teacherName || "Teacher"}</p>
+                        <p className="truncate text-xs text-black/45">
+                          {conversation?.othersTyping
+                            ? `${course.teacherName || "Teacher"} is typing...`
+                            : conversation?.lastMessagePreview || "Tap to start chatting"}
                         </p>
                       </div>
 
-                      {Number(conversation.unreadCount || 0) > 0 ? (
+                      {Number(conversation?.unreadCount || 0) > 0 ? (
                         <span className="rounded-full bg-black px-2 py-0.5 text-[10px] font-semibold text-white">{conversation.unreadCount}</span>
                       ) : null}
                     </div>
@@ -539,7 +556,7 @@ const TeacherMessages = () => {
   const chatPanel = (
     <Card className="h-full min-h-0 overflow-hidden border-black/10 bg-white shadow-[0_18px_45px_-30px_rgba(0,0,0,0.5)]">
       <CardContent className="flex h-full min-h-0 flex-col p-0">
-        {activeConversationId && activeSummary ? (
+        {activeCourse ? (
           <>
             <div className="flex items-center justify-between border-b border-black/10 bg-white px-4 py-3">
               <div className="flex min-w-0 items-center gap-2.5">
@@ -547,17 +564,16 @@ const TeacherMessages = () => {
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <Avatar className="h-9 w-9 border border-black/10">
-                  <AvatarImage src={activeSummary.peer?.avatar || ""} alt={activeSummary.displayName || activeSummary.peer?.name || "Conversation"} />
-                  <AvatarFallback>{(activeSummary.displayName || activeSummary.peer?.name || "C").slice(0, 1).toUpperCase()}</AvatarFallback>
+                  <AvatarFallback>{activeCourse.courseTitle.slice(0, 1).toUpperCase()}</AvatarFallback>
                 </Avatar>
 
                 <div className="min-w-0">
-                  <p className="truncate text-[15px] font-bold text-black">{activeSummary.displayName || activeSummary.peer?.name || "Conversation"}</p>
+                  <p className="truncate text-[15px] font-bold text-black">{activeCourse.courseTitle}</p>
                   <p className="truncate text-xs text-black/55">
-                    {activeSummary.othersTyping
-                      ? `${activeSummary.displayName || activeSummary.peer?.name || "Participant"} is typing...`
-                      : activeSummary.peer?.lastSeenLabel || "Offline"}
-                    {activeSummary.course?.title ? ` � ${activeSummary.course.title}` : ""}
+                    {activeSummary?.othersTyping
+                      ? `${activeCourse.teacherName || "Teacher"} is typing...`
+                      : activeCourse.teacherName || "Teacher"}
+                    {activeSummary?.course?.title ? ` • ${activeSummary.course.title}` : ""}
                   </p>
                 </div>
               </div>
@@ -569,7 +585,7 @@ const TeacherMessages = () => {
                 <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-black/70">
                   <Phone className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-black/70" onClick={toggleMute} title="Mute conversation">
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-black/70" title="Mute conversation">
                   <VolumeX className="h-4 w-4" />
                 </Button>
               </div>
@@ -638,7 +654,7 @@ const TeacherMessages = () => {
                   {activeOthersTyping ? (
                     <div className="flex justify-start">
                       <div className="rounded-2xl rounded-bl-md bg-white px-3 py-2 text-xs text-black/55 shadow-sm">
-                        {activeSummary.displayName || activeSummary.peer?.name || "Participant"} is typing...
+                        {activeCourse.teacherName || "Teacher"} is typing...
                       </div>
                     </div>
                   ) : null}
@@ -673,7 +689,7 @@ const TeacherMessages = () => {
                       onClick={() => setPendingAttachments((prev) => prev.filter((_, idx) => idx !== index))}
                       className="rounded-full bg-black/5 px-2.5 py-1 text-[11px] text-black/70"
                     >
-                      {attachment.name} �
+                      {attachment.name} ×
                     </button>
                   ))}
                 </div>
@@ -697,7 +713,7 @@ const TeacherMessages = () => {
 
                 <Input
                   value={messageText}
-                  placeholder={composerMode?.type === "edit" ? "Edit message..." : "Type here..."}
+                  placeholder={composerMode?.type === "edit" ? "Edit message..." : `Message ${activeCourse.teacherName || "teacher"}...`}
                   className="h-10 rounded-full border-black/10 bg-[#f7f7f7]"
                   onChange={(event) => onTypingChange(event.target.value)}
                   onKeyDown={(event) => {
@@ -708,7 +724,7 @@ const TeacherMessages = () => {
                   }}
                 />
 
-                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full border border-black/10" onClick={() => setMessageText((prev) => `${prev}${prev ? " " : ""}??`)}>
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full border border-black/10" onClick={() => setMessageText((prev) => `${prev}${prev ? " " : ""}🙂`)}>
                   <Smile className="h-4 w-4" />
                 </Button>
 
@@ -729,10 +745,10 @@ const TeacherMessages = () => {
         ) : (
           <div className="flex h-full flex-col items-center justify-center px-6 text-center">
             <div className="mb-3 rounded-full bg-black/5 p-4">
-              <SendHorizontal className="h-8 w-8 text-black/45" />
+              <BookOpen className="h-8 w-8 text-black/45" />
             </div>
-            <h2 className="text-lg font-bold text-black">Select a conversation to start messaging</h2>
-            <p className="mt-1 text-sm text-black/55">Choose a student from the list and start chatting.</p>
+            <h2 className="text-lg font-bold text-black">Select a course to start messaging</h2>
+            <p className="mt-1 text-sm text-black/55">Choose one of your enrolled courses and chat with its teacher.</p>
           </div>
         )}
       </CardContent>
@@ -740,7 +756,7 @@ const TeacherMessages = () => {
   );
 
   return (
-    <div className="h-[calc(100vh-8rem)] min-h-[680px] rounded-3xl bg-[#f1f1f1] p-2 md:p-4 overflow-hidden">
+    <div className="h-[calc(100vh-8rem)] min-h-[680px] overflow-hidden rounded-3xl bg-[#f1f1f1] p-2 md:p-4">
       <div className="grid h-full min-h-0 grid-cols-1 gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
         <div className={`${mobileView === "chat" ? "hidden lg:block" : "block"} min-h-0`}>
           {conversationList}
@@ -753,4 +769,4 @@ const TeacherMessages = () => {
   );
 };
 
-export default TeacherMessages;
+export default StudentMessages;

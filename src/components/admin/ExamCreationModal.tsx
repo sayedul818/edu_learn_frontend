@@ -20,12 +20,28 @@ type ExamCreationModalProps = {
   selectedQuestionMarks?: { questionId: string; marks: number }[];
   initialExam?: any;
   mode?: "create" | "edit";
+  initialTab?: "edit" | "settings" | "result";
   onSuccess?: (exam?: any) => void;
   selectedSubjectId?: string | null;
   selectedChapterId?: string | null;
+  scopedUsers?: Array<{ _id?: string; id?: string; name?: string; fullName?: string; email?: string }>;
+  enforceSpecificAccess?: boolean;
 };
 
-const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selectedQuestionMarks = [], initialExam, mode = "create", onSuccess, selectedSubjectId = null, selectedChapterId = null }: ExamCreationModalProps) => {
+const ExamCreationModal = ({
+  open,
+  onOpenChange,
+  selectedQuestionIds = [],
+  selectedQuestionMarks = [],
+  initialExam,
+  mode = "create",
+  initialTab = "edit",
+  onSuccess,
+  selectedSubjectId = null,
+  selectedChapterId = null,
+  scopedUsers = [],
+  enforceSpecificAccess = false,
+}: ExamCreationModalProps) => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("edit");
   const [saving, setSaving] = useState(false);
@@ -164,6 +180,7 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
   const [users, setUsers] = useState<any[]>([]);
   const [userSearch, setUserSearch] = useState<string>('');
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const scopedUserIds = useMemo(() => scopedUsers.map((u) => String(u._id || u.id || '')).filter(Boolean), [scopedUsers]);
 
   // Tab 3: Results
   const [loadingResults, setLoadingResults] = useState(false);
@@ -240,14 +257,52 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
     setPendingChapterId(desiredChapterId);
     setPendingTopicId(desiredTopicId);
     // access control
-    setAccessType(initialExam.accessType || 'all');
+    setAccessType(enforceSpecificAccess ? 'specific' : (initialExam.accessType || 'all'));
     // allowedStudents may be populated objects or ids
     const allowed = (initialExam.allowedStudents || []).map((s: any) => (s && (s._id || s.id)) || s).filter(Boolean);
-    setAllowedStudents(allowed);
-  }, [open, initialExam, mode]);
+    if (enforceSpecificAccess && scopedUserIds.length > 0) {
+      const restricted = allowed.filter((id: string) => scopedUserIds.includes(String(id)));
+      setAllowedStudents(restricted.length > 0 ? restricted : scopedUserIds);
+    } else {
+      setAllowedStudents(allowed);
+    }
+  }, [open, initialExam, mode, enforceSpecificAccess, scopedUserIds]);
 
   useEffect(() => {
-    // fetch users for selection when accessType is 'specific' or when modal opens
+    if (!open) return;
+    setActiveTab(initialTab);
+  }, [open, initialTab]);
+
+  useEffect(() => {
+    if (!open || !enforceSpecificAccess) return;
+    setAccessType('specific');
+    if (scopedUserIds.length > 0) {
+      setAllowedStudents((prev) => {
+        const restricted = prev.filter((id) => scopedUserIds.includes(String(id)));
+        return restricted.length > 0 ? restricted : scopedUserIds;
+      });
+    } else {
+      setAllowedStudents([]);
+    }
+  }, [open, enforceSpecificAccess, scopedUserIds]);
+
+  useEffect(() => {
+    // For course-scoped teacher flow, keep user list limited to provided scoped users.
+    if (!open) return;
+    if (enforceSpecificAccess) {
+      setLoadingUsers(false);
+      const searchTerm = userSearch.trim().toLowerCase();
+      const list = scopedUsers.filter((u) => {
+        if (!searchTerm) return true;
+        const name = String(u.name || u.fullName || '').toLowerCase();
+        const email = String(u.email || '').toLowerCase();
+        return name.includes(searchTerm) || email.includes(searchTerm);
+      });
+      setUsers(list);
+      return;
+    }
+
+    // Default behavior for admin/global flows.
     if (!open) return;
     (async () => {
       try {
@@ -261,7 +316,7 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
         setLoadingUsers(false);
       }
     })();
-  }, [open, userSearch]);
+  }, [open, userSearch, enforceSpecificAccess, scopedUsers]);
 
   // Fetch exam results when result tab is active and initialExam exists
   useEffect(() => {
@@ -728,8 +783,10 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
         topicId: topicId || null,
         classId: classId || null,
         groupId: groupId || null,
-        accessType,
-        allowedStudents,
+        accessType: enforceSpecificAccess ? 'specific' : accessType,
+        allowedStudents: enforceSpecificAccess
+          ? (allowedStudents.length > 0 ? allowedStudents.filter((id) => scopedUserIds.includes(String(id))) : scopedUserIds)
+          : allowedStudents,
       };
       console.debug('ExamCreationModal - submitting payload:', payload);
       const response = mode === "edit" && initialExam?._id
@@ -1149,6 +1206,7 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
                   <button
                     type="button"
                     onClick={() => setAccessType('all')}
+                    disabled={enforceSpecificAccess}
                     className={`px-3 py-1 rounded ${accessType === 'all' ? 'bg-primary text-white' : 'bg-muted'}`}>
                     সবার জন্য
                   </button>
@@ -1159,6 +1217,12 @@ const ExamCreationModal = ({ open, onOpenChange, selectedQuestionIds = [], selec
                     নির্দিষ্ট শিক্ষার্থীর জন্য
                   </button>
                 </div>
+
+                {enforceSpecificAccess && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    এই কোর্সের পরীক্ষায় শুধুমাত্র এই কোর্সে এনরোল করা শিক্ষার্থীরা অংশ নিতে পারবে।
+                  </p>
+                )}
 
                 {accessType === 'specific' && (
                   <div className="mt-3">

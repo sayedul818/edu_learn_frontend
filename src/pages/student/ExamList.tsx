@@ -1,12 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useStudentCourse } from "@/contexts/StudentCourseContext";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { examsAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
-import { Clock, FileText, Play, CheckCircle, Calendar, Eye, BookOpen, Trophy, Sparkles } from "lucide-react";
+import { Clock, FileText, Play, CheckCircle, Calendar, Eye, BookOpen, Trophy, Sparkles, Search } from "lucide-react";
 import { motion } from "framer-motion";
 
 type Exam = {
@@ -39,12 +41,16 @@ const ExamList = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { selectedCourseId, selectedCourseExamIds } = useStudentCourse();
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
   const [completedExamIds, setCompletedExamIds] = useState<string[]>([]);
   const [examResults, setExamResults] = useState<Record<string, ExamResult>>({});
   const [inProgressExamIds, setInProgressExamIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<"upcoming" | "live" | "past">("upcoming");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 6;
 
   useEffect(() => {
     loadExams();
@@ -274,7 +280,7 @@ const ExamList = () => {
     if (role === 'admin' || role === 'teacher') return exams;
     // anonymous users: only show exams that are not restricted to specific students
     const uid = user?.id || (user as any)?._id || null;
-    return exams.filter((e: any) => {
+    const roleFiltered = exams.filter((e: any) => {
       if (!e) return false;
       if (!e.accessType || e.accessType !== 'specific') return true;
       if (!uid) return false; // restricted and not logged in
@@ -282,7 +288,12 @@ const ExamList = () => {
       const allowedIds = new Set((allowed || []).map((a: any) => String(a._id || a.id || a)));
       return allowedIds.has(String(uid));
     });
-  }, [exams, user]);
+
+    if (!selectedCourseId) return roleFiltered;
+    if (!selectedCourseExamIds.length) return [];
+    const examIdSet = new Set(selectedCourseExamIds.map((id) => String(id)));
+    return roleFiltered.filter((exam: any) => examIdSet.has(String(exam._id || exam.id || "")));
+  }, [exams, user, selectedCourseId, selectedCourseExamIds]);
 
   // Helper: is exam completed by user?
   const isCompleted = (exam: Exam) => completedExamIds.includes(exam._id);
@@ -321,21 +332,67 @@ const ExamList = () => {
     return false;
   });
 
+  const searchTerm = search.trim().toLowerCase();
+  const matchesSearch = (exam: Exam) => {
+    if (!searchTerm) return true;
+    return String(exam.title || "").toLowerCase().includes(searchTerm)
+      || String(exam.description || "").toLowerCase().includes(searchTerm);
+  };
+
+  const filteredUpcomingExams = useMemo(() => upcomingExams.filter(matchesSearch), [upcomingExams, searchTerm]);
+  const filteredLiveExams = useMemo(() => liveNowExams.filter(matchesSearch), [liveNowExams, searchTerm]);
+  const filteredPastExams = useMemo(() => pastExams.filter(matchesSearch), [pastExams, searchTerm]);
+
+  const activeExams = activeTab === "upcoming" ? filteredUpcomingExams : activeTab === "live" ? filteredLiveExams : filteredPastExams;
+  const totalPages = Math.max(1, Math.ceil(activeExams.length / pageSize));
+  const paginatedExams = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return activeExams.slice(start, start + pageSize);
+  }, [activeExams, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab, search]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
   return (
     <div className="space-y-6 font-bengali">
       {/* Header Banner */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-r from-card via-card to-muted/60 p-5 md:p-6">
-        <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-primary/10 blur-2xl" />
-        <div className="pointer-events-none absolute -left-16 -bottom-16 h-44 w-44 rounded-full bg-emerald-400/10 blur-2xl" />
-
+      <div className="rounded-2xl border border-slate-300 dark:border-cyan-500/20 bg-slate-100 dark:bg-slate-900 p-5 shadow-xl overflow-hidden relative">
+        {/* Decorative gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 dark:from-cyan-500/10 via-transparent to-purple-500/5 dark:to-purple-500/10 pointer-events-none" />
+        
         <div className="relative z-10">
-          <p className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs text-primary">
-            <Sparkles className="h-3.5 w-3.5" /> Student Exam Center
-          </p>
-          <h1 className="mt-3 text-2xl font-bold font-display text-foreground">Exam Center</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Join live exams and track your performance with real-time status.</p>
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 rounded-full border border-slate-400 dark:border-cyan-500/30 bg-slate-200/50 dark:bg-cyan-500/10 px-4 py-2 mb-3">
+            <Trophy className="h-4 w-4 text-slate-600 dark:text-cyan-400" />
+            <span className="text-xs font-semibold text-slate-700 dark:text-cyan-300">Exam Center</span>
+          </div>
+          
+          {/* Main heading */}
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-1">Exams</h1>
+          
+          {/* Description */}
+          <p className="text-slate-700 dark:text-slate-300 text-sm">Join live exams and track your performance with real-time status.</p>
         </div>
       </div>
+
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-muted/30 px-3 py-2.5">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <Input
+              className="border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
+              placeholder="Search exams by title or description..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Exam Sections */}
       {loading ? (
@@ -349,27 +406,30 @@ const ExamList = () => {
           <div className="flex flex-wrap gap-3">
             <button
               onClick={() => setActiveTab("upcoming")}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                activeTab === "upcoming" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-sm hover:shadow-md ${
+                activeTab === "upcoming" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-muted/80"
               }`}
+              style={{ boxShadow: "rgba(0, 0, 0, 0.12) 0px 6px 16px" }}
             >
-              আসন্ন পরীক্ষা ({upcomingExams.length})
+              Upcoming Exams ({filteredUpcomingExams.length})
             </button>
             <button
               onClick={() => setActiveTab("live")}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                activeTab === "live" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-sm hover:shadow-md ${
+                activeTab === "live" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-muted/80"
               }`}
+              style={{ boxShadow: "rgba(0, 0, 0, 0.12) 0px 6px 16px" }}
             >
-              চলমান পরীক্ষা ({liveNowExams.length})
+              Ongoing Exams ({filteredLiveExams.length})
             </button>
             <button
               onClick={() => setActiveTab("past")}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                activeTab === "past" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-sm hover:shadow-md ${
+                activeTab === "past" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-muted/80"
               }`}
+              style={{ boxShadow: "rgba(0, 0, 0, 0.12) 0px 6px 16px" }}
             >
-              সম্পন্ন পরীক্ষা ({pastExams.length})
+              Completed Exams ({filteredPastExams.length})
             </button>
           </div>
 
@@ -377,18 +437,18 @@ const ExamList = () => {
           {activeTab === "upcoming" && (
             <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold">আসন্ন পরীক্ষা</h2>
-              <span className="text-sm text-muted-foreground">{upcomingExams.length} টি</span>
+              <h2 className="text-lg font-bold">Upcoming Exams</h2>
+              <span className="text-sm text-muted-foreground">{upcomingExams.length} total</span>
             </div>
-            {upcomingExams.length === 0 ? (
-              <Card className="border-dashed">
+            {filteredUpcomingExams.length === 0 ? (
+              <Card className="border-dashed shadow-sm" style={{ boxShadow: "rgba(0, 0, 0, 0.12) 0px 6px 16px" }}>
                 <CardContent className="flex items-center justify-center py-10 text-muted-foreground">
-                  কোন আসন্ন পরীক্ষা নেই
+                  No upcoming exams
                 </CardContent>
               </Card>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                {upcomingExams.map((exam, index) => {
+                {paginatedExams.map((exam, index) => {
                   const { start } = getSchedule(exam);
                   return (
                     <motion.div key={exam._id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
@@ -422,6 +482,15 @@ const ExamList = () => {
                 })}
               </div>
             )}
+            {filteredUpcomingExams.length > 0 && (
+              <div className="flex items-center justify-between gap-3 border-t border-border/70 pt-4 text-sm text-muted-foreground">
+                <p>Page {page} of {totalPages}</p>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setPage((prev) => Math.max(1, prev - 1))} disabled={page <= 1}>Previous</Button>
+                  <Button variant="outline" size="sm" onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))} disabled={page >= totalPages}>Next</Button>
+                </div>
+              </div>
+            )}
             </section>
           )}
 
@@ -429,18 +498,18 @@ const ExamList = () => {
           {activeTab === "live" && (
             <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold">চলমান পরীক্ষা</h2>
-              <span className="text-sm text-muted-foreground">{liveNowExams.length} টি</span>
+              <h2 className="text-lg font-bold">Ongoing Exams</h2>
+              <span className="text-sm text-muted-foreground">{liveNowExams.length} total</span>
             </div>
-            {liveNowExams.length === 0 ? (
-              <Card className="border-dashed">
+            {filteredLiveExams.length === 0 ? (
+              <Card className="border-dashed shadow-sm" style={{ boxShadow: "rgba(0, 0, 0, 0.12) 0px 6px 16px" }}>
                 <CardContent className="flex items-center justify-center py-10 text-muted-foreground">
-                  কোন চলমান পরীক্ষা নেই
+                  No ongoing exams
                 </CardContent>
               </Card>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                {liveNowExams.map((exam, index) => {
+                {paginatedExams.map((exam, index) => {
                   const { end } = getSchedule(exam);
                   const inProgress = inProgressExamIds.includes(exam._id);
                   return (
@@ -481,6 +550,15 @@ const ExamList = () => {
                 })}
               </div>
             )}
+            {filteredLiveExams.length > 0 && (
+              <div className="flex items-center justify-between gap-3 border-t border-border/70 pt-4 text-sm text-muted-foreground">
+                <p>Page {page} of {totalPages}</p>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setPage((prev) => Math.max(1, prev - 1))} disabled={page <= 1}>Previous</Button>
+                  <Button variant="outline" size="sm" onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))} disabled={page >= totalPages}>Next</Button>
+                </div>
+              </div>
+            )}
             </section>
           )}
 
@@ -488,55 +566,69 @@ const ExamList = () => {
           {activeTab === "past" && (
             <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold">সম্পন্ন পরীক্ষা</h2>
-              <span className="text-sm text-muted-foreground">{pastExams.length} টি</span>
+              <h2 className="text-lg font-bold">Completed Exams</h2>
+              <span className="text-sm text-muted-foreground">{pastExams.length} total</span>
             </div>
-            {pastExams.length === 0 ? (
-              <Card className="border-dashed">
+            {filteredPastExams.length === 0 ? (
+              <Card className="border-dashed shadow-sm" style={{ boxShadow: "rgba(0, 0, 0, 0.12) 0px 6px 16px" }}>
                 <CardContent className="flex items-center justify-center py-10 text-muted-foreground">
-                  কোন সম্পন্ন পরীক্ষা নেই
+                  No completed exams
                 </CardContent>
               </Card>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                {pastExams.map((exam, index) => {
+                {paginatedExams.map((exam, index) => {
                   const result = examResults[exam._id];
                   const passed = result ? result.percentage >= 50 : false;
                   return (
                     <motion.div key={exam._id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
-                      <Card className="rounded-2xl border min-w-0">
+                      <Card
+                        className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/80 min-w-0"
+                        style={{ boxShadow: "rgba(0, 0, 0, 0.19) 0px 10px 20px, rgba(0, 0, 0, 0.23) 0px 6px 6px" }}
+                      >
                         <CardContent className="p-5 space-y-3 min-w-0">
                           <div className="flex items-center justify-between">
                             <h3 className="font-bold text-base">{exam.title}</h3>
                             <span className={`text-xs font-semibold px-2 py-1 rounded-full ${passed ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
-                              {passed ? "উত্তীর্ণ" : "অনুত্তীর্ণ"}
+                              {passed ? "Passed" : "Failed"}
                             </span>
                           </div>
                           <div className="space-y-2 text-sm">
                             <div className="flex items-center justify-between">
                               <span className="text-muted-foreground flex items-center gap-1.5">
-                                <Trophy className="h-4 w-4" /> প্রাপ্ত নম্বর
+                                <Trophy className="h-4 w-4" /> Obtained Marks
                               </span>
                               <span className="font-semibold">{result ? result.score : 0}</span>
                             </div>
                             <div className="flex items-center justify-between">
                               <span className="text-muted-foreground flex items-center gap-1.5">
-                                <FileText className="h-4 w-4" /> মোট নম্বর
+                                <FileText className="h-4 w-4" /> Total Marks
                               </span>
                               <span className="font-semibold">{result ? result.totalMarks : exam.totalMarks}</span>
                             </div>
                           </div>
                           <div className="flex flex-col gap-2 min-w-0">
-                            <div className="flex flex-col sm:flex-row gap-2 min-w-0">
-                              <Button variant="outline" className="w-full sm:flex-1 min-w-0" onClick={() => navigate(`/exam-result/${exam._id}`)}>
-                                <Eye className="h-4 w-4 mr-1" /> ফলাফল দেখুন
+                            <div className="grid gap-2 min-w-0">
+                              <Button
+                                variant="outline"
+                                className="w-full min-w-0 justify-center gap-2 whitespace-normal px-4 py-3 text-center"
+                                onClick={() => navigate(`/exam-result/${exam._id}`)}
+                              >
+                                <Eye className="h-4 w-4 shrink-0" /> View Result
                               </Button>
-                              <Button className="w-full sm:flex-1 min-w-0" onClick={() => navigate(`/exam-result/${exam._id}`)}>
-                                <BookOpen className="h-4 w-4 mr-1" /> উত্তরপত্র দেখুন
+                              <Button
+                                className="w-full min-w-0 justify-center gap-2 whitespace-normal px-4 py-3 text-center"
+                                onClick={() => navigate(`/exam-result/${exam._id}`)}
+                              >
+                                <BookOpen className="h-4 w-4 shrink-0" /> View Answer Sheet
                               </Button>
                             </div>
-                            <Button variant="outline" className="w-full min-w-0" onClick={() => navigate(`/exam/${exam._id}/instructions`)}>
-                              পুনরায় পরীক্ষা দিন
+                            <Button
+                              variant="outline"
+                              className="w-full min-w-0 whitespace-normal px-4 py-3 text-center"
+                              onClick={() => navigate(`/exam/${exam._id}/instructions`)}
+                            >
+                              Retake Exam
                             </Button>
                           </div>
                         </CardContent>
@@ -544,6 +636,15 @@ const ExamList = () => {
                     </motion.div>
                   );
                 })}
+              </div>
+            )}
+            {filteredPastExams.length > 0 && (
+              <div className="flex items-center justify-between gap-3 border-t border-border/70 pt-4 text-sm text-muted-foreground">
+                <p>Page {page} of {totalPages}</p>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setPage((prev) => Math.max(1, prev - 1))} disabled={page <= 1}>Previous</Button>
+                  <Button variant="outline" size="sm" onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))} disabled={page >= totalPages}>Next</Button>
+                </div>
               </div>
             )}
             </section>

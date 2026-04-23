@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { StudentCourseProvider } from "@/contexts/StudentCourseContext";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -22,15 +23,21 @@ import ExamResult from "./pages/student/ExamResult";
 import MyResults from "./pages/student/MyResults";
 import Leaderboard from "./pages/student/Leaderboard";
 import StudentProfile from "./pages/student/StudentProfile";
+import CourseJoin from "./pages/student/CourseJoin";
+import StudentAssignments from "./pages/student/StudentAssignments";
+import StudentAssignmentSubmission from "./pages/student/StudentAssignmentSubmission";
+import StudentMaterials from "./pages/student/StudentMaterials";
+import StudentAnnouncements from "./pages/student/StudentAnnouncements";
+import StudentMessages from "./pages/student/StudentMessages";
 
 // Teacher pages
 import TeacherDashboard from "./pages/teacher/TeacherDashboard";
 import CreateQuestion from "./pages/teacher/CreateQuestion";
 import TeacherQuestions from "./pages/teacher/TeacherQuestions";
-import TeacherExams from "./pages/teacher/TeacherExams";
 import StudentReports from "./pages/teacher/StudentReports";
 import TeacherCourses from "./pages/teacher/TeacherCourses";
 import TeacherCourseDetails from "./pages/teacher/TeacherCourseDetails";
+import TeacherStudentPerformance from "./pages/teacher/TeacherStudentPerformance.tsx";
 import TeacherStudents from "./pages/teacher/TeacherStudents";
 import TeacherEnrollments from "./pages/teacher/TeacherEnrollments";
 import TeacherMessages from "./pages/teacher/TeacherMessages";
@@ -54,7 +61,7 @@ const queryClient = new QueryClient();
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  return <DashboardLayout>{children}</DashboardLayout>;
+  return <StudentCourseProvider><DashboardLayout>{children}</DashboardLayout></StudentCourseProvider>;
 };
 
 const RoleRoute = ({
@@ -67,7 +74,7 @@ const RoleRoute = ({
   const { isAuthenticated, user } = useAuth();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (!user || !allowedRoles.includes(user.role)) return <Navigate to="/dashboard" replace />;
-  return <DashboardLayout>{children}</DashboardLayout>;
+  return <StudentCourseProvider><DashboardLayout>{children}</DashboardLayout></StudentCourseProvider>;
 };
 
 const DashboardRedirect = () => {
@@ -96,13 +103,20 @@ const AppRoutes = () => (
     <Route path="/exam/:examId" element={<ProtectedRoute><TakeExam /></ProtectedRoute>} />
     <Route path="/exam-result/:examId" element={<ProtectedRoute><ExamResult /></ProtectedRoute>} />
     <Route path="/results" element={<ProtectedRoute><MyResults /></ProtectedRoute>} />
+    <Route path="/assignments" element={<RoleRoute allowedRoles={["student"]}><StudentAssignments /></RoleRoute>} />
+    <Route path="/assignments/:assignmentId" element={<RoleRoute allowedRoles={["student"]}><StudentAssignmentSubmission /></RoleRoute>} />
+    <Route path="/announcements" element={<RoleRoute allowedRoles={["student"]}><StudentAnnouncements /></RoleRoute>} />
+    <Route path="/messages" element={<RoleRoute allowedRoles={["student"]}><StudentMessages /></RoleRoute>} />
+    <Route path="/materials" element={<RoleRoute allowedRoles={["student"]}><StudentMaterials /></RoleRoute>} />
     <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
     <Route path="/profile" element={<ProtectedRoute><StudentProfile /></ProtectedRoute>} />
+    <Route path="/course-join/:token" element={<ProtectedRoute><CourseJoin /></ProtectedRoute>} />
 
     {/* Teacher */}
     <Route path="/teacher/courses" element={<RoleRoute allowedRoles={["teacher"]}><TeacherCourses /></RoleRoute>} />
     <Route path="/teacher/courses/create" element={<RoleRoute allowedRoles={["teacher"]}><TeacherCourses /></RoleRoute>} />
     <Route path="/teacher/courses/:courseId" element={<RoleRoute allowedRoles={["teacher"]}><TeacherCourseDetails /></RoleRoute>} />
+    <Route path="/teacher/courses/:courseId/students/:studentId/performance" element={<RoleRoute allowedRoles={["teacher"]}><TeacherStudentPerformance /></RoleRoute>} />
     <Route path="/teacher/students" element={<RoleRoute allowedRoles={["teacher"]}><TeacherStudents /></RoleRoute>} />
     <Route path="/teacher/enrollments" element={<RoleRoute allowedRoles={["teacher"]}><TeacherEnrollments /></RoleRoute>} />
     <Route path="/teacher/messages" element={<RoleRoute allowedRoles={["teacher"]}><TeacherMessages /></RoleRoute>} />
@@ -110,7 +124,6 @@ const AppRoutes = () => (
     <Route path="/teacher/questions/:subjectId/:chapterId" element={<RoleRoute allowedRoles={["teacher"]}><AdminQuestionListing /></RoleRoute>} />
     <Route path="/teacher/create-question" element={<RoleRoute allowedRoles={["teacher"]}><CreateQuestion /></RoleRoute>} />
     <Route path="/teacher/exams/builder" element={<RoleRoute allowedRoles={["teacher"]}><AdminExamBuilder /></RoleRoute>} />
-    <Route path="/teacher/exams" element={<RoleRoute allowedRoles={["teacher"]}><AdminAllExams /></RoleRoute>} />
     <Route path="/teacher/offline-exam/create/:examId" element={<RoleRoute allowedRoles={["teacher"]}><AdminOfflineExamBuilder /></RoleRoute>} />
     <Route path="/teacher/sections" element={<RoleRoute allowedRoles={["teacher"]}><AdminSections /></RoleRoute>} />
     <Route path="/teacher/sections/create" element={<RoleRoute allowedRoles={["teacher"]}><AdminCreateSection /></RoleRoute>} />

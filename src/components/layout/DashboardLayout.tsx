@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useStudentCourse } from "@/contexts/StudentCourseContext";
 import {
   BookOpen, LayoutDashboard, FileText, ClipboardList, BarChart3,
   Trophy, Settings, LogOut, Menu, X, Users, PlusCircle, ChevronDown,
-  Shield, Bell, Target, Sun, Moon, User
+  Shield, Bell, Target, Sun, Moon, User, MessageCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -22,8 +24,12 @@ const studentNav: NavItem[] = [
   { label: "Question Bank", href: "/questions", icon: <FileText className="h-5 w-5" /> },
   { label: "Self Test", href: "/self-test", icon: <Target className="h-5 w-5" /> },
   { label: "Exams", href: "/exams", icon: <ClipboardList className="h-5 w-5" /> },
-  { label: "My Results", href: "/results", icon: <BarChart3 className="h-5 w-5" /> },
+  { label: "Assignments", href: "/assignments", icon: <BookOpen className="h-5 w-5" /> },
   { label: "Leaderboard", href: "/leaderboard", icon: <Trophy className="h-5 w-5" /> },
+  { label: "Announcements", href: "/announcements", icon: <Bell className="h-5 w-5" /> },
+  { label: "Messages", href: "/messages", icon: <MessageCircle className="h-5 w-5" /> },
+  { label: "Materials", href: "/materials", icon: <BookOpen className="h-5 w-5" /> },
+  { label: "My Results", href: "/results", icon: <BarChart3 className="h-5 w-5" /> },
 ];
 
 const teacherNav: NavItem[] = [
@@ -32,8 +38,6 @@ const teacherNav: NavItem[] = [
   { label: "Students", href: "/teacher/students", icon: <Users className="h-5 w-5" /> },
   { label: "Enrollments", href: "/teacher/enrollments", icon: <Shield className="h-5 w-5" /> },
   { label: "Question Bank", href: "/teacher/questions", icon: <FileText className="h-5 w-5" /> },
-  { label: "Exams", href: "/teacher/exams", icon: <ClipboardList className="h-5 w-5" /> },
-  { label: "Leaderboard", href: "/teacher/leaderboard", icon: <Trophy className="h-5 w-5" /> },
   { label: "Reports", href: "/teacher/reports", icon: <BarChart3 className="h-5 w-5" /> },
   { label: "Messages", href: "/teacher/messages", icon: <Bell className="h-5 w-5" /> },
   { label: "Settings", href: "/teacher/settings", icon: <Settings className="h-5 w-5" /> },
@@ -53,10 +57,14 @@ const adminNav: NavItem[] = [
 
 const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const { user, logout } = useAuth();
+  const { courses, selectedCourseId, setSelectedCourseId, refreshCourses } = useStudentCourse();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [courseSwitcherOpen, setCourseSwitcherOpen] = useState(false);
+  const [courseSearch, setCourseSearch] = useState("");
+  const [joinToken, setJoinToken] = useState("");
 
   if (!user) return null;
 
@@ -74,9 +82,48 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   };
 
   const userInitial = user?.name?.charAt(0)?.toUpperCase() || "?";
+  const selectedCourse = courses.find((course) => course.courseId === selectedCourseId) || null;
+  const courseCode = useMemo(() => {
+    const title = selectedCourse?.courseTitle || "Course";
+    const letters = title.replace(/[^A-Za-z0-9 ]/g, "").trim();
+    if (!letters) return "CRS";
+    const chunks = letters.split(/\s+/).filter(Boolean);
+    if (chunks.length >= 2) {
+      return `${chunks[0][0] || ""}${chunks[1][0] || ""}${chunks[2]?.[0] || ""}`.toUpperCase();
+    }
+    return letters.slice(0, 3).toUpperCase();
+  }, [selectedCourse?.courseTitle]);
+
+  const filteredCourses = useMemo(() => {
+    const query = courseSearch.trim().toLowerCase();
+    if (!query) return courses;
+    return courses.filter((course) => {
+      return (
+        course.courseTitle.toLowerCase().includes(query) ||
+        String(course.teacherName || "").toLowerCase().includes(query)
+      );
+    });
+  }, [courseSearch, courses]);
+
+  const openJoinByToken = () => {
+    const raw = joinToken.trim();
+    if (!raw) return;
+
+    let token = raw;
+    if (raw.includes("/")) {
+      const parts = raw.split("/").filter(Boolean);
+      token = parts[parts.length - 1] || raw;
+    }
+    token = token.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+    if (!token) return;
+
+    setCourseSwitcherOpen(false);
+    setJoinToken("");
+    navigate(`/course-join/${token}`);
+  };
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background flex overflow-x-hidden">
       {/* Sidebar */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-200 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex flex-col h-full">
@@ -93,9 +140,9 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
             </button>
           </div>
 
-          <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+          <nav className="no-scrollbar flex-1 py-4 px-3 space-y-1 overflow-y-auto">
             {navItems.map((item) => {
-              const active = location.pathname === item.href;
+              const active = location.pathname === item.href || location.pathname.startsWith(`${item.href}/`);
               return (
                 <Link
                   key={item.href}
@@ -112,6 +159,75 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
                 </Link>
               );
             })}
+
+            {user.role === "student" && (
+              <div className="mt-4 rounded-xl border border-border/70 bg-muted/20 p-3">
+                <button
+                  type="button"
+                  onClick={() => setCourseSwitcherOpen((prev) => !prev)}
+                  className="flex w-full items-center justify-between rounded-lg border border-border/60 bg-card px-3 py-2 text-left hover:bg-muted/30"
+                >
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Current course</p>
+                    <p className="truncate text-sm font-semibold text-foreground">{selectedCourse?.courseTitle || "Select Course"}</p>
+                  </div>
+                  <div className="ml-3 flex items-center gap-2">
+                    <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{courseCode}</span>
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${courseSwitcherOpen ? "rotate-180" : ""}`} />
+                  </div>
+                </button>
+
+                {courseSwitcherOpen && (
+                  <div className="mt-3 space-y-3">
+                    <div className="max-h-60 space-y-1 overflow-y-auto pr-1">
+                      {filteredCourses.map((course) => {
+                        const short = (course.courseTitle || "").slice(0, 3).toUpperCase();
+                        const active = String(course.courseId) === String(selectedCourseId);
+                        return (
+                          <button
+                            key={course.courseId}
+                            type="button"
+                            onClick={() => {
+                              setSelectedCourseId(course.courseId);
+                              setCourseSwitcherOpen(false);
+                            }}
+                            className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left ${active ? "border-primary bg-primary/10" : "border-border/60 hover:bg-muted/30"}`}
+                          >
+                            <div>
+                              <p className="text-sm font-medium">{short} - {course.courseTitle}</p>
+                              <p className="text-xs text-muted-foreground">{course.teacherName || "Teacher"}</p>
+                            </div>
+                            {active ? <span className="text-xs font-semibold text-primary">Active</span> : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="border-t border-border/70 pt-3">
+                      <p className="mb-2 text-xs text-muted-foreground">Join Course</p>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Paste invite token"
+                          value={joinToken}
+                          onChange={(event) => setJoinToken(event.target.value)}
+                        />
+                        <Button size="sm" onClick={openJoinByToken}>Join</Button>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="mt-2 w-full"
+                        onClick={async () => {
+                          await refreshCourses();
+                        }}
+                      >
+                        Refresh Courses
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </nav>
 
           <div className="p-4 border-t border-border">
@@ -127,16 +243,14 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
       {sidebarOpen && <div className="fixed inset-0 bg-foreground/20 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       {/* Main */}
-      <div className="flex-1 lg:ml-64">
+      <div className="flex-1 min-w-0 lg:ml-64">
         {/* Top bar */}
         <header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
           <button className="lg:hidden text-foreground" onClick={() => setSidebarOpen(true)}>
             <Menu className="h-6 w-6" />
           </button>
 
-          <div className="hidden lg:block" />
-
-          <div className="flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-3">
             <ThemeToggleInline />
             <button className="relative p-2 rounded-lg text-muted-foreground hover:bg-muted transition-colors">
               <Bell className="h-5 w-5" />
@@ -179,7 +293,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
         </header>
 
         {/* Content */}
-        <main className="p-4 lg:p-6">
+        <main className="min-w-0 overflow-x-hidden p-4 lg:p-6">
           {children}
         </main>
       </div>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { examsAPI, examResultsAPI } from "@/services/api";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { useAuth } from "@/contexts/AuthContext";
+import { useStudentCourse } from "@/contexts/StudentCourseContext";
 import { useNavigate } from "react-router-dom";
 import { Trophy, ArrowRight, Sparkles } from "lucide-react";
 import BeautifulLoader from "@/components/ui/beautiful-loader";
@@ -11,6 +12,7 @@ import BeautifulLoader from "@/components/ui/beautiful-loader";
 
 const MyResults = () => {
   const { user } = useAuth();
+  const { selectedCourseId, selectedCourseExamIds } = useStudentCourse();
   const navigate = useNavigate();
 
   const [myResults, setMyResults] = useState<any[]>([]);
@@ -45,16 +47,23 @@ const MyResults = () => {
   }, [user]);
 
   // Stats
-  const totalExams = myResults.length;
-  const avgScore = totalExams ? (myResults.reduce((a, r) => a + Number(r.percentage || 0), 0) / totalExams) : 0;
-  const best = myResults.length ? myResults.reduce((max, r) => Number(r.percentage || 0) > max ? Number(r.percentage || 0) : max, 0) : 0;
-  const worst = myResults.length ? myResults.reduce((min, r) => Number(r.percentage || 0) < min ? Number(r.percentage || 0) : min, 100) : 0;
-  const fastest = myResults.reduce((min, r) => r.timeTaken < min ? r.timeTaken : min, Infinity);
-  const slowest = myResults.reduce((max, r) => r.timeTaken > max ? r.timeTaken : max, 0);
+  const courseScopedResults = selectedCourseId
+    ? myResults.filter((result) => {
+        const examId = (result.examId && typeof result.examId === 'object') ? (result.examId._id || result.examId.id) : (result.examId || result.exam);
+        return selectedCourseExamIds.map((id) => String(id)).includes(String(examId || ""));
+      })
+    : myResults;
+
+  const totalExams = courseScopedResults.length;
+  const avgScore = totalExams ? (courseScopedResults.reduce((a, r) => a + Number(r.percentage || 0), 0) / totalExams) : 0;
+  const best = courseScopedResults.length ? courseScopedResults.reduce((max, r) => Number(r.percentage || 0) > max ? Number(r.percentage || 0) : max, 0) : 0;
+  const worst = courseScopedResults.length ? courseScopedResults.reduce((min, r) => Number(r.percentage || 0) < min ? Number(r.percentage || 0) : min, 100) : 0;
+  const fastest = courseScopedResults.reduce((min, r) => r.timeTaken < min ? r.timeTaken : min, Infinity);
+  const slowest = courseScopedResults.reduce((max, r) => r.timeTaken > max ? r.timeTaken : max, 0);
 
   // Subject-wise average
   const subjectScores: Record<string, { total: number; count: number }> = {};
-  myResults.forEach((r) => {
+  courseScopedResults.forEach((r) => {
     // Robust subject extraction: handle populated `examId.subjectId` or `examId.subject` or exams lookup
     let subject = undefined;
     const examObj = (r.examId && typeof r.examId === 'object') ? r.examId : null;
@@ -77,8 +86,8 @@ const MyResults = () => {
 
   // Pie chart data
   const pieData = [
-    { name: "Correct", value: myResults.reduce((a, r) => a + r.score, 0) },
-    { name: "Wrong", value: myResults.reduce((a, r) => a + r.totalMarks - r.score, 0) },
+    { name: "Correct", value: courseScopedResults.reduce((a, r) => a + r.score, 0) },
+    { name: "Wrong", value: courseScopedResults.reduce((a, r) => a + r.totalMarks - r.score, 0) },
   ];
   const COLORS = ["hsl(var(--success))", "hsl(var(--destructive))"];
 
@@ -194,7 +203,7 @@ const MyResults = () => {
                 </tr>
               </thead>
               <tbody>
-                {myResults.map((r) => {
+                {courseScopedResults.map((r) => {
                   // If backend populated examId, use it; else fallback to lookup
                   const examObj = typeof r.examId === 'object' && r.examId !== null ? r.examId : null;
                   const exam = examObj || exams.find((e) => e._id === r.examId || e.id === r.examId);
@@ -227,7 +236,7 @@ const MyResults = () => {
                 })}
               </tbody>
             </table>
-            {myResults.length === 0 && (
+            {courseScopedResults.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">আপনি এখনো কোনো পরীক্ষা দেননি।</div>
             )}
           </div>

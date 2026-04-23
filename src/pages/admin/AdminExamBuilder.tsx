@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { classesAPI, groupsAPI, subjectsAPI, chaptersAPI, topicsAPI, questionsAPI, examsAPI } from "@/services/api";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { classesAPI, groupsAPI, subjectsAPI, chaptersAPI, topicsAPI, questionsAPI, examsAPI, coursesAPI } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -18,8 +18,10 @@ const ITEMS_PER_PAGE = 8;
 const AdminExamBuilder = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const routeBase = user?.role === "teacher" ? "/teacher" : "/admin";
+  const linkedCourseId = searchParams.get("courseId") || "";
 
   // Database data
   const [classes, setClasses] = useState<any[]>([]);
@@ -38,40 +40,87 @@ const AdminExamBuilder = () => {
   const [selectedTopicId, setSelectedTopicId] = useState<string>("");
   const [selectedQuestionType, setSelectedQuestionType] = useState<string>("");
   const [selectedSubQuestionType, setSelectedSubQuestionType] = useState<string>("");
+  const [courseScopedUsers, setCourseScopedUsers] = useState<any[]>([]);
 
   // Load all data on mount
   useEffect(() => {
     loadData();
   }, []);
 
+  useEffect(() => {
+    if (!linkedCourseId || user?.role !== "teacher") {
+      setCourseScopedUsers([]);
+      return;
+    }
+
+    (async () => {
+      try {
+        const res = await coursesAPI.get(linkedCourseId);
+        const students = (res?.data?.students || [])
+          .map((entry: any) => entry.studentId)
+          .filter((student: any) => Boolean(student?._id));
+        setCourseScopedUsers(students);
+      } catch (err) {
+        console.error("Failed to load course students for scoped exam access:", err);
+        setCourseScopedUsers([]);
+      }
+    })();
+  }, [linkedCourseId, user?.role]);
+
+  const courseScopedStudentIds = useMemo(
+    () => courseScopedUsers.map((student: any) => String(student._id || student.id || "")).filter(Boolean),
+    [courseScopedUsers]
+  );
+
   const loadData = async () => {
     try {
       setLoading(true);
-      const [classesRes, groupsRes, subjectsRes, chaptersRes, topicsRes, questionsRes] = await Promise.all([
+      const [classesRes, groupsRes, subjectsRes, chaptersRes, topicsRes, questionsRes] = await Promise.allSettled([
         classesAPI.getAll(),
         groupsAPI.getAll(),
         subjectsAPI.getAll(),
         chaptersAPI.getAll(),
         topicsAPI.getAll(),
-        questionsAPI.getAll()
+        questionsAPI.getAll(),
       ]);
 
-      setClasses(classesRes.data || []);
-      setGroups(groupsRes.data || []);
-      setSubjects(subjectsRes.data || []);
-      setChapters(chaptersRes.data || []);
-      setTopics(topicsRes.data || []);
-      setDbQuestions(questionsRes.data || []);
+      const classesData = classesRes.status === 'fulfilled' ? (classesRes.value?.data || []) : [];
+      const groupsData = groupsRes.status === 'fulfilled' ? (groupsRes.value?.data || []) : [];
+      const subjectsData = subjectsRes.status === 'fulfilled' ? (subjectsRes.value?.data || []) : [];
+      const chaptersData = chaptersRes.status === 'fulfilled' ? (chaptersRes.value?.data || []) : [];
+      const topicsData = topicsRes.status === 'fulfilled' ? (topicsRes.value?.data || []) : [];
+      const questionsData = questionsRes.status === 'fulfilled' ? (questionsRes.value?.data || []) : [];
 
-      // Auto-select first class and group
-      if (classesRes.data?.length > 0) {
-        const firstClass = classesRes.data[0];
+      setClasses(classesData);
+      setGroups(groupsData);
+      setSubjects(subjectsData);
+      setChapters(chaptersData);
+      setTopics(topicsData);
+      setDbQuestions(questionsData);
+
+      // Auto-select first class and group when available.
+      if (classesData.length > 0) {
+        const firstClass = classesData[0];
         setSelectedClassId(firstClass._id);
 
-        const firstClassGroups = (groupsRes.data || []).filter((g: any) => (g.classId?._id || g.classId) === firstClass._id);
+        const firstClassGroups = groupsData.filter((g: any) => (g.classId?._id || g.classId) === firstClass._id);
         if (firstClassGroups.length > 0) {
           setSelectedGroupId(firstClassGroups[0]._id);
         }
+      }
+
+      if (questionsRes.status !== 'fulfilled') {
+        throw new Error('Failed to load questions for exam builder.');
+      }
+
+      // Show non-blocking warning when taxonomy lookups fail but questions are available.
+      const taxonomyFailed = [classesRes, groupsRes, subjectsRes, chaptersRes, topicsRes].some((r) => r.status !== 'fulfilled');
+      if (taxonomyFailed) {
+        toast({
+          title: 'Some filters failed to load',
+          description: 'Questions are available, but class/subject filters may be incomplete.',
+          variant: 'destructive',
+        });
       }
     } catch (err) {
       console.error('Error loading data:', err);
@@ -155,6 +204,10 @@ const AdminExamBuilder = () => {
 
   const handleContinueExamType = async () => {
     if (selectedExamType === "online") {
+      if (linkedCourseId && user?.role === "teacher" && courseScopedStudentIds.length === 0) {
+        toast({ title: "No enrolled students", description: "Enroll students in this course first.", variant: "destructive" });
+        return;
+      }
       setExamTypeOpen(false);
       setExamCreationOpen(true);
       return;
@@ -162,6 +215,11 @@ const AdminExamBuilder = () => {
 
     if (selectedIds.length === 0) {
       toast({ title: "No questions selected", description: "Select some questions first", variant: "destructive" });
+      return;
+    }
+
+    if (linkedCourseId && user?.role === "teacher" && courseScopedStudentIds.length === 0) {
+      toast({ title: "No enrolled students", description: "Enroll students in this course first.", variant: "destructive" });
       return;
     }
 
@@ -183,11 +241,20 @@ const AdminExamBuilder = () => {
         chapterId: selectedChapterId || null,
       };
 
+      if (linkedCourseId && user?.role === "teacher") {
+        payload.accessType = "specific";
+        payload.allowedStudents = courseScopedStudentIds;
+      }
+
       const response = await examsAPI.create(payload);
       const createdExam = response?.data;
 
       if (!createdExam?._id) {
         throw new Error("Exam created but exam id was not returned");
+      }
+
+      if (linkedCourseId) {
+        await coursesAPI.linkExam(linkedCourseId, createdExam._id);
       }
 
       setExamTypeOpen(false);
@@ -206,9 +273,27 @@ const AdminExamBuilder = () => {
     }
   };
 
-  const handleExamCreationSuccess = (createdExam?: any) => {
+  const handleExamCreationSuccess = async (createdExam?: any) => {
     setSelectedIds([]);
-    toast({ title: "পরীক্ষা তৈরি সফল!", description: "নতুন পরীক্ষা সফলভাবে তৈরি হয়েছে" });
+    try {
+      if (linkedCourseId && createdExam?._id) {
+        await coursesAPI.linkExam(linkedCourseId, createdExam._id);
+        toast({ title: "পরীক্ষা তৈরি সফল!", description: "পরীক্ষাটি কোর্সে যোগ করা হয়েছে" });
+        if (user?.role === "teacher") {
+          navigate(`/teacher/courses/${linkedCourseId}`);
+          return;
+        }
+      } else {
+        toast({ title: "পরীক্ষা তৈরি সফল!", description: "নতুন পরীক্ষা সফলভাবে তৈরি হয়েছে" });
+      }
+    } catch (err) {
+      console.error("Failed to link created exam to course:", err);
+      toast({
+        title: "Exam created but course linking failed",
+        description: err instanceof Error ? err.message : "Unknown error",
+        variant: "destructive",
+      });
+    }
 
     if (selectedExamType === "offline" && createdExam?._id) {
       navigate(`${routeBase}/offline-exam/create/${createdExam._id}?mode=edit`);
@@ -835,9 +920,11 @@ const AdminExamBuilder = () => {
         open={examCreationOpen}
         onOpenChange={setExamCreationOpen}
         selectedQuestionIds={selectedIds}
-          selectedSubjectId={selectedSubjectId}
-          selectedChapterId={selectedChapterId}
+        selectedSubjectId={selectedSubjectId}
+        selectedChapterId={selectedChapterId}
         selectedQuestionMarks={selectedQuestionMarksArray}
+        scopedUsers={courseScopedUsers}
+        enforceSpecificAccess={Boolean(linkedCourseId && user?.role === "teacher")}
         onSuccess={handleExamCreationSuccess}
       />
         </div>
