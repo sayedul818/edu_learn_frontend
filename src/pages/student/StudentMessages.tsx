@@ -650,13 +650,13 @@ const StudentMessages = () => {
   }, [activeCourseId, courses]);
 
   const conversationList = (
-    <Card className="h-full min-h-0 overflow-hidden border-black/10 bg-white shadow-[0_18px_45px_-30px_rgba(0,0,0,0.5)]">
+    <Card className="h-full min-h-0 overflow-hidden border-border bg-card shadow-[0_18px_45px_-30px_rgba(0,0,0,0.35)]">
       <CardContent className="flex h-full min-h-0 flex-col p-0">
-        <div className="border-b border-black/10 px-4 pb-3 pt-4">
+        <div className="border-b border-border px-4 pb-3 pt-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-extrabold tracking-tight text-black">Messages</h1>
-              <p className="mt-1 text-sm text-black/55">Chat with course teachers and classmates.</p>
+              <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Messages</h1>
+              <p className="mt-1 text-sm text-muted-foreground">Chat with course teachers and classmates.</p>
             </div>
             <div className="rounded-2xl bg-black px-3 py-2 text-white shadow-sm">
               <MessageCircle className="h-5 w-5" />
@@ -664,32 +664,32 @@ const StudentMessages = () => {
           </div>
 
           <div className="relative mt-3">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black/50" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search courses or teachers"
-              className="h-11 rounded-full border-black/10 bg-[#f3f3f3] pl-9 text-black placeholder:text-black/45"
+              className="h-11 rounded-full border-border bg-muted pl-9 text-foreground placeholder:text-muted-foreground"
             />
           </div>
 
           <div className="mt-3 flex items-center gap-2">
             <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
-              <SelectTrigger className="h-10 rounded-full border-black/10 bg-white">
+              <SelectTrigger className="h-10 rounded-full border-border bg-background">
                 <SelectValue placeholder="Select member" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Select member</SelectItem>
                 {courseMembers.map((member) => (
                   <SelectItem key={member._id} value={String(member._id)}>
-                    {member.name} {member.role === "teacher" ? "(Teacher)" : "(Student)"}
+                    {member.name}{member.role === "teacher" ? " (Teacher)" : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <Button
               size="sm"
-              className="h-10 rounded-full bg-black px-4 text-white hover:bg-black/90"
+              className="h-10 rounded-full bg-primary px-4 text-primary-foreground hover:bg-primary/90"
               onClick={handleStartMemberChat}
             >
               <Plus className="mr-1 h-4 w-4" /> Start
@@ -697,7 +697,7 @@ const StudentMessages = () => {
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto bg-[#fbfbfb] p-2">
+        <div className="flex-1 min-h-0 overflow-y-auto bg-muted/40 p-2 dark:bg-zinc-900/50">
           {loadingConversations ? (
             <div className="space-y-2 p-2">
               <Skeleton className="h-16 w-full rounded-xl" />
@@ -705,10 +705,10 @@ const StudentMessages = () => {
               <Skeleton className="h-16 w-full rounded-xl" />
             </div>
           ) : filteredCourseRows.length === 0 ? (
-            <div className="p-6 text-center text-sm text-black/50">
+            <div className="p-6 text-center text-sm text-muted-foreground">
               No enrolled courses found.
               <div className="mt-3">
-                <Link to="/dashboard" className="text-sm font-semibold text-black underline-offset-4 hover:underline">
+                <Link to="/dashboard" className="text-sm font-semibold text-foreground underline-offset-4 hover:underline">
                   Open dashboard to join a course
                 </Link>
               </div>
@@ -733,25 +733,25 @@ const StudentMessages = () => {
                       }
                       openCourseChat(course.courseId);
                     }}
-                    className={`w-full rounded-2xl px-3 py-2 text-left transition-all ${active ? "bg-white shadow-sm ring-1 ring-black/10" : "hover:bg-white/80"}`}
+                    className={`w-full rounded-2xl px-3 py-2 text-left transition-all ${active ? "bg-card shadow-sm ring-1 ring-border" : "hover:bg-muted/70"}`}
                   >
                     <div className="flex items-start gap-3">
                       <div className="relative mt-0.5">
-                        <Avatar className="h-11 w-11 border border-black/10">
+                        <Avatar className="h-11 w-11 border border-border">
                           <AvatarFallback>{course.courseTitle.slice(0, 1).toUpperCase()}</AvatarFallback>
                         </Avatar>
-                        <span className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2 ring-white ${conversation?.peer?.isOnline ? "bg-emerald-500" : "bg-black/30"}`} />
+                        <span className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2 ring-background ${conversation?.peer?.isOnline ? "bg-emerald-500" : "bg-muted-foreground/50"}`} />
                       </div>
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="truncate text-[15px] font-bold text-black">
+                          <p className="truncate text-[15px] font-bold text-foreground">
                             {conversation?.displayName || conversation?.peer?.name || course.courseTitle}
                           </p>
-                          <span className="text-[11px] text-black/55">{formatConversationTime(conversation?.lastMessageAt)}</span>
+                          <span className="text-[11px] text-muted-foreground">{formatConversationTime(conversation?.lastMessageAt)}</span>
                         </div>
-                        <p className="truncate text-xs text-black/55">{course.courseTitle}</p>
-                        <p className="truncate text-xs text-black/45">
+                        <p className="truncate text-xs text-muted-foreground">{course.courseTitle}</p>
+                        <p className="truncate text-xs text-muted-foreground/80">
                           {conversation?.othersTyping
                             ? `${conversation?.displayName || conversation?.peer?.name || "Member"} is typing...`
                             : conversation?.lastMessagePreview || "Tap to start chatting"}
@@ -773,22 +773,22 @@ const StudentMessages = () => {
   );
 
   const chatPanel = (
-    <Card className="h-full min-h-0 overflow-hidden border-black/10 bg-white shadow-[0_18px_45px_-30px_rgba(0,0,0,0.5)]">
+    <Card className="h-full min-h-0 overflow-hidden border-border bg-card shadow-[0_18px_45px_-30px_rgba(0,0,0,0.35)]">
       <CardContent className="flex h-full min-h-0 flex-col p-0">
         {activeCourse ? (
           <>
-            <div className="flex items-center justify-between border-b border-black/10 bg-white px-4 py-3">
+            <div className="flex items-center justify-between border-b border-border bg-card px-4 py-3">
               <div className="flex min-w-0 items-center gap-2.5">
                 <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full lg:hidden" onClick={() => setMobileView("list")}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <Avatar className="h-9 w-9 border border-black/10">
+                <Avatar className="h-9 w-9 border border-border">
                   <AvatarFallback>{activeCourse.courseTitle.slice(0, 1).toUpperCase()}</AvatarFallback>
                 </Avatar>
 
                 <div className="min-w-0">
-                  <p className="truncate text-[15px] font-bold text-black">{activeSummary?.displayName || activeCourse.courseTitle}</p>
-                  <p className="truncate text-xs text-black/55">
+                  <p className="truncate text-[15px] font-bold text-foreground">{activeSummary?.displayName || activeCourse.courseTitle}</p>
+                  <p className="truncate text-xs text-muted-foreground">
                     {activeSummary?.othersTyping
                       ? `${activeSummary?.displayName || activeCourse.teacherName || "Member"} is typing...`
                       : `${activeCourse.courseTitle}${activeSummary?.displayName ? ` • ${activeSummary.displayName}` : ""}`}
@@ -798,19 +798,19 @@ const StudentMessages = () => {
               </div>
 
               <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-black/70">
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground">
                   <Video className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-black/70">
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground">
                   <Phone className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-black/70" title="Mute conversation">
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground" title="Mute conversation">
                   <VolumeX className="h-4 w-4" />
                 </Button>
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto bg-[#ededed] px-3 py-4 md:px-4">
+            <div className="min-h-0 flex-1 overflow-y-auto bg-muted/40 px-3 py-4 md:px-4 dark:bg-zinc-900/70">
               {loadingMessages ? (
                 <div className="space-y-2">
                   <Skeleton className="ml-auto h-11 w-2/3 rounded-2xl" />
@@ -822,14 +822,14 @@ const StudentMessages = () => {
                   {groupedMessages.map((group) => (
                     <div key={group.label} className="space-y-2">
                       <div className="flex justify-center">
-                        <span className="rounded-full bg-black/10 px-3 py-1 text-[11px] font-medium text-black/70">{group.label}</span>
+                        <span className="rounded-full bg-muted px-3 py-1 text-[11px] font-medium text-muted-foreground">{group.label}</span>
                       </div>
 
                       {group.messages.map((message) => {
                         const mine = getSenderId(message.senderId) === meId;
                         return (
                           <div key={message._id || message.localId} className={`group relative flex ${mine ? "justify-end" : "justify-start"}`}>
-                            <div className={`relative max-w-[78%] rounded-2xl px-3 py-2 shadow-sm ${mine ? "rounded-br-md bg-black text-white" : "rounded-bl-md bg-white text-black"}`}>
+                            <div className={`relative max-w-[78%] rounded-2xl px-3 py-2 shadow-sm ${mine ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md border border-border bg-card text-card-foreground"}`}>
                               <MessageActionsMenu
                                 isMine={mine}
                                 onReply={() => handleReply(message)}
@@ -849,7 +849,7 @@ const StudentMessages = () => {
                                       href={attachment.url}
                                       target="_blank"
                                       rel="noreferrer"
-                                      className={`flex items-center gap-2 rounded-lg border px-2 py-1 text-xs ${mine ? "border-white/20" : "border-black/10"}`}
+                                      className={`flex items-center gap-2 rounded-lg border px-2 py-1 text-xs ${mine ? "border-primary-foreground/20" : "border-border"}`}
                                     >
                                       {attachment.type === "image" ? <ImageIcon className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
                                       <span className="truncate">{attachment.name || "Attachment"}</span>
@@ -858,7 +858,7 @@ const StudentMessages = () => {
                                 </div>
                               ) : null}
 
-                              <div className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${mine ? "text-white/70" : "text-black/45"}`}>
+                              <div className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
                                 <span>{formatTime(message.createdAt)}</span>
                                 {mine ? statusIcon(message.status || "sent") : null}
                                 {message.editedAt ? <span className="text-[9px] italic">edited</span> : null}
@@ -872,7 +872,7 @@ const StudentMessages = () => {
 
                   {activeOthersTyping ? (
                     <div className="flex justify-start">
-                      <div className="rounded-2xl rounded-bl-md bg-white px-3 py-2 text-xs text-black/55 shadow-sm">
+                      <div className="rounded-2xl rounded-bl-md border border-border bg-card px-3 py-2 text-xs text-muted-foreground shadow-sm">
                         {activeSummary?.displayName || activeCourse.teacherName || "Member"} is typing...
                       </div>
                     </div>
@@ -883,9 +883,9 @@ const StudentMessages = () => {
               )}
             </div>
 
-            <div className="border-t border-black/10 bg-white px-3 pb-3 pt-2 md:px-4">
+            <div className="border-t border-border bg-card px-3 pb-3 pt-2 md:px-4">
               {composerMode ? (
-                <div className="mb-2 flex items-center justify-between rounded-2xl bg-black/5 px-3 py-2 text-xs text-black/70">
+                <div className="mb-2 flex items-center justify-between rounded-2xl bg-muted px-3 py-2 text-xs text-muted-foreground">
                   <span>
                     {composerMode.type === "edit"
                       ? `Editing message from ${getMessageAuthorName(composerMode.message)}`
@@ -906,7 +906,7 @@ const StudentMessages = () => {
                       key={`${attachment.url}-${index}`}
                       type="button"
                       onClick={() => setPendingAttachments((prev) => prev.filter((_, idx) => idx !== index))}
-                      className="rounded-full bg-black/5 px-2.5 py-1 text-[11px] text-black/70"
+                      className="rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground"
                     >
                       {attachment.name} ×
                     </button>
@@ -926,14 +926,14 @@ const StudentMessages = () => {
                   }}
                 />
 
-                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full border border-black/10" onClick={() => inputFileRef.current?.click()} disabled={uploading}>
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full border border-border" onClick={() => inputFileRef.current?.click()} disabled={uploading}>
                   <Paperclip className="h-4 w-4" />
                 </Button>
 
                 <Input
                   value={messageText}
                   placeholder={composerMode?.type === "edit" ? "Edit message..." : `Message ${activeSummary?.displayName || "member"}...`}
-                  className="h-10 rounded-full border-black/10 bg-[#f7f7f7]"
+                  className="h-10 rounded-full border-border bg-muted"
                   onChange={(event) => onTypingChange(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" && !event.shiftKey) {
@@ -943,16 +943,16 @@ const StudentMessages = () => {
                   }}
                 />
 
-                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full border border-black/10" onClick={() => setMessageText((prev) => `${prev}${prev ? " " : ""}🙂`)}>
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full border border-border" onClick={() => setMessageText((prev) => `${prev}${prev ? " " : ""}🙂`)}>
                   <Smile className="h-4 w-4" />
                 </Button>
 
-                <Button className="h-9 rounded-full bg-black px-3 text-white hover:bg-black/90" onClick={handleSend} disabled={sending || uploading}>
+                <Button className="h-9 rounded-full bg-primary px-3 text-primary-foreground hover:bg-primary/90" onClick={handleSend} disabled={sending || uploading}>
                   <SendHorizontal className="h-4 w-4" />
                 </Button>
               </div>
 
-              <div className="mt-1.5 flex items-center justify-between text-[11px] text-black/50">
+              <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
                 <span>{uploading ? "Uploading attachment..." : `${sharedFiles.length} shared files`}</span>
                 <span className="flex items-center gap-1">
                   {statusIcon(latestOwnMessageStatus)}
@@ -963,11 +963,11 @@ const StudentMessages = () => {
           </>
         ) : (
           <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-            <div className="mb-3 rounded-full bg-black/5 p-4">
-              <BookOpen className="h-8 w-8 text-black/45" />
+            <div className="mb-3 rounded-full bg-muted p-4">
+              <BookOpen className="h-8 w-8 text-muted-foreground" />
             </div>
-            <h2 className="text-lg font-bold text-black">Select a course to start messaging</h2>
-            <p className="mt-1 text-sm text-black/55">Choose one of your enrolled courses and chat with its teacher.</p>
+            <h2 className="text-lg font-bold text-foreground">Select a course to start messaging</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Choose one of your enrolled courses and chat with its teacher.</p>
           </div>
         )}
       </CardContent>
@@ -975,7 +975,7 @@ const StudentMessages = () => {
   );
 
   return (
-    <div className="h-[calc(100vh-8rem)] min-h-[680px] overflow-hidden rounded-3xl bg-[#f1f1f1] p-2 md:p-4">
+    <div className="h-[calc(100vh-8rem)] min-h-[680px] overflow-hidden rounded-3xl bg-muted/30 p-2 md:p-4 dark:bg-zinc-950">
       <div className="grid h-full min-h-0 grid-cols-1 gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
         <div className={`${mobileView === "chat" ? "hidden lg:block" : "block"} min-h-0`}>
           {conversationList}
