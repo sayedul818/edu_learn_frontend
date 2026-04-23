@@ -16,7 +16,7 @@ const API_URL = (() => {
   if (envUrl) return envUrl;
   if (import.meta.env.DEV) return 'http://localhost:5000/api';
   return 'https://learn-edu-backend.vercel.app/api';
-})();
+})(); 
 
 interface FetchOptions extends RequestInit {
   body?: any;
@@ -61,6 +61,16 @@ async function parseJsonSafely(response: Response) {
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) return null;
   return response.json();
+}
+
+function buildQueryString(params: Record<string, unknown>) {
+  const queryParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') return;
+    queryParams.set(key, String(value));
+  });
+  const query = queryParams.toString();
+  return query ? `?${query}` : '';
 }
 
 async function fetchAPI(endpoint: string, options: FetchOptions = {}) {
@@ -234,20 +244,10 @@ export const examsAPI = {
 // ============ LEADERBOARD API ============
 export const leaderboardAPI = {
   get: (period?: string, month?: string) => {
-    const params = new URLSearchParams();
-    if (period) params.set('period', period);
-    if (month) params.set('month', month);
-    const query = params.toString();
-    return fetchAPI(`/leaderboard${query ? `?${query}` : ''}`);
+    return fetchAPI(`/leaderboard${buildQueryString({ period, month })}`);
   },
   getWithRange: (options: { period?: string; month?: string; start?: string; end?: string }) => {
-    const params = new URLSearchParams();
-    if (options.period) params.set('period', options.period);
-    if (options.month) params.set('month', options.month);
-    if (options.start) params.set('start', options.start);
-    if (options.end) params.set('end', options.end);
-    const query = params.toString();
-    return fetchAPI(`/leaderboard${query ? `?${query}` : ''}`);
+    return fetchAPI(`/leaderboard${buildQueryString(options)}`);
   },
 };
 
@@ -285,7 +285,7 @@ export const authAPI = {
 // ============ USERS API ============
 export const usersAPI = {
   list: (params?: Record<string, any>) => {
-    const qs = params ? `?${new URLSearchParams(Object.entries(params).reduce((acc, [k,v]) => { if (v !== undefined && v !== null) acc[k]=String(v); return acc; }, {} as Record<string,string>)).toString()}` : '';
+    const qs = params ? buildQueryString(params) : '';
     return fetchAPI(`/users${qs}`);
   },
   get: (id: string) => fetchAPI(`/users/${id}`),
@@ -300,14 +300,7 @@ export const usersAPI = {
 // ============ COURSES API ============
 export const coursesAPI = {
   getAll: (params?: Record<string, any>) => {
-    const qs = params
-      ? `?${new URLSearchParams(
-          Object.entries(params).reduce((acc, [k, v]) => {
-            if (v !== undefined && v !== null && v !== '') acc[k] = String(v);
-            return acc;
-          }, {} as Record<string, string>)
-        ).toString()}`
-      : '';
+    const qs = params ? buildQueryString(params) : '';
     return fetchAPI(`/courses${qs}`);
   },
   get: (id: string) => fetchAPI(`/courses/${id}`),
@@ -339,14 +332,7 @@ export const coursesAPI = {
   listMyMaterials: () => fetchAPI('/courses/my/materials'),
   listMyEnrolled: () => fetchAPI('/courses/my/enrolled'),
   getCourseLeaderboard: (courseId: string, params?: { timeRange?: 'weekly' | 'monthly' | 'all'; type?: 'overall' | 'exams' | 'assignments' }) => {
-    const qs = params
-      ? `?${new URLSearchParams(
-          Object.entries(params).reduce((acc, [k, v]) => {
-            if (v !== undefined && v !== null && v !== '') acc[k] = String(v);
-            return acc;
-          }, {} as Record<string, string>)
-        ).toString()}`
-      : '';
+    const qs = params ? buildQueryString(params) : '';
     return fetchAPI(`/courses/${courseId}/leaderboard${qs}`);
   },
   listMyAnnouncements: () => fetchAPI('/courses/my/announcements'),
@@ -356,26 +342,12 @@ export const coursesAPI = {
     fetchAPI(`/courses/my/announcements/${courseId}/${announcementId}/like`, { method: 'POST' }),
   getStudentPerformance: (courseId: string, studentId: string) => fetchAPI(`/courses/${courseId}/students/${studentId}/performance`),
   listMyAssignments: (params?: { search?: string; status?: 'all' | 'active' | 'closed' }) => {
-    const qs = params
-      ? `?${new URLSearchParams(
-          Object.entries(params).reduce((acc, [k, v]) => {
-            if (v !== undefined && v !== null && v !== '') acc[k] = String(v);
-            return acc;
-          }, {} as Record<string, string>)
-        ).toString()}`
-      : '';
+    const qs = params ? buildQueryString(params) : '';
     return fetchAPI(`/courses/my/assignments${qs}`);
   },
   getMyAssignment: (assignmentId: string) => fetchAPI(`/courses/my/assignments/${assignmentId}`),
   listAssignments: (courseId: string, params?: { search?: string; status?: 'draft' | 'active' | 'closed' | 'all' }) => {
-    const qs = params
-      ? `?${new URLSearchParams(
-          Object.entries(params).reduce((acc, [k, v]) => {
-            if (v !== undefined && v !== null && v !== '') acc[k] = String(v);
-            return acc;
-          }, {} as Record<string, string>)
-        ).toString()}`
-      : '';
+    const qs = params ? buildQueryString(params) : '';
     return fetchAPI(`/courses/${courseId}/assignments${qs}`);
   },
   createAssignment: (courseId: string, data: any) => fetchAPI(`/courses/${courseId}/assignments`, { method: 'POST', body: data }),
@@ -401,14 +373,7 @@ export const coursesAPI = {
 // ============ ENROLLMENTS API ============
 export const enrollmentsAPI = {
   getAll: (params?: Record<string, any>) => {
-    const qs = params
-      ? `?${new URLSearchParams(
-          Object.entries(params).reduce((acc, [k, v]) => {
-            if (v !== undefined && v !== null && v !== '') acc[k] = String(v);
-            return acc;
-          }, {} as Record<string, string>)
-        ).toString()}`
-      : '';
+    const qs = params ? buildQueryString(params) : '';
     return fetchAPI(`/enrollments${qs}`);
   },
   update: (id: string, data: { status?: 'active' | 'pending'; enrollmentDate?: string }) =>
@@ -419,14 +384,7 @@ export const enrollmentsAPI = {
 // ============ TEACHER API ============
 export const teacherAPI = {
   getStudents: (params?: Record<string, any>) => {
-    const qs = params
-      ? `?${new URLSearchParams(
-          Object.entries(params).reduce((acc, [k, v]) => {
-            if (v !== undefined && v !== null && v !== '') acc[k] = String(v);
-            return acc;
-          }, {} as Record<string, string>)
-        ).toString()}`
-      : '';
+    const qs = params ? buildQueryString(params) : '';
     return fetchAPI(`/teacher/students${qs}`);
   },
   createStudent: (data: any) => fetchAPI('/teacher/students', { method: 'POST', body: data }),
@@ -439,27 +397,13 @@ export const teacherAPI = {
 // ============ MESSAGES API ============
 export const messagesAPI = {
   listConversations: (params?: { search?: string }) => {
-    const qs = params
-      ? `?${new URLSearchParams(
-          Object.entries(params).reduce((acc, [k, v]) => {
-            if (v !== undefined && v !== null && v !== '') acc[k] = String(v);
-            return acc;
-          }, {} as Record<string, string>)
-        ).toString()}`
-      : '';
+    const qs = params ? buildQueryString(params) : '';
     return fetchAPI(`/messages/conversations${qs}`);
   },
-      createConversation: (data: { studentId?: string; courseId?: string; text?: string; attachments?: any[] }) =>
+  createConversation: (data: { studentId?: string; courseId?: string; text?: string; attachments?: any[] }) =>
     fetchAPI('/messages/conversations', { method: 'POST', body: data }),
   getMessages: (conversationId: string, params?: { limit?: number }) => {
-    const qs = params
-      ? `?${new URLSearchParams(
-          Object.entries(params).reduce((acc, [k, v]) => {
-            if (v !== undefined && v !== null && v !== '') acc[k] = String(v);
-            return acc;
-          }, {} as Record<string, string>)
-        ).toString()}`
-      : '';
+    const qs = params ? buildQueryString(params) : '';
     return fetchAPI(`/messages/conversations/${conversationId}/messages${qs}`);
   },
   sendMessage: (conversationId: string, data: { text?: string; attachments?: any[] }) =>
