@@ -6,49 +6,49 @@
 
 @layer base {
   :root {
-    --background: 210 33% 98%;
-    --foreground: 220 30% 12%;
+    --background: 28 38% 97%;
+    --foreground: 20 20% 12%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 220 30% 12%;
+    --card: 24 36% 99%;
+    --card-foreground: 20 20% 12%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 30% 12%;
+    --popover: 24 36% 99%;
+    --popover-foreground: 20 20% 12%;
 
-    --primary: 217 91% 55%;
+    --primary: 15 88% 56%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 220 30% 20%;
+    --secondary: 24 26% 92%;
+    --secondary-foreground: 20 16% 22%;
 
-    --muted: 214 32% 95%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 28 22% 93%;
+    --muted-foreground: 22 12% 43%;
 
-    --accent: 168 71% 41%;
+    --accent: 24 78% 50%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 217 91% 55%;
+    --border: 24 18% 86%;
+    --input: 24 18% 86%;
+    --ring: 15 88% 56%;
 
     --radius: 0.75rem;
 
-    --hero-gradient: linear-gradient(135deg, hsl(217 91% 55%), hsl(230 80% 60%));
-    --card-shadow: 0 4px 24px -4px hsl(217 91% 55% / 0.08);
-    --card-shadow-hover: 0 8px 32px -4px hsl(217 91% 55% / 0.15);
-    --glow: 0 0 40px hsl(217 91% 55% / 0.15);
+    --hero-gradient: linear-gradient(135deg, hsl(15 88% 56%), hsl(18 94% 68%));
+    --card-shadow: 0 8px 26px -8px hsl(15 88% 56% / 0.12);
+    --card-shadow-hover: 0 16px 42px -10px hsl(15 88% 56% / 0.2);
+    --glow: 0 0 42px hsl(15 88% 56% / 0.2);
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 217 91% 55%;
+    --sidebar-background: 24 34% 98%;
+    --sidebar-foreground: 20 18% 18%;
+    --sidebar-primary: 15 88% 56%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 40% 96%;
-    --sidebar-accent-foreground: 220 30% 20%;
-    --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 217 91% 55%;
+    --sidebar-accent: 24 24% 93%;
+    --sidebar-accent-foreground: 20 16% 22%;
+    --sidebar-border: 24 18% 86%;
+    --sidebar-ring: 15 88% 56%;
 
     --success: 152 69% 42%;
     --success-foreground: 0 0% 100%;
@@ -57,33 +57,38 @@
   }
 
   .dark {
-    --background: 222 47% 8%;
-    --foreground: 210 40% 96%;
-    --card: 222 47% 11%;
-    --card-foreground: 210 40% 96%;
-    --popover: 222 47% 11%;
-    --popover-foreground: 210 40% 96%;
-    --primary: 217 91% 60%;
+    --background: 0 0% 3%;
+    --foreground: 24 30% 96%;
+    --card: 0 0% 7%;
+    --card-foreground: 24 30% 96%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 24 30% 96%;
+    --primary: 15 88% 56%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 96%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 168 71% 41%;
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 24 28% 92%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 20 9% 66%;
+    --accent: 24 80% 50%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 96%;
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 217 91% 60%;
-    --sidebar-background: 222 47% 8%;
-    --sidebar-foreground: 210 40% 96%;
-    --sidebar-primary: 217 91% 60%;
+    --destructive: 0 72% 40%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 16%;
+    --input: 0 0% 14%;
+    --ring: 15 88% 56%;
+    --sidebar-background: 0 0% 5%;
+    --sidebar-foreground: 24 30% 96%;
+    --sidebar-primary: 15 88% 56%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 33% 17%;
-    --sidebar-accent-foreground: 210 40% 96%;
-    --sidebar-border: 217 33% 17%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-accent: 0 0% 10%;
+    --sidebar-accent-foreground: 24 30% 96%;
+    --sidebar-border: 0 0% 16%;
+    --sidebar-ring: 15 88% 56%;
+
+    --hero-gradient: linear-gradient(135deg, hsl(15 88% 56%), hsl(18 94% 68%));
+    --card-shadow: 0 10px 30px -10px hsl(15 88% 56% / 0.18);
+    --card-shadow-hover: 0 22px 50px -12px hsl(15 88% 56% / 0.28);
+    --glow: 0 0 48px hsl(15 88% 56% / 0.24);
   }
 }
 

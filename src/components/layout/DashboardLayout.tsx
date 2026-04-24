@@ -71,9 +71,9 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const navItems = user.role === "admin" ? adminNav : user.role === "teacher" ? teacherNav : studentNav;
 
   const roleColors = {
-    student: "bg-primary",
-    teacher: "bg-accent",
-    admin: "bg-destructive",
+    student: "bg-sky-500/20 border border-sky-300/35 text-sky-100",
+    teacher: "bg-emerald-500/20 border border-emerald-300/35 text-emerald-100",
+    admin: "bg-rose-500/20 border border-rose-300/35 text-rose-100",
   };
 
   const handleLogout = () => {
@@ -123,17 +123,18 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex overflow-x-hidden">
+    <div className="relative flex min-h-screen overflow-x-hidden bg-background text-foreground">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.15),transparent_30%),radial-gradient(circle_at_bottom_left,hsl(var(--accent)/0.12),transparent_28%)]" />
       {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-200 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 border-r border-border bg-card/90 backdrop-blur-xl transform transition-transform duration-200 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex flex-col h-full">
           <div className="h-16 flex items-center gap-2 px-6 border-b border-border">
-            <div className="h-8 w-8 rounded-lg bg-hero-gradient flex items-center justify-center">
+            <div className="h-8 w-8 rounded-lg bg-[linear-gradient(135deg,hsl(var(--primary)),hsl(var(--accent)))] flex items-center justify-center shadow-glow">
               <BookOpen className="h-4 w-4 text-primary-foreground" />
             </div>
             <div className="leading-tight">
-              <span className="block text-lg font-display font-bold text-foreground">ExamPathshala</span>
-              <span className="text-[11px] text-muted-foreground">Practice smarter, score better.</span>
+              <span className="block text-lg font-display font-bold text-foreground">LearnSmart Prep</span>
+              <span className="text-[11px] text-muted-foreground">Smart learning, better outcomes.</span>
             </div>
             <button className="lg:hidden ml-auto text-muted-foreground" onClick={() => setSidebarOpen(false)}>
               <X className="h-5 w-5" />
@@ -150,7 +151,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
                   onClick={() => setSidebarOpen(false)}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     active
-                      ? "bg-primary text-primary-foreground"
+                      ? "border border-white/20 bg-white/12 text-foreground backdrop-blur-md"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   }`}
                 >
@@ -165,14 +166,14 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
                 <button
                   type="button"
                   onClick={() => setCourseSwitcherOpen((prev) => !prev)}
-                  className="flex w-full items-center justify-between rounded-lg border border-border/60 bg-card px-3 py-2 text-left hover:bg-muted/30"
+                  className="flex w-full items-center justify-between rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-left backdrop-blur-md hover:bg-white/10"
                 >
                   <div className="min-w-0">
                     <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Current course</p>
                     <p className="truncate text-sm font-semibold text-foreground">{selectedCourse?.courseTitle || "Select Course"}</p>
                   </div>
                   <div className="ml-3 flex items-center gap-2">
-                    <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{courseCode}</span>
+                    <span className="rounded-md border border-white/20 bg-white/10 px-2 py-0.5 text-xs font-semibold text-foreground">{courseCode}</span>
                     <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${courseSwitcherOpen ? "rotate-180" : ""}`} />
                   </div>
                 </button>
@@ -191,13 +192,13 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
                               setSelectedCourseId(course.courseId);
                               setCourseSwitcherOpen(false);
                             }}
-                            className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left ${active ? "border-primary bg-primary/10" : "border-border/60 hover:bg-muted/30"}`}
+                            className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left ${active ? "border-white/25 bg-white/12" : "border-border/60 hover:bg-muted/30"}`}
                           >
                             <div>
                               <p className="text-sm font-medium">{short} - {course.courseTitle}</p>
                               <p className="text-xs text-muted-foreground">{course.teacherName || "Teacher"}</p>
                             </div>
-                            {active ? <span className="text-xs font-semibold text-primary">Active</span> : null}
+                            {active ? <span className="text-xs font-semibold text-foreground">Active</span> : null}
                           </button>
                         );
                       })}
@@ -211,10 +212,10 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
                           value={joinToken}
                           onChange={(event) => setJoinToken(event.target.value)}
                         />
-                        <Button size="sm" onClick={openJoinByToken}>Join</Button>
+                        <Button size="sm" variant="glass" onClick={openJoinByToken}>Join</Button>
                       </div>
                       <Button
-                        variant="ghost"
+                        variant="glass"
                         size="sm"
                         className="mt-2 w-full"
                         onClick={async () => {
@@ -243,25 +244,25 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
       {sidebarOpen && <div className="fixed inset-0 bg-foreground/20 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       {/* Main */}
-      <div className="flex-1 min-w-0 lg:ml-64">
+      <div className="relative z-10 flex-1 min-w-0 lg:ml-64">
         {/* Top bar */}
-        <header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
+        <header className="h-16 bg-card/85 backdrop-blur-xl border-b border-border flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
           <button className="lg:hidden text-foreground" onClick={() => setSidebarOpen(true)}>
             <Menu className="h-6 w-6" />
           </button>
 
           <div className="ml-auto flex items-center gap-3">
             <ThemeToggleInline />
-            <button className="relative p-2 rounded-lg text-muted-foreground hover:bg-muted transition-colors">
+            <button className="relative rounded-lg border border-white/15 bg-white/5 p-2 text-muted-foreground backdrop-blur-md transition-colors hover:bg-white/10">
               <Bell className="h-5 w-5" />
               <span className="absolute top-1 right-1 h-2 w-2 bg-destructive rounded-full" />
             </button>
 
             <div className="relative">
-              <button onClick={() => setProfileOpen(!profileOpen)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted transition-colors">
+              <button onClick={() => setProfileOpen(!profileOpen)} className="flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 backdrop-blur-md transition-colors hover:bg-white/10">
                 <Avatar className="h-8 w-8 border border-border/70">
                   <AvatarImage src={user?.avatar || ""} alt={user?.name || "User"} />
-                  <AvatarFallback className={`${roleColors[user.role]} text-primary-foreground text-sm font-bold`}>
+                  <AvatarFallback className={`${roleColors[user.role]} text-sm font-bold`}>
                     {userInitial}
                   </AvatarFallback>
                 </Avatar>
@@ -304,7 +305,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const ThemeToggleInline: React.FC = () => {
     const { theme, toggle } = useTheme();
     return (
-      <button onClick={toggle} className="relative p-2 rounded-lg text-muted-foreground hover:bg-muted transition-colors" aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}>
+      <button onClick={toggle} className="relative rounded-lg border border-white/15 bg-white/5 p-2 text-muted-foreground backdrop-blur-md transition-colors hover:bg-white/10" aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}>
         {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
       </button>
     );

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-label="HSC Prep Course">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3a2478"/>
+      <stop offset="100%" stop-color="#512a9e"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="720" rx="32" fill="url(#bg2)"/>
+  <circle cx="1140" cy="80" r="160" fill="#6f5cc4" opacity="0.35"/>
+  <circle cx="82" cy="668" r="170" fill="#6f5cc4" opacity="0.35"/>
+
+  <rect x="92" y="72" width="362" height="54" rx="12" fill="#ea4465"/>
+  <text x="138" y="106" font-size="36" fill="#fff3f7" font-family="Verdana" font-weight="700">Course Intro</text>
+
+  <text x="536" y="148" font-size="88" fill="#f3f6ff" font-family="Verdana" font-weight="700">HSC</text>
+  <text x="542" y="236" font-size="64" fill="#ea4465" font-family="Verdana" font-weight="700">Preparation</text>
+
+  <rect x="132" y="274" width="560" height="306" rx="18" fill="#22396f"/>
+  <rect x="144" y="286" width="536" height="282" rx="14" fill="#233664"/>
+  <line x1="170" y1="357" x2="650" y2="357" stroke="#8ea0c8" opacity="0.35"/>
+  <line x1="170" y1="474" x2="650" y2="474" stroke="#8ea0c8" opacity="0.35"/>
+  <text x="172" y="332" font-size="46" fill="#9cb0dc" font-family="Verdana">H2 + O = H2O</text>
+  <text x="172" y="430" font-size="44" fill="#9cb0dc" font-family="Verdana">dy/dx = f(x)</text>
+  <text x="172" y="525" font-size="48" fill="#ea4465" font-family="Verdana" font-weight="700">HSC to A+ Goal</text>
+
+  <rect x="884" y="248" width="212" height="210" rx="72" fill="#f1c69f"/>
+  <rect x="856" y="458" width="266" height="190" rx="22" fill="#7b33a1"/>
+  <rect x="918" y="206" width="146" height="90" rx="45" fill="#381100"/>
+  <rect x="904" y="648" width="46" height="62" rx="10" fill="#25193f"/>
+  <rect x="1028" y="648" width="46" height="62" rx="10" fill="#25193f"/>
+
+  <rect x="90" y="620" width="252" height="56" rx="28" fill="#ea4465"/>
+  <rect x="366" y="620" width="252" height="56" rx="28" fill="#6f5cc4"/>
+  <rect x="642" y="620" width="252" height="56" rx="28" fill="#6f5cc4"/>
+  <rect x="918" y="620" width="252" height="56" rx="28" fill="#6f5cc4"/>
+</svg>

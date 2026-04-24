@@ -11,10 +11,10 @@ const Footer = () => {
               <div className="h-8 w-8 rounded-lg bg-hero-gradient flex items-center justify-center">
                 <BookOpen className="h-4 w-4 text-primary-foreground" />
               </div>
-              <span className="text-lg font-display font-bold">ExamPathshala</span>
+              <span className="text-lg font-display font-bold">LearnSmart Prep</span>
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              স্মার্ট লার্নিং, পরীক্ষা জয়ের সেরা পথ।
+              স্মার্ট লার্নিং, অনুশীলন, আর একাডেমিক সাফল্যের একক ঠিকানা।
             </p>
           </div>
 
@@ -22,8 +22,8 @@ const Footer = () => {
             <h4 className="font-display font-semibold text-sm mb-4">আমাদের সম্পর্কে</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><a href="#features" className="hover:text-foreground transition-colors">বৈশিষ্ট্য</a></li>
-              <li><a href="#courses" className="hover:text-foreground transition-colors">কোর্স</a></li>
-              <li><a href="#leaderboard" className="hover:text-foreground transition-colors">লিডারবোর্ড</a></li>
+              <li><a href="#how-it-works" className="hover:text-foreground transition-colors">কিভাবে কাজ করে</a></li>
+              <li><a href="#audience" className="hover:text-foreground transition-colors">শিক্ষার্থী/শিক্ষক</a></li>
               <li><a href="#dashboard-preview" className="hover:text-foreground transition-colors">ড্যাশবোর্ড</a></li>
             </ul>
           </div>
@@ -51,7 +51,7 @@ const Footer = () => {
 
         <div className="border-t border-border pt-6 text-center">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} ExamPathshala. সর্বস্বত্ব সংরক্ষিত।
+            © {new Date().getFullYear()} LearnSmart Prep. সর্বস্বত্ব সংরক্ষিত।
           </p>
         </div>
       </div>

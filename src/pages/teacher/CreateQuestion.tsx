@@ -60,9 +60,9 @@ const cqJsonTemplate = {
 };
 
 const csvTemplate = [
-  "questionType,questionTextEn,questionTextBn,optionA,optionB,optionC,optionD,correctOption,correctAnswer,difficulty,boardYear,tags,subQuestionsJson",
-  "MCQ,What is the capital of Bangladesh?,বাংলাদেশের রাজধানী কোনটি?,Dhaka,Chattogram,Khulna,Rajshahi,A,,easy,2023,geography|bangladesh,",
-  "CQ,Read the passage and answer,অনুচ্ছেদ পড়ে উত্তর দাও,,,,,,,medium,2024,comprehension,\"[{\"\"question\"\":\"\"What is the main idea?\"\",\"\"answer\"\":\"\"Climate change affects weather patterns.\"\"}]\""
+  "questionType,questionTextEn,questionTextBn,image,optionA,optionB,optionC,optionD,correctOption,correctAnswer,difficulty,boardYear,tags,subQuestionsJson",
+  "MCQ,What is the capital of Bangladesh?,বাংলাদেশের রাজধানী কোনটি?,https://res.cloudinary.com/demo/image/upload/sample.jpg,Dhaka,Chattogram,Khulna,Rajshahi,A,,easy,2023,geography|bangladesh,",
+  "CQ,Read the passage and answer,অনুচ্ছেদ পড়ে উত্তর দাও,https://res.cloudinary.com/demo/image/upload/sample.jpg,,,,,,,medium,2024,comprehension,\"[{\"\"question\"\":\"\"What is the main idea?\"\",\"\"answer\"\":\"\"Climate change affects weather patterns.\"\"}]\""
 ].join("\n");
 
 const englishSecondFillBlankSubQuestions = [
@@ -86,10 +86,10 @@ const englishSecondComprehensionSubQuestions = [
 const escapeCsvField = (value: string) => `"${value.replace(/"/g, '""')}"`;
 
 const englishSecondCsvTemplate = [
-  "questionType,questionTextEn,questionTextBn,optionA,optionB,optionC,optionD,correctOption,correctAnswer,difficulty,boardYear,tags,subQuestionsJson",
-  `CQ,Complete the paragraph with suitable words (a) ____ (b) ____ (c) ____ (d) ____,উপযুক্ত শব্দ বসিয়ে অনুচ্ছেদটি পূরণ কর (ক) ____ (খ) ____ (গ) ____ (ঘ) ____,,,,,,,medium,2024,english-2nd|fill-blank,${escapeCsvField(JSON.stringify(englishSecondFillBlankSubQuestions))}`,
-  `CQ,Make meaningful sentences using the given words,দেওয়া শব্দগুলো দিয়ে অর্থপূর্ণ বাক্য তৈরি কর,,,,,,,easy,2024,english-2nd|make-sentence,${escapeCsvField(JSON.stringify(englishSecondMakeSentenceSubQuestions))}`,
-  `CQ,Read the passage and answer the questions,অনুচ্ছেদটি পড়ে প্রশ্নগুলোর উত্তর দাও,,,,,,,medium,2023,english-2nd|comprehension,${escapeCsvField(JSON.stringify(englishSecondComprehensionSubQuestions))}`
+  "questionType,questionTextEn,questionTextBn,image,optionA,optionB,optionC,optionD,correctOption,correctAnswer,difficulty,boardYear,tags,subQuestionsJson",
+  `CQ,Complete the paragraph with suitable words (a) ____ (b) ____ (c) ____ (d) ____,উপযুক্ত শব্দ বসিয়ে অনুচ্ছেদটি পূরণ কর (ক) ____ (খ) ____ (গ) ____ (ঘ) ____,https://res.cloudinary.com/demo/image/upload/sample.jpg,,,,,,,medium,2024,english-2nd|fill-blank,${escapeCsvField(JSON.stringify(englishSecondFillBlankSubQuestions))}`,
+  `CQ,Make meaningful sentences using the given words,দেওয়া শব্দগুলো দিয়ে অর্থপূর্ণ বাক্য তৈরি কর,,,,,,,,easy,2024,english-2nd|make-sentence,${escapeCsvField(JSON.stringify(englishSecondMakeSentenceSubQuestions))}`,
+  `CQ,Read the passage and answer the questions,অনুচ্ছেদটি পড়ে প্রশ্নগুলোর উত্তর দাও,https://res.cloudinary.com/demo/image/upload/sample.jpg,,,,,,,medium,2023,english-2nd|comprehension,${escapeCsvField(JSON.stringify(englishSecondComprehensionSubQuestions))}`
 ].join("\n");
 
 const englishSecondJsonTemplate = {
@@ -335,6 +335,7 @@ const CreateQuestion = () => {
       const questionTextEn = getCsvCell(row, ["questionTextEn", "questionEn", "questionText", "question", "passageTextEn", "passage_text_en", "passage", "passageText"]);
       const questionTextBn = getCsvCell(row, ["questionTextBn", "questionBn", "question_bangla", "questionTextBangla", "passageTextBn", "passage_text_bn"]);
       const explanation = getCsvCell(row, ["explanation", "solution", "note"]);
+      const image = getCsvCell(row, ["image", "imageUrl", "imageURL", "questionImage", "image_link", "img"]);
       const boardYear = getCsvCell(row, ["boardYear", "board_year", "board year", "year", "board"]);
       const difficulty = normalizeDifficulty(getCsvCell(row, ["difficulty", "level"]));
       const tags = splitTags(getCsvCell(row, ["tags", "tag"]));
@@ -348,6 +349,7 @@ const CreateQuestion = () => {
         questionTextEn,
         questionTextBn,
         explanation,
+        image,
         difficulty,
         boardYear,
         tags,
@@ -732,6 +734,7 @@ const CreateQuestion = () => {
                 <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-1">
                   <p><strong>MCQ rule:</strong> Provide at least 2 options and either <strong>correctOption</strong> (A/B/C/...) or <strong>correctAnswer</strong> text.</p>
                   <p><strong>CQ rule:</strong> Provide valid JSON in <strong>subQuestionsJson</strong>. Passage text (questionTextEn/questionTextBn) is optional.</p>
+                  <p><strong>Image (optional):</strong> Add <strong>image</strong> column with a public image URL (for example Cloudinary URL).</p>
                   <p><strong>questionTextEn/questionTextBn:</strong> Both are optional in all modes (Form/JSON/CSV).</p>
                   <p><strong>English 2nd (CQ) rule:</strong> Put <strong>type</strong> in each sub-question (for example <strong>fill blank</strong>, <strong>make sentence</strong>, <strong>short question</strong>).</p>
                   <p><strong>Tags:</strong> Use pipe-separated values like <strong>math|algebra</strong>.</p>
@@ -1060,7 +1063,7 @@ const CreateQuestion = () => {
                 className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono min-h-[220px]"
                 value={csvInput}
                 onChange={(e) => setCsvInput(e.target.value)}
-                placeholder={'Example headers:\nquestionType,questionTextEn,questionTextBn,optionA,optionB,optionC,optionD,correctOption,correctAnswer,difficulty,boardYear,tags,subQuestionsJson\n\nNotes:\n- questionTextEn and questionTextBn are optional\n- MCQ row: provide options + correctOption (A/B/C...) or correctAnswer text\n- CQ row: provide subQuestionsJson (passage text is optional)'}
+                placeholder={'Example headers:\nquestionType,questionTextEn,questionTextBn,image,optionA,optionB,optionC,optionD,correctOption,correctAnswer,difficulty,boardYear,tags,subQuestionsJson\n\nNotes:\n- questionTextEn and questionTextBn are optional\n- image is optional (public image URL)\n- MCQ row: provide options + correctOption (A/B/C...) or correctAnswer text\n- CQ row: provide subQuestionsJson (passage text is optional)'}
               />
             </div>
 
@@ -1102,6 +1105,15 @@ const CreateQuestion = () => {
                         </div>
 
                         <div className="grid grid-cols-1 gap-2">
+                          <div>
+                            <Label className="text-xs">Image URL (optional)</Label>
+                            <Input
+                              className="mt-1 h-8 text-xs"
+                              value={q.image || ""}
+                              onChange={(e) => updateCsvQuestionField(i, "image", e.target.value)}
+                              placeholder="https://..."
+                            />
+                          </div>
                           <div>
                             <Label className="text-xs">Question Text (English)</Label>
                             <textarea

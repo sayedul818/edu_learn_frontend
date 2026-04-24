@@ -52,58 +52,59 @@ const Login = () => {
 
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 mb-6">
-            <div className="h-10 w-10 rounded-lg bg-hero-gradient flex items-center justify-center">
-              <BookOpen className="h-5 w-5 text-primary-foreground" />
+    <div className="dark min-h-screen relative flex items-center justify-center overflow-hidden bg-[#050505] px-4 py-10 text-white">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(240,90,40,0.22),transparent_32%),radial-gradient(circle_at_top_right,rgba(255,255,255,0.08),transparent_28%)]" />
+      <div className="relative w-full max-w-md">
+        <div className="mb-8 text-center">
+          <Link to="/" className="mb-6 inline-flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/20 bg-white/5">
+              <BookOpen className="h-5 w-5 text-white" />
             </div>
             <div className="text-left leading-tight">
-              <span className="block text-2xl font-display font-bold">ExamPathshala</span>
-              <span className="block text-xs text-muted-foreground">Practice smarter, score better.</span>
+              <span className="block text-2xl font-display font-bold">LearnSmart Prep</span>
+              <span className="block text-xs text-white/60">Bangla First Learning Platform</span>
             </div>
           </Link>
-          <h1 className="text-2xl font-display font-bold">Welcome back</h1>
-          <p className="text-muted-foreground text-sm mt-1">Sign in to continue with ExamPathshala</p>
+          <h1 className="text-3xl font-display font-black tracking-tight">Welcome back</h1>
+          <p className="mt-1 text-sm text-white/65">Sign in to continue your preparation journey</p>
         </div>
 
-        <div className="bg-card rounded-2xl border border-border shadow-card p-8">
+        <div className="rounded-2xl border border-white/10 bg-[#0d0d11] p-8 shadow-[0_28px_70px_rgba(0,0,0,0.55)]">
           {/* Single unified login form for all roles (use credentials to authenticate) */}
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
-              <Label htmlFor="email">Email {fieldErrors.email && <AlertCircle className="inline-block ml-2 text-destructive" />}</Label>
-              <Input id="email" type="email" placeholder="you@example.com" className="mt-1" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Label htmlFor="email" className="text-white/85">Email {fieldErrors.email && <AlertCircle className="inline-block ml-2 text-destructive" />}</Label>
+              <Input id="email" type="email" placeholder="you@example.com" className="mt-1 border-white/15 bg-black/40 text-white placeholder:text-white/35" value={email} onChange={(e) => setEmail(e.target.value)} />
               {fieldErrors.email && <p className="text-destructive text-sm mt-1">{fieldErrors.email}</p>}
             </div>
             <div>
-              <Label htmlFor="password">Password {fieldErrors.password && <AlertCircle className="inline-block ml-2 text-destructive" />}</Label>
+              <Label htmlFor="password" className="text-white/85">Password {fieldErrors.password && <AlertCircle className="inline-block ml-2 text-destructive" />}</Label>
               <div className="relative mt-1">
-                <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" className="border-white/15 bg-black/40 text-white placeholder:text-white/35" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/55 hover:text-white">
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
               {fieldErrors.password && <p className="text-destructive text-sm mt-1">{fieldErrors.password}</p>}
             </div>
             <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 text-muted-foreground">
+              <label className="flex items-center gap-2 text-white/60">
                 <input type="checkbox" className="rounded" />
                 Remember me
               </label>
-              <a href="#" className="text-primary hover:underline">Forgot password?</a>
+              <a href="#" className="text-[#ff9f7c] hover:underline">Forgot password?</a>
             </div>
-            <Button className="w-full" size="lg">Sign In</Button>
+            <Button className="w-full bg-[#f05a28] text-white hover:bg-[#e04e1f]" size="lg">Sign In</Button>
           </form>
 
           {/* keep field-level inline errors, general API errors are shown as toasts */}
 
           
 
-          <p className="text-center text-sm text-muted-foreground mt-6">
+          <p className="mt-6 text-center text-sm text-white/60">
             Don't have an account?{" "}
-            <Link to="/signup" className="text-primary font-medium hover:underline">Sign up</Link>
+            <Link to="/signup" className="font-medium text-[#ff9f7c] hover:underline">Sign up</Link>
           </p>
         </div>
       </div>
