@@ -220,15 +220,16 @@ const StudentAnnouncements = () => {
 
   return (
     <div className="space-y-6">
-      <div className="relative overflow-hidden rounded-2xl border border-slate-300 bg-slate-100 p-5 shadow-xl dark:border-cyan-500/20 dark:bg-slate-900">
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-cyan-500/10 via-transparent to-emerald-500/10 dark:from-cyan-500/20 dark:to-emerald-500/20" />
+      <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-r from-card via-card to-muted/60 p-5 shadow-lg md:p-6">
+        <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-primary/10 blur-2xl" />
+        <div className="pointer-events-none absolute -left-16 -bottom-16 h-44 w-44 rounded-full bg-emerald-400/10 blur-2xl" />
         <div className="relative z-10">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-slate-400 bg-slate-200/60 px-4 py-2 dark:border-cyan-500/30 dark:bg-cyan-500/10">
-            <Megaphone className="h-4 w-4 text-slate-700 dark:text-cyan-300" />
-            <span className="text-xs font-semibold text-slate-700 dark:text-cyan-300">Live Classroom Updates</span>
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2">
+            <Megaphone className="h-4 w-4 text-primary" />
+            <span className="text-xs font-semibold text-primary">Live Classroom Updates</span>
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Announcements</h1>
-          <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">{selectedCourse ? `Announcements for ${selectedCourse.courseTitle}` : "Stay updated with teacher notices, course alerts, and important reminders."}</p>
+          <h1 className="text-3xl font-display font-bold text-foreground">Announcements</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{selectedCourse ? `Announcements for ${selectedCourse.courseTitle}` : "Stay updated with teacher notices, course alerts, and important reminders."}</p>
         </div>
       </div>
 

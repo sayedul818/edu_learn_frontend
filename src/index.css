@@ -93,6 +93,10 @@
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   * {
     @apply border-border;
   }
@@ -112,9 +116,134 @@
     font-family: 'Anek Bangla', 'Hind Siliguri', sans-serif;
     letter-spacing: -0.02em;
   }
+
+  section[id] {
+    scroll-margin-top: 6rem;
+  }
 }
 
 @layer utilities {
+  .home-glass-vibe {
+    --primary: 210 12% 34%;
+    --primary-foreground: 0 0% 98%;
+    --accent: 210 10% 42%;
+  }
+
+  .dark .home-glass-vibe {
+    --primary: 210 12% 70%;
+    --primary-foreground: 0 0% 8%;
+    --accent: 210 10% 62%;
+  }
+
+  .home-glass-vibe [data-slot="button"] {
+    border: 1px solid hsl(var(--border) / 0.9);
+    background: linear-gradient(135deg, hsl(var(--card) / 0.9), hsl(var(--muted) / 0.82));
+    color: hsl(var(--foreground) / 0.92);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 12px 28px -16px rgba(0, 0, 0, 0.35);
+  }
+
+  .home-glass-vibe [data-slot="button"]:hover {
+    background: linear-gradient(135deg, hsl(var(--card) / 0.96), hsl(var(--muted) / 0.9));
+    border-color: hsl(var(--border));
+  }
+
+  .home-glass-vibe [class*="f05a28"],
+  .home-glass-vibe [class*="ff9f7c"],
+  .home-glass-vibe [class*="ff8b61"],
+  .home-glass-vibe [class*="ffb08f"],
+  .home-glass-vibe [class*="e04e1f"] {
+    color: hsl(var(--foreground) / 0.9) !important;
+    border-color: hsl(var(--border) / 0.8) !important;
+    background-color: hsl(var(--muted) / 0.45) !important;
+  }
+
+  .home-glass-vibe [class*="bg-[#0"],
+  .home-glass-vibe [class*="bg-[#1"],
+  .home-glass-vibe [class*="bg-black/"] {
+    background-color: hsl(var(--card) / 0.78) !important;
+    border-color: hsl(var(--border) / 0.75) !important;
+    backdrop-filter: blur(12px);
+  }
+
+  .home-glass-vibe [class*="text-white/"] {
+    color: hsl(var(--muted-foreground)) !important;
+  }
+
+  .panel-button-shell {
+    /* Shift panel accent system away from orange to neutral glass tones */
+    --primary: 210 12% 34%;
+    --primary-foreground: 0 0% 98%;
+    --accent: 210 10% 42%;
+  }
+
+  .dark .panel-button-shell {
+    --primary: 210 12% 70%;
+    --primary-foreground: 0 0% 8%;
+    --accent: 210 10% 62%;
+  }
+
+  .panel-button-shell [data-slot="button"]:not(.btn-size-icon):not(.btn-variant-link) {
+    border-radius: 1rem;
+    min-height: 2.75rem;
+    padding-left: 1.35rem;
+    padding-right: 1.35rem;
+    font-weight: 600;
+  }
+
+  .panel-button-shell [data-slot="button"].btn-variant-default,
+  .panel-button-shell [data-slot="button"].btn-variant-destructive,
+  .panel-button-shell [data-slot="button"].btn-variant-secondary,
+  .panel-button-shell [data-slot="button"][class*="bg-primary"],
+  .panel-button-shell button[class*="bg-primary"] {
+    border: 1px solid hsl(var(--border) / 0.9) !important;
+    background: linear-gradient(135deg, hsl(var(--card) / 0.88), hsl(var(--muted) / 0.82)) !important;
+    color: hsl(var(--foreground) / 0.92) !important;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 12px 28px -16px rgba(0, 0, 0, 0.35);
+  }
+
+  .panel-button-shell [data-slot="button"].btn-variant-default:hover,
+  .panel-button-shell [data-slot="button"].btn-variant-destructive:hover,
+  .panel-button-shell [data-slot="button"].btn-variant-secondary:hover,
+  .panel-button-shell [data-slot="button"][class*="bg-primary"]:hover,
+  .panel-button-shell button[class*="bg-primary"]:hover {
+    background: linear-gradient(135deg, hsl(var(--card) / 0.96), hsl(var(--muted) / 0.9)) !important;
+    border-color: hsl(var(--border)) !important;
+  }
+
+  /* Convert hard-coded orange utility classes in panels to glass-neutral tones */
+  .panel-button-shell [class*="bg-orange-"] {
+    background-color: hsl(var(--muted) / 0.5) !important;
+    border-color: hsl(var(--border) / 0.8) !important;
+    color: hsl(var(--foreground) / 0.9) !important;
+    backdrop-filter: blur(8px);
+  }
+
+  .panel-button-shell [class*="text-orange-"] {
+    color: hsl(var(--foreground) / 0.86) !important;
+  }
+
+  .panel-button-shell [class*="border-orange-"] {
+    border-color: hsl(var(--border) / 0.85) !important;
+  }
+
+  .panel-button-shell [data-slot="button"].btn-size-sm:not(.btn-size-icon):not(.btn-variant-link) {
+    min-height: 2.5rem;
+    padding-left: 1.1rem;
+    padding-right: 1.1rem;
+  }
+
+  .panel-button-shell [data-slot="button"].btn-size-lg:not(.btn-size-icon):not(.btn-variant-link) {
+    min-height: 3rem;
+    padding-left: 1.6rem;
+    padding-right: 1.6rem;
+  }
+
+  .panel-button-shell [data-slot="button"].btn-size-icon {
+    border-radius: 0.95rem;
+  }
+
   .text-gradient {
     @apply bg-clip-text text-transparent;
     background-image: var(--hero-gradient);

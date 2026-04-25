@@ -88,40 +88,43 @@ const TeacherStudentPerformance = () => {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-border/70 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-5 text-white shadow-lg md:p-6">
+      <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-r from-card via-card to-muted/60 p-5 text-foreground shadow-lg md:p-6">
+        <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-primary/10 blur-2xl" />
+        <div className="pointer-events-none absolute -left-16 -bottom-16 h-44 w-44 rounded-full bg-emerald-400/10 blur-2xl" />
+
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="space-y-3">
-            <Button variant="secondary" size="sm" onClick={() => navigate(`/teacher/courses/${courseId}`)}>
+            <Button variant="glass" size="sm" onClick={() => navigate(`/teacher/courses/${courseId}`)}>
               <ArrowLeft className="mr-2 h-4 w-4" /> Back to Course
             </Button>
             <div className="flex items-center gap-4">
-              <Avatar className="h-14 w-14 border border-white/20">
+              <Avatar className="h-14 w-14 border border-black/15 dark:border-white/20">
                 <AvatarImage src={student?.avatar || ""} alt={student?.name || "Student"} />
                 <AvatarFallback>{student?.name?.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "?"}</AvatarFallback>
               </Avatar>
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-white/60">Performance View</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground dark:text-white/60">Performance View</p>
                 <h1 className="text-2xl font-semibold md:text-3xl">{student?.name || "Student performance"}</h1>
-                <p className="text-sm text-white/70">{student?.email || "Email unavailable"}</p>
+                <p className="text-sm text-muted-foreground dark:text-white/70">{student?.email || "Email unavailable"}</p>
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <div className="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur">
-              <p className="text-xs text-white/60">Average Score</p>
+            <div className="rounded-2xl border border-black/10 bg-black/5 px-4 py-3 backdrop-blur dark:border-white/15 dark:bg-white/10">
+              <p className="text-xs text-muted-foreground dark:text-white/60">Average Score</p>
               <p className="text-2xl font-semibold">{averageScore}%</p>
             </div>
-            <div className="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur">
-              <p className="text-xs text-white/60">Completed</p>
+            <div className="rounded-2xl border border-black/10 bg-black/5 px-4 py-3 backdrop-blur dark:border-white/15 dark:bg-white/10">
+              <p className="text-xs text-muted-foreground dark:text-white/60">Completed</p>
               <p className="text-2xl font-semibold">{completedExams}/{totalExams}</p>
             </div>
-            <div className="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur">
-              <p className="text-xs text-white/60">Attempts</p>
+            <div className="rounded-2xl border border-black/10 bg-black/5 px-4 py-3 backdrop-blur dark:border-white/15 dark:bg-white/10">
+              <p className="text-xs text-muted-foreground dark:text-white/60">Attempts</p>
               <p className="text-2xl font-semibold">{totalAttempts}</p>
             </div>
-            <div className="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur">
-              <p className="text-xs text-white/60">Weak Areas</p>
+            <div className="rounded-2xl border border-black/10 bg-black/5 px-4 py-3 backdrop-blur dark:border-white/15 dark:bg-white/10">
+              <p className="text-xs text-muted-foreground dark:text-white/60">Weak Areas</p>
               <p className="text-2xl font-semibold">{weakAreas.length}</p>
             </div>
           </div>

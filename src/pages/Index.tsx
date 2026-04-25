@@ -82,7 +82,7 @@ const courses = [
     price: "৳৫,৯৯৯",
     oldPrice: "৳১১,৯৯৮",
     image: courseSSC,
-    accent: "#f05a28",
+    accent: "hsl(var(--foreground))",
   },
   {
     title: "Data Science & Analytics with Gen AI",
@@ -90,7 +90,7 @@ const courses = [
     price: "৳৬,৯৯৯",
     oldPrice: "৳১২,৪৯৯",
     image: courseHSC,
-    accent: "#ff8b61",
+    accent: "hsl(var(--muted-foreground))",
   },
   {
     title: "প্রিমিয়াম পরীক্ষার প্রস্তুতি ব্যাচ",
@@ -98,7 +98,7 @@ const courses = [
     price: "৳৩,৪৯৯",
     oldPrice: "৳৬,৯৯৯",
     image: courseAdmission,
-    accent: "#ffb08f",
+    accent: "hsl(var(--foreground))",
   },
 ];
 
@@ -141,7 +141,7 @@ const impactCards = [
   {
     title: "Meet-Up Sessions",
     text: "Career discussions, peer networking, and mentor reviews.",
-    tone: "from-[#29160f] via-[#7b3115] to-[#d45724]",
+    tone: "from-[#10161f] via-[#1a2838] to-[#0f1824]",
     height: "h-[26rem]",
   },
   {
@@ -270,7 +270,7 @@ const CountUp = ({ value, suffix }: { value: number; suffix: string }) => {
 };
 
 const SectionTag = ({ text }: { text: string }) => (
-  <span className="inline-flex rounded-full border border-[#f05a28]/40 bg-[#f05a28]/12 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#ffb08f]">
+  <span className="inline-flex rounded-full border border-border/70 bg-card/70 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground backdrop-blur-sm">
     {text}
   </span>
 );
@@ -375,18 +375,18 @@ const Index = () => {
   const [mode, setMode] = useState<"student" | "teacher">("student");
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-background text-foreground">
+    <div className="home-glass-vibe min-h-screen overflow-x-hidden bg-background text-foreground">
       <Navbar />
 
       <main className="pt-20">
         <section className="relative overflow-hidden pb-24 pt-16 md:pt-24">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(240,90,40,0.18),transparent_34%),radial-gradient(circle_at_top_right,rgba(255,255,255,0.08),transparent_28%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.16),transparent_34%),radial-gradient(circle_at_top_right,hsl(var(--foreground)/0.06),transparent_28%)]" />
           <div className="container relative mx-auto px-4">
             <div className="mx-auto max-w-4xl text-center">
               <SectionTag text="LearnSmart Prep" />
               <h1 className="mt-6 text-4xl font-display font-black leading-[1.05] tracking-[-0.04em] sm:text-5xl md:text-6xl">
                 শিখুন, প্র্যাকটিস করুন, সফল হন -
-                <span className="block text-[#ff8b61]">সব এক প্ল্যাটফর্মে</span>
+                <span className="block text-foreground/90">সব এক প্ল্যাটফর্মে</span>
               </h1>
               <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-white/70 md:text-lg">
                 LearnSmart Prep আপনার complete academic workflow. প্রশ্ন ব্যাংক,
@@ -414,11 +414,11 @@ const Index = () => {
               initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
+              transition={{ duration: 0.85, ease: "easeOut" }}
             >
               <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
                 <div className="rounded-2xl border border-white/10 bg-[#111115] p-4">
-                  <p className="text-xs uppercase tracking-[0.24em] text-[#ff9f7c]">Dashboard Preview</p>
+                  <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Dashboard Preview</p>
                   <h3 className="mt-2 text-2xl font-display font-black">Smart Performance Board</h3>
                   <div className="mt-4 grid grid-cols-3 gap-3">
                     {[
@@ -437,11 +437,11 @@ const Index = () => {
                       {[28, 44, 38, 66, 58, 74, 90].map((h, i) => (
                         <motion.div
                           key={i}
-                          className="flex-1 rounded-t-lg bg-gradient-to-t from-[#f05a28] to-[#ffb08f]"
+                          className="flex-1 rounded-t-lg bg-gradient-to-t from-foreground/70 to-muted-foreground/65"
                           initial={{ height: 0 }}
                           whileInView={{ height: `${h}%` }}
                           viewport={{ once: true }}
-                          transition={{ duration: 0.75, delay: i * 0.05 }}
+                          transition={{ duration: 1.05, delay: i * 0.06, ease: "easeOut" }}
                         />
                       ))}
                     </div>
@@ -454,7 +454,7 @@ const Index = () => {
                     <div className="mt-3 rounded-xl border border-white/10 bg-black/35 p-3 text-sm text-white/80">
                       আজ ২০টি গণিত MCQ প্র্যাকটিস করুন।
                     </div>
-                    <div className="mt-2 rounded-xl border border-[#f05a28]/40 bg-[#f05a28]/12 p-3 text-sm text-[#ffd7c7]">
+                    <div className="mt-2 rounded-xl border border-border/70 bg-muted/35 p-3 text-sm text-foreground/80">
                       দুর্বল অধ্যায়: ত্রিকোণমিতি, রসায়ন সমীকরণ
                     </div>
                   </div>
@@ -462,7 +462,7 @@ const Index = () => {
                   <div className="rounded-2xl border border-white/10 bg-[#111115] p-4">
                     <div className="flex items-center justify-between">
                       <p className="text-xs uppercase tracking-[0.22em] text-white/55">Exam Countdown</p>
-                      <CalendarClock className="h-4 w-4 text-[#ff9f7c]" />
+                      <CalendarClock className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <p className="mt-2 text-2xl font-display font-black">02:45:18</p>
                     <p className="mt-1 text-xs text-white/55">Physics Weekly Mock শুরু হতে বাকি</p>
@@ -485,13 +485,13 @@ const Index = () => {
               {featureCards.map((feature, index) => (
                 <motion.div
                   key={feature.title}
-                  className="group rounded-2xl border border-white/10 bg-[#0d0d11] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-[#f05a28]/45"
+                  className="group rounded-2xl border border-white/10 bg-[#0d0d11] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-white/25"
                   initial={{ opacity: 0, y: 18 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.45, delay: index * 0.05 }}
+                  transition={{ duration: 0.7, delay: index * 0.06, ease: "easeOut" }}
                 >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#f05a28]/20 text-[#ff9f7c]">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted/45 text-foreground/80">
                     <feature.icon className="h-6 w-6" />
                   </div>
                   <h3 className="mt-4 text-xl font-display font-bold">{feature.title}</h3>
@@ -533,7 +533,7 @@ const Index = () => {
               className="mt-8 grid gap-5 lg:grid-cols-2"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35 }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
             >
               <div className="rounded-2xl border border-white/10 bg-[#0d0d11] p-6">
                 <h3 className="text-2xl font-display font-black">{mode === "student" ? "প্র্যাকটিস, পরীক্ষা, ট্র্যাক" : "তৈরি, ম্যানেজ, মনিটর"}</h3>
@@ -550,7 +550,7 @@ const Index = () => {
                         "স্টুডেন্ট পারফরম্যান্স ট্র্যাকিং",
                       ]).map((item) => (
                     <li key={item} className="flex items-start gap-2">
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 text-[#ff9f7c]" />
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 text-muted-foreground" />
                       {item}
                     </li>
                   ))}
@@ -585,7 +585,7 @@ const Index = () => {
         <section id="courses" className="bg-[#ece7e2] py-20 text-[#111]">
           <div className="container mx-auto px-4">
             <div className="text-center">
-              <span className="inline-flex rounded-full bg-[#f05a28] px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white">Courses</span>
+              <span className="inline-flex rounded-full border border-border/70 bg-card/80 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-foreground">Courses</span>
               <h2 className="mt-4 text-3xl font-display font-black sm:text-4xl">Not sure কোন কোর্স নেবেন? We are here to help.</h2>
             </div>
 
@@ -594,11 +594,11 @@ const Index = () => {
                 <motion.article
                   key={course.title}
                   className="sticky top-20 overflow-hidden rounded-[1.75rem] border border-black/10 bg-white text-[#0f1115] shadow-[0_22px_60px_rgba(14,16,20,0.14)] md:top-24 md:p-6 dark:border-[#121212] dark:bg-[#050505] dark:text-white dark:shadow-[0_30px_90px_rgba(0,0,0,0.4)]"
-                  initial={{ opacity: 0, y: 38, rotateX: 14, rotateY: index % 2 === 0 ? -16 : 16, scale: 0.95 }}
+                  initial={{ opacity: 0, y: 28, rotateX: 8, rotateY: index % 2 === 0 ? -9 : 9, scale: 0.97 }}
                   whileInView={{ opacity: 1, y: 0, rotateX: 0, rotateY: 0, scale: 1 }}
                   viewport={{ once: true, amount: 0.3 }}
-                  transition={{ duration: 0.7, ease: "easeOut", delay: index * 0.15 }}
-                  whileHover={{ y: -8, rotateY: index % 2 === 0 ? 3 : -3 }}
+                  transition={{ duration: 0.9, ease: "easeOut", delay: index * 0.12 }}
+                  whileHover={{ y: -4, rotateY: index % 2 === 0 ? 1.8 : -1.8 }}
                   style={{ transformStyle: "preserve-3d", zIndex: index + 1 }}
                 >
                   <div className="grid items-stretch gap-6 lg:grid-cols-[1.02fr_1.18fr]">
@@ -619,16 +619,16 @@ const Index = () => {
                         <p className="mt-4 max-w-2xl text-sm text-[#334155] md:text-base dark:text-white/70">{course.text}</p>
 
                         <div className="mt-6 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
-                          <div className="flex items-center gap-2 rounded-xl border border-[#f05a28]/25 bg-[#fff4ef] p-3 dark:bg-[#1b110e]">
-                            <Clock3 className="h-4 w-4 text-[#ff9f7c]" />
+                          <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-muted/35 p-3">
+                            <Clock3 className="h-4 w-4 text-muted-foreground" />
                             <span>200+ Hours</span>
                           </div>
-                          <div className="flex items-center gap-2 rounded-xl border border-[#f05a28]/25 bg-[#fff4ef] p-3 dark:bg-[#1b110e]">
-                            <BadgeCheck className="h-4 w-4 text-[#ff9f7c]" />
+                          <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-muted/35 p-3">
+                            <BadgeCheck className="h-4 w-4 text-muted-foreground" />
                             <span>Yes Certified</span>
                           </div>
-                          <div className="flex items-center gap-2 rounded-xl border border-[#f05a28]/25 bg-[#fff4ef] p-3 dark:bg-[#1b110e]">
-                            <Headset className="h-4 w-4 text-[#ff9f7c]" />
+                          <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-muted/35 p-3">
+                            <Headset className="h-4 w-4 text-muted-foreground" />
                             <span>24/7 Support</span>
                           </div>
                         </div>
@@ -656,7 +656,7 @@ const Index = () => {
         <section className="border-y border-white/10 bg-[#050505] py-20 md:py-24">
           <div className="container mx-auto px-4">
             <div className="mx-auto max-w-3xl text-center">
-              <span className="inline-flex rounded-full border border-[#f05a28]/50 bg-[#1a0e09] px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#ffb08f]">
+              <span className="inline-flex rounded-full border border-border/70 bg-card/70 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 Comparison
               </span>
               <h2 className="mt-4 text-3xl font-display font-black sm:text-4xl md:text-5xl">
@@ -670,7 +670,7 @@ const Index = () => {
                 initial={{ opacity: 0, x: -26 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true, amount: 0.35 }}
-                transition={{ duration: 0.55 }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
               >
                 <div className="flex items-center gap-3">
                   <div className="flex h-11 w-11 items-center justify-center rounded-full border border-[#38d45f]/40 bg-[#38d45f]/10">
@@ -687,7 +687,7 @@ const Index = () => {
                       initial={{ opacity: 0, y: 16, scale: 0.97 }}
                       whileInView={{ opacity: 1, y: 0, scale: 1 }}
                       viewport={{ once: true, amount: 0.25 }}
-                      transition={{ duration: 0.4, delay: index * 0.08 }}
+                      transition={{ duration: 0.6, delay: index * 0.06, ease: "easeOut" }}
                     >
                       <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#4cdf73]" />
                       <p className="text-sm text-white/90 md:text-base">{point.ours}</p>
@@ -697,15 +697,15 @@ const Index = () => {
               </motion.div>
 
               <motion.div
-                className="rounded-2xl border border-[#f05a28]/35 bg-[linear-gradient(180deg,#140b09,#090909)] p-5"
+                className="rounded-2xl border border-border/70 bg-[linear-gradient(180deg,hsl(var(--card)/0.92),hsl(var(--muted)/0.3))] p-5"
                 initial={{ opacity: 0, x: 26 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true, amount: 0.35 }}
-                transition={{ duration: 0.55 }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full border border-[#f05a28]/40 bg-[#f05a28]/10">
-                    <Layers3 className="h-5 w-5 text-[#ff9f7c]" />
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full border border-border/70 bg-muted/35">
+                    <Layers3 className="h-5 w-5 text-muted-foreground" />
                   </div>
                   <h3 className="text-2xl font-display font-bold text-white">Others</h3>
                 </div>
@@ -714,13 +714,13 @@ const Index = () => {
                   {comparisonPoints.map((point, index) => (
                     <motion.div
                       key={point.others}
-                      className="flex items-start gap-3 rounded-xl border border-[#f05a28]/25 bg-black/25 p-3"
+                      className="flex items-start gap-3 rounded-xl border border-border/70 bg-black/25 p-3"
                       initial={{ opacity: 0, y: 16, scale: 0.97 }}
                       whileInView={{ opacity: 1, y: 0, scale: 1 }}
                       viewport={{ once: true, amount: 0.25 }}
-                      transition={{ duration: 0.4, delay: index * 0.08 }}
+                      transition={{ duration: 0.6, delay: index * 0.06, ease: "easeOut" }}
                     >
-                      <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#ff845c]" />
+                      <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
                       <p className="text-sm text-white/90 md:text-base">{point.others}</p>
                     </motion.div>
                   ))}
@@ -733,7 +733,7 @@ const Index = () => {
         <section className="overflow-hidden py-20 md:py-24">
           <div className="container mx-auto px-4">
             <div className="mx-auto max-w-3xl text-center">
-              <span className="inline-flex rounded-full border border-[#f05a28]/45 bg-[#1b100c] px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#ffb08f]">
+              <span className="inline-flex rounded-full border border-border/70 bg-card/70 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 Impact
               </span>
               <h2 className="mt-4 text-3xl font-display font-black sm:text-4xl md:text-5xl">
@@ -747,12 +747,11 @@ const Index = () => {
                   <motion.article
                     key={card.title}
                     className={`group relative overflow-hidden rounded-2xl border border-white/15 bg-gradient-to-b ${card.tone} p-5 ${card.height}`}
-                    initial={{ opacity: 0, y: 24, rotateY: index % 2 === 0 ? -12 : 12 }}
+                    initial={{ opacity: 0, y: 20, rotateY: index % 2 === 0 ? -8 : 8 }}
                     whileInView={{ opacity: 1, y: 0, rotateY: 0 }}
                     viewport={{ once: true, amount: 0.3 }}
-                    transition={{ duration: 0.6, delay: index * 0.08, ease: "easeOut" }}
-                    whileHover={{ y: -8, rotateX: 2.5, rotateY: index % 2 === 0 ? -4 : 4 }}
-                    animate={{ y: [0, -5, 0] }}
+                    transition={{ duration: 0.8, delay: index * 0.06, ease: "easeOut" }}
+                    whileHover={{ y: -4, rotateX: 1.2, rotateY: index % 2 === 0 ? -2 : 2 }}
                     style={{ transformStyle: "preserve-3d" }}
                   >
                     <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
@@ -766,7 +765,7 @@ const Index = () => {
                       </div>
 
                       <div>
-                        <p className="inline-flex rounded-full bg-[#f05a28] px-3 py-1 text-xs font-semibold text-white">
+                        <p className="inline-flex rounded-full border border-border/70 bg-card/80 px-3 py-1 text-xs font-semibold text-foreground">
                           LearnSmart Event
                         </p>
                         <h3 className="mt-3 text-2xl font-display font-black leading-tight">{card.title}</h3>
@@ -784,8 +783,8 @@ const Index = () => {
           <div className="container mx-auto px-4">
             <p className="mb-6 text-center text-xs uppercase tracking-[0.3em] text-white/35">Payment & Hiring Partners</p>
             <div className="space-y-5">
-              <PartnerLogoMarqueeRow duration={36} />
-              <PartnerLogoMarqueeRow reverse duration={40} />
+              <PartnerLogoMarqueeRow duration={56} />
+              <PartnerLogoMarqueeRow reverse duration={62} />
             </div>
           </div>
         </section>
@@ -799,7 +798,7 @@ const Index = () => {
             <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {stats.map((stat) => (
                 <div key={stat.label} className="rounded-2xl border border-white/10 bg-[#0d0d11] p-6 text-center">
-                  <p className="text-3xl font-display font-black text-[#ff9f7c]">
+                  <p className="text-3xl font-display font-black text-foreground">
                     <CountUp value={stat.value} suffix={stat.suffix} />
                   </p>
                   <p className="mt-2 text-sm text-white/70">{stat.label}</p>
@@ -812,14 +811,14 @@ const Index = () => {
         <section className="overflow-hidden bg-[#030303] py-20 text-white md:py-24">
           <div className="container mx-auto px-4">
             <div className="text-center">
-              <span className="inline-flex rounded-full bg-[#f05a28] px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white">Community</span>
+              <span className="inline-flex rounded-full border border-border/70 bg-card/80 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-foreground">Community</span>
               <h2 className="mt-4 text-3xl font-display font-black sm:text-4xl">They came. They cooked. They got placed.</h2>
               <p className="mx-auto mt-3 max-w-2xl text-sm text-white/60 md:text-base">উপরের সারি ডান দিক থেকে বামে এবং নিচের সারি বাম দিক থেকে ডানে ক্রমাগত চলবে।</p>
             </div>
 
             <div className="mt-12 space-y-6">
-              <ReviewMarqueeRow items={communityReviews} duration={72} />
-              <ReviewMarqueeRow items={communityReviews.slice().reverse()} reverse duration={78} />
+              <ReviewMarqueeRow items={communityReviews} duration={94} />
+              <ReviewMarqueeRow items={communityReviews.slice().reverse()} reverse duration={102} />
             </div>
           </div>
         </section>
@@ -831,12 +830,12 @@ const Index = () => {
               <h2 className="mt-4 text-3xl font-display font-black sm:text-4xl">What sets LearnSmart apart</h2>
             </div>
             <div className="mt-10 grid gap-5 lg:grid-cols-2">
-              <div className="rounded-2xl border border-[#f05a28]/35 bg-[#0d0d11] p-6">
-                <h3 className="text-xl font-display font-bold text-[#ff9f7c]">যা পাবেন</h3>
+              <div className="rounded-2xl border border-border/70 bg-[#0d0d11] p-6">
+                <h3 className="text-xl font-display font-bold text-foreground">যা পাবেন</h3>
                 <ul className="mt-4 space-y-2 text-sm text-white/75">
                   {["AI study suggestions", "Mock exam workflow", "Topic-wise analytics", "Leaderboard + streak system", "Teacher management tools"].map((item) => (
                     <li key={item} className="flex items-start gap-2">
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 text-[#ff9f7c]" />
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 text-muted-foreground" />
                       {item}
                     </li>
                   ))}
@@ -847,7 +846,7 @@ const Index = () => {
                 <ul className="mt-4 space-y-2 text-sm text-white/75">
                   {["Consistency through streak", "Stronger exam confidence", "Faster revision cycles", "Role-based dashboards", "Better result visibility"].map((item) => (
                     <li key={item} className="flex items-start gap-2">
-                      <Star className="mt-0.5 h-4 w-4 text-[#ff9f7c]" />
+                      <Star className="mt-0.5 h-4 w-4 text-muted-foreground" />
                       {item}
                     </li>
                   ))}
@@ -879,7 +878,7 @@ const Index = () => {
 
         <section className="pb-24">
           <div className="container mx-auto px-4">
-            <div className="overflow-hidden rounded-3xl border border-[#f05a28]/30 bg-[linear-gradient(135deg,#1f120d,#0d0d11_55%,#1a0f0b)] p-8 md:p-12">
+            <div className="overflow-hidden rounded-3xl border border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),#0d0d11_55%,hsl(var(--muted)/0.45))] p-8 md:p-12">
               <div className="grid items-center gap-8 lg:grid-cols-[1.1fr_0.9fr]">
                 <div>
                   <SectionTag text="Final CTA" />
@@ -891,7 +890,7 @@ const Index = () => {
                     practice, exam, analytics - সবকিছু।
                   </p>
                   <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-                    <Button className="h-12 bg-[#f05a28] px-7 text-base font-semibold text-white hover:bg-[#e04e1f]" asChild>
+                    <Button variant="glass" className="h-12 px-7 text-base font-semibold" asChild>
                       <Link to="/signup">
                         <Flame className="mr-2 h-4 w-4" /> ফ্রি প্র্যাকটিস শুরু করুন
                       </Link>

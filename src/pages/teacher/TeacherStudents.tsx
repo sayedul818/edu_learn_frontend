@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { UserPlus, Search, UserCheck, UserX } from "lucide-react";
+import { UserPlus, Search, UserCheck, UserX, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,13 +105,19 @@ const TeacherStudents = () => {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-primary/20 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 p-6 md:p-8">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <section className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-r from-card via-card to-muted/60 p-5 shadow-lg md:p-6">
+        <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-primary/10 blur-2xl" />
+        <div className="pointer-events-none absolute -left-16 -bottom-16 h-44 w-44 rounded-full bg-emerald-400/10 blur-2xl" />
+
+        <div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-white md:text-4xl">Students</h1>
-            <p className="mt-2 text-base text-slate-300 md:text-lg">Manage your private student roster and performance.</p>
+            <p className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs text-primary">
+              <Sparkles className="h-3.5 w-3.5" /> Student Management
+            </p>
+            <h1 className="mt-3 text-2xl font-display font-bold text-foreground md:text-3xl">Students</h1>
+            <p className="mt-1 text-sm text-muted-foreground md:text-base">Manage your private student roster and performance.</p>
           </div>
-          <Button onClick={() => setShowCreate(true)}>
+          <Button variant="glass" onClick={() => setShowCreate(true)}>
             <UserPlus className="mr-2 h-4 w-4" /> Add Student
           </Button>
         </div>

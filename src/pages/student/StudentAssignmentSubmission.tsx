@@ -153,14 +153,16 @@ const StudentAssignmentSubmission = () => {
       </div>
 
       {/* Beautiful assignment title header */}
-      <div className="rounded-2xl border border-slate-300 dark:border-cyan-500/20 bg-slate-100 dark:bg-slate-900 p-5 shadow-xl overflow-hidden relative">
-        {/* Decorative gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 dark:from-cyan-500/10 via-transparent to-purple-500/5 dark:to-purple-500/10 pointer-events-none" />
+      <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-r from-card via-card to-muted/60 p-5 shadow-lg md:p-6">
+        <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-primary/10 blur-2xl" />
+        <div className="pointer-events-none absolute -left-16 -bottom-16 h-44 w-44 rounded-full bg-emerald-400/10 blur-2xl" />
         
         <div className="relative z-10">
-          <p className="text-slate-600 dark:text-cyan-400 text-xs font-semibold mb-1">{assignment.course?.title || "Course"}</p>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{assignment.title}</h1>
-          <p className="text-slate-700 dark:text-slate-300 text-sm">{assignment.description || "No description provided."}</p>
+          <p className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary mb-3">
+            <FileText className="h-3.5 w-3.5" /> {assignment.course?.title || "Course"}
+          </p>
+          <h1 className="text-2xl font-display font-bold text-foreground mb-1">{assignment.title}</h1>
+          <p className="text-muted-foreground text-sm">{assignment.description || "No description provided."}</p>
         </div>
       </div>
 

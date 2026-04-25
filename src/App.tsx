@@ -2,9 +2,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { StudentCourseProvider } from "@/contexts/StudentCourseContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useEffect } from "react";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -57,6 +59,23 @@ import AdminLeaderboard from "./pages/admin/AdminLeaderboard";
 import AdminOfflineExamBuilder from "./pages/admin/AdminOfflineExamBuilder";
 
 const queryClient = new QueryClient();
+
+const ThemeRouteController = () => {
+  const { theme } = useTheme();
+  const location = useLocation();
+
+  useEffect(() => {
+    const isLandingPage = location.pathname === "/";
+
+    if (isLandingPage || theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [location.pathname, theme]);
+
+  return null;
+};
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated } = useAuth();
@@ -160,6 +179,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <ThemeRouteController />
           <AppRoutes />
         </AuthProvider>
       </BrowserRouter>

@@ -151,16 +151,19 @@ const TeacherCourses = () => {
 
   return (
     <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 p-6 md:p-8">
+      <section className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-r from-card via-card to-muted/60 p-5 shadow-lg md:p-6">
+        <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-primary/10 blur-2xl" />
+        <div className="pointer-events-none absolute -left-16 -bottom-16 h-44 w-44 rounded-full bg-emerald-400/10 blur-2xl" />
+
         <div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full border border-primary/35 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
               <BookOpen className="h-3.5 w-3.5" /> Course Management
             </p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white md:text-4xl">Teacher Courses</h1>
-            <p className="mt-2 text-base text-slate-300 md:text-lg">Create, publish, and manage your private course catalog.</p>
+            <h1 className="mt-3 text-2xl font-display font-bold text-foreground md:text-3xl">Teacher Courses</h1>
+            <p className="mt-1 text-sm text-muted-foreground md:text-base">Create, publish, and manage your private course catalog.</p>
           </div>
-          <Button onClick={openCreate} className="bg-primary hover:bg-primary/90">
+          <Button variant="glass" onClick={openCreate}>
             <Plus className="mr-2 h-4 w-4" /> Create Course
           </Button>
         </div>

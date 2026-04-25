@@ -2869,9 +2869,9 @@ const TeacherCourseDetails = () => {
           <Drawer open={studentProfileOpen} onOpenChange={setStudentProfileOpen}>
             <DrawerContent className="left-auto right-0 top-0 mt-0 h-full w-full max-w-3xl rounded-none border-l sm:max-w-4xl">
               <div className="flex h-full flex-col overflow-hidden">
-                <DrawerHeader className="border-b border-border/70 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 text-left text-white">
+                <DrawerHeader className="border-b border-border/70 bg-gradient-to-r from-card via-muted/40 to-card text-left text-foreground dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 dark:text-white">
                   <DrawerTitle>Student Profile</DrawerTitle>
-                  <DrawerDescription className="text-white/70">
+                  <DrawerDescription className="text-muted-foreground dark:text-white/70">
                     {selectedCourseStudent?.studentId?.name || "Student"} in {course?.title || "this course"}
                   </DrawerDescription>
                 </DrawerHeader>
@@ -2879,24 +2879,24 @@ const TeacherCourseDetails = () => {
                 <div className="flex-1 overflow-y-auto p-4 sm:p-6">
                   {selectedCourseStudent?.studentId ? (
                     <div className="space-y-5">
-                      <div className="overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white shadow-lg">
+                      <div className="overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-br from-card via-muted/40 to-card text-foreground shadow-card dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 dark:text-white">
                         <div className="relative p-5 sm:p-6">
                           <div className="pointer-events-none absolute -right-12 -top-14 h-32 w-32 rounded-full bg-primary/20 blur-3xl" />
                           <div className="pointer-events-none absolute -left-10 bottom-0 h-36 w-36 rounded-full bg-emerald-400/10 blur-3xl" />
 
                           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                             <div className="flex items-center gap-4">
-                              <Avatar className="h-16 w-16 border border-white/20 shadow-lg">
+                              <Avatar className="h-16 w-16 border border-black/15 shadow-lg dark:border-white/20">
                                 <AvatarImage src={selectedCourseStudent.studentId.avatar || ""} alt={selectedCourseStudent.studentId.name} />
                                 <AvatarFallback>{selectedCourseStudent.studentId.name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "?"}</AvatarFallback>
                               </Avatar>
                               <div>
-                                <p className="text-xs uppercase tracking-[0.2em] text-white/65">Student Profile</p>
+                                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground dark:text-white/65">Student Profile</p>
                                 <h3 className="text-2xl font-semibold leading-tight">{selectedCourseStudent.studentId.name}</h3>
-                                <p className="mt-1 flex items-center gap-2 text-sm text-white/75">
+                                <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground dark:text-white/75">
                                   <Activity className="h-4 w-4" /> {selectedCourseStudent.studentId.email}
                                 </p>
-                                <p className="mt-1 text-xs text-white/55 break-all">{selectedCourseStudent.studentId._id}</p>
+                                <p className="mt-1 text-xs text-muted-foreground dark:text-white/55 break-all">{selectedCourseStudent.studentId._id}</p>
                               </div>
                             </div>
 
@@ -2906,20 +2906,20 @@ const TeacherCourseDetails = () => {
                           </div>
 
                           <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-                            <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur">
-                              <p className="text-xs text-white/65">Course Progress</p>
+                            <div className="rounded-2xl border border-black/10 bg-black/5 px-4 py-3 backdrop-blur dark:border-white/15 dark:bg-white/10">
+                              <p className="text-xs text-muted-foreground dark:text-white/65">Course Progress</p>
                               <p className="text-2xl font-semibold">{selectedCourseStudent.progressPercentage ?? 0}%</p>
                             </div>
-                            <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur">
-                              <p className="text-xs text-white/65">Exams Attempted</p>
+                            <div className="rounded-2xl border border-black/10 bg-black/5 px-4 py-3 backdrop-blur dark:border-white/15 dark:bg-white/10">
+                              <p className="text-xs text-muted-foreground dark:text-white/65">Exams Attempted</p>
                               <p className="text-2xl font-semibold">{selectedCourseStudent.completedExams ?? 0}</p>
                             </div>
-                            <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur">
-                              <p className="text-xs text-white/65">Average Score</p>
+                            <div className="rounded-2xl border border-black/10 bg-black/5 px-4 py-3 backdrop-blur dark:border-white/15 dark:bg-white/10">
+                              <p className="text-xs text-muted-foreground dark:text-white/65">Average Score</p>
                               <p className="text-2xl font-semibold">{selectedCourseStudent.averagePercentage ?? 0}%</p>
                             </div>
-                            <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur">
-                              <p className="text-xs text-white/65">Last Activity</p>
+                            <div className="rounded-2xl border border-black/10 bg-black/5 px-4 py-3 backdrop-blur dark:border-white/15 dark:bg-white/10">
+                              <p className="text-xs text-muted-foreground dark:text-white/65">Last Activity</p>
                               <p className="text-sm font-semibold">{selectedCourseStudent.lastActivityAt ? new Date(selectedCourseStudent.lastActivityAt).toLocaleDateString() : "-"}</p>
                             </div>
                           </div>

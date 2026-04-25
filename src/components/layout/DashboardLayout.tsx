@@ -69,6 +69,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   if (!user) return null;
 
   const navItems = user.role === "admin" ? adminNav : user.role === "teacher" ? teacherNav : studentNav;
+  const panelButtonClass = user.role === "teacher" || user.role === "student" ? "panel-button-shell" : "";
 
   const roleColors = {
     student: "bg-sky-500/20 border border-sky-300/35 text-sky-100",
@@ -123,7 +124,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <div className="relative flex min-h-screen overflow-x-hidden bg-background text-foreground">
+    <div className={`relative flex min-h-screen overflow-x-hidden bg-background text-foreground ${panelButtonClass}`}>
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.15),transparent_30%),radial-gradient(circle_at_bottom_left,hsl(var(--accent)/0.12),transparent_28%)]" />
       {/* Sidebar */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 border-r border-border bg-card/90 backdrop-blur-xl transform transition-transform duration-200 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
