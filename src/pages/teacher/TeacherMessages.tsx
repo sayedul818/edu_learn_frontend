@@ -100,6 +100,12 @@ const formatConversationTime = (value?: string) => {
 
 const getSenderId = (sender: any) => String(sender?._id || sender || "");
 
+const buildMessageSocketUrl = (token: string) => {
+  const envUrl = import.meta.env.VITE_API_URL as string | undefined;
+  const apiUrl = envUrl || (import.meta.env.DEV ? 'http://localhost:5000/api' : 'https://learn-edu-backend.vercel.app/api');
+  return `${apiUrl.replace(/\/+$/, '').replace(/^http/, 'ws')}/messages/ws?token=${encodeURIComponent(token)}`;
+};
+
 const TeacherMessages = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -127,6 +133,8 @@ const TeacherMessages = () => {
 
   const typingStopTimer = useRef<any>(null);
   const isTypingSentRef = useRef(false);
+  const activeConversationRef = useRef(activeConversationId);
+  const searchRef = useRef(search);
   const inputFileRef = useRef<HTMLInputElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -219,7 +227,7 @@ const TeacherMessages = () => {
   useEffect(() => {
     const timer = setInterval(() => {
       loadConversations(search, true);
-    }, 5000);
+    }, 1500);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, activeConversationId]);
@@ -230,10 +238,45 @@ const TeacherMessages = () => {
 
     const timer = setInterval(() => {
       loadMessages(activeConversationId, true);
-    }, 3000);
+    }, 1500);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeConversationId]);
+
+  useEffect(() => {
+    activeConversationRef.current = activeConversationId;
+  }, [activeConversationId]);
+
+  useEffect(() => {
+    searchRef.current = search;
+  }, [search]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    if (!token) return;
+
+    const socket = new WebSocket(buildMessageSocketUrl(token));
+
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(String(event.data || '{}'));
+        if (data?.type !== 'message.created' && data?.type !== 'conversation.updated') return;
+
+        loadConversations(searchRef.current, true);
+        if (activeConversationRef.current && String(data?.conversationId || '') === activeConversationRef.current) {
+          loadMessages(activeConversationRef.current, true);
+        }
+      } catch {
+        // Ignore malformed websocket payloads and keep polling as fallback.
+      }
+    };
+
+    socket.onerror = () => {
+      // Polling remains the fallback transport.
+    };
+
+    return () => socket.close();
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
