@@ -26,6 +26,7 @@ export interface User {
 
 interface AuthContextType {
   user: User | null;
+  isHydrating: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string, role: UserRole) => Promise<void>;
   logout: () => void;
@@ -36,37 +37,39 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem("exampro_user");
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [isHydrating, setIsHydrating] = useState(true);
 
   const { toast } = useToast();
 
+  const applySession = async (nextToken: string, nextUser: User) => {
+    localStorage.setItem("authToken", nextToken);
+    localStorage.setItem("exampro_user", JSON.stringify(nextUser));
+    setUser(nextUser);
+  };
+
+  const clearSession = () => {
+    setUser(null);
+    localStorage.removeItem("exampro_user");
+    localStorage.removeItem("authToken");
+  };
+
   const login = async (email: string, password: string) => {
     const res = await authAPI.login({ email, password });
-    if (res?.token) {
-      localStorage.setItem('authToken', res.token);
-    }
-    if (res?.user) {
-      setUser(res.user);
-      localStorage.setItem('exampro_user', JSON.stringify(res.user));
+    if (res?.token && res?.user) {
+      await applySession(res.token, res.user);
     }
   };
 
   const signup = async (name: string, email: string, password: string, role: UserRole) => {
     const res = await authAPI.register({ name, email, password, role });
-    if (res?.token) localStorage.setItem('authToken', res.token);
-    if (res?.user) {
-      setUser(res.user);
-      localStorage.setItem('exampro_user', JSON.stringify(res.user));
+    if (res?.token && res?.user) {
+      await applySession(res.token, res.user);
     }
   };
 
   const logout = () => {
-    setUser(null);
-    localStorage.removeItem("exampro_user");
-    localStorage.removeItem('authToken');
+    clearSession();
     // show a small toast notification
     try {
       toast({ title: 'Signed out', description: 'You have been logged out', variant: 'default' });
@@ -79,6 +82,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(nextUser);
     localStorage.setItem('exampro_user', JSON.stringify(nextUser));
   };
+
+  useEffect(() => {
+    const bootstrap = async () => {
+      try {
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+          clearSession();
+          return;
+        }
+
+        const savedUser = localStorage.getItem('exampro_user');
+        if (savedUser) {
+          try {
+            setUser(JSON.parse(savedUser));
+          } catch {
+            // Ignore parse errors and fall back to /auth/me.
+          }
+        }
+
+        try {
+          const me = await authAPI.me();
+          setUser(me);
+          localStorage.setItem('exampro_user', JSON.stringify(me));
+        } catch {
+          clearSession();
+        }
+      } finally {
+        setIsHydrating(false);
+      }
+    };
+
+    bootstrap();
+  }, []);
 
   // Migrate legacy, shared local/session storage keys to user-scoped keys when a user becomes available.
   // This prevents cached results from one user leaking into another user's session on the same browser.
@@ -117,7 +153,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [user]);
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, setUserData, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, isHydrating, login, signup, logout, setUserData, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );

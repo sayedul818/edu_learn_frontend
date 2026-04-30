@@ -153,6 +153,7 @@ const StudentMessages = () => {
   const searchRef = useRef(search);
   const inputFileRef = useRef<HTMLInputElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const skipPollingUntilRef = useRef<number>(0); // Timestamp to skip polling until after websocket update
 
   const groupedMessages = useMemo(() => {
     const groups: Array<{ label: string; messages: MessageItem[] }> = [];
@@ -356,6 +357,10 @@ const StudentMessages = () => {
     loadMessages(activeConversationId, false);
 
     const timer = setInterval(() => {
+      // Skip polling if websocket recently updated (within 2 seconds)
+      if (Date.now() < skipPollingUntilRef.current) {
+        return;
+      }
       loadMessages(activeConversationId, true);
     }, 1500);
     return () => clearInterval(timer);
@@ -387,6 +392,9 @@ const StudentMessages = () => {
       try {
         const data = JSON.parse(String(event.data || '{}'));
         if (data?.type !== 'message.created' && data?.type !== 'conversation.updated') return;
+
+        // Skip polling for 2 seconds after websocket update to prevent race condition
+        skipPollingUntilRef.current = Date.now() + 2000;
 
         loadConversations(searchRef.current, true);
         if (activeConversationRef.current && String(data?.conversationId || '') === activeConversationRef.current) {
@@ -638,7 +646,7 @@ const StudentMessages = () => {
       const res = await messagesAPI.sendMessage(conversationId, { text, attachments: optimistic.attachments || [] });
       const saved = res?.data;
       setMessages((prev) => prev.map((msg) => (msg.localId === localId ? saved : msg)));
-      await Promise.all([loadConversations(search, true), loadMessages(conversationId, true)]);
+      await loadConversations(search, true);
     } catch (error: any) {
       setMessages((prev) => prev.filter((msg) => msg.localId !== localId));
       toast({ title: "Failed to send message", description: error?.message, variant: "destructive" });
