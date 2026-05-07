@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTheme } from "@/contexts/ThemeContext";
 import {
   ArrowRight,
   BadgeCheck,
@@ -435,13 +436,21 @@ const CountUp = ({ value, suffix }: { value: number; suffix: string }) => {
   );
 };
 
-const SectionTag = ({ text }: { text: string }) => (
-  <span className="inline-flex rounded-full border border-border/70 bg-card/70 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground backdrop-blur-sm">
-    {text}
-  </span>
-);
+const SectionTag = ({ text }: { text: string }) => {
+  const { theme } = useTheme();
+  return (
+    <span className={`inline-flex rounded-full border px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] backdrop-blur-sm transition-colors duration-300 ${
+      theme === "dark"
+        ? "border-border/70 bg-card/70 text-muted-foreground"
+        : "border-black/20 bg-black/10 text-black/70"
+    }`}>
+      {text}
+    </span>
+  );
+};
 
 const ReviewCard = ({ item }: { item: (typeof communityReviews)[number] }) => {
+  const { theme } = useTheme();
   const initials = item.name
     .split(" ")
     .filter(Boolean)
@@ -451,20 +460,24 @@ const ReviewCard = ({ item }: { item: (typeof communityReviews)[number] }) => {
     .toUpperCase();
 
   return (
-    <article className="w-[21rem] shrink-0 rounded-2xl border border-white/10 bg-[linear-gradient(180deg,#160909,#0c0c0f)] p-5 text-white md:w-[26rem] md:p-6">
+    <article className={`w-[21rem] shrink-0 rounded-2xl border p-5 md:w-[26rem] md:p-6 transition-colors duration-300 ${
+      theme === "dark"
+        ? "border-white/10 bg-[linear-gradient(180deg,#160909,#0c0c0f)] text-white"
+        : "border-black/10 bg-white text-black"
+    }`}>
       <div className="flex items-center gap-3">
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#5f3bd5] text-xl font-bold text-white">
           {initials}
         </div>
         <div>
           <p className="text-base font-semibold leading-tight md:text-lg">{item.name}</p>
-          <p className="text-sm text-white/60">{item.role}</p>
+          <p className={`text-sm ${theme === "dark" ? "text-white/60" : "text-black/60"}`}>{item.role}</p>
         </div>
       </div>
 
-      <div className="my-4 h-px w-full bg-white/15" />
+      <div className={`my-4 h-px w-full ${theme === "dark" ? "bg-white/15" : "bg-black/15"}`} />
 
-      <div className="flex items-center gap-2 text-sm text-white/75">
+      <div className={`flex items-center gap-2 text-sm ${theme === "dark" ? "text-white/75" : "text-black/75"}`}>
         <span className="font-semibold">{item.rating.toFixed(1)}</span>
         <div className="flex items-center gap-1 text-[#f7bc3d]">
           {Array.from({ length: 5 }).map((_, index) => (
@@ -473,7 +486,9 @@ const ReviewCard = ({ item }: { item: (typeof communityReviews)[number] }) => {
         </div>
       </div>
 
-      <p className="mt-3 text-lg leading-[1.35] tracking-[-0.01em] text-white/90 md:text-xl">{item.text}</p>
+      <p className={`mt-3 text-lg leading-[1.35] tracking-[-0.01em] md:text-xl ${
+        theme === "dark" ? "text-white/90" : "text-black/90"
+      }`}>{item.text}</p>
     </article>
   );
 };
@@ -505,6 +520,7 @@ const ReviewMarqueeRow = ({
 };
 
 const PartnerLogoMarqueeRow = ({ reverse, duration }: { reverse?: boolean; duration: number }) => {
+  const { theme } = useTheme();
   const loopLogos = [...partnerLogos, ...partnerLogos];
 
   return (
@@ -517,7 +533,11 @@ const PartnerLogoMarqueeRow = ({ reverse, duration }: { reverse?: boolean; durat
         {loopLogos.map((logo, index) => (
           <div
             key={`${logo.name}-${index}`}
-            className="flex h-16 min-w-[11rem] items-center justify-center rounded-xl border border-white/10 bg-white/[0.02] px-6 py-3 md:h-20 md:min-w-[14rem]"
+            className={`flex h-16 min-w-[11rem] items-center justify-center rounded-xl border px-6 py-3 md:h-20 md:min-w-[14rem] transition-colors duration-300 ${
+              theme === "dark"
+                ? "border-white/10 bg-white/[0.02]"
+                : "border-black/10 bg-black/5"
+            }`}
           >
             <img
               src={logo.src}
@@ -705,9 +725,12 @@ const CourseDetailModal = ({ course, onClose }: { course: typeof courses[0] | nu
 const Index = () => {
   const [mode, setMode] = useState<"student" | "teacher">("student");
   const [selectedCourse, setSelectedCourse] = useState<typeof courses[0] | null>(null);
+  const { theme } = useTheme();
 
   return (
-    <div className="home-glass-vibe min-h-screen overflow-x-hidden bg-background text-foreground">
+    <div className={`min-h-screen overflow-x-hidden transition-colors duration-300 ${
+      theme === "dark" ? "home-glass-vibe bg-background text-foreground" : "bg-[#f5f5f7] text-black"
+    }`}>
       <Navbar />
 
       <main className="pt-20">
@@ -718,21 +741,39 @@ const Index = () => {
               <SectionTag text="ExamPathshala" />
               <h1 className="mt-6 text-4xl font-display font-black leading-[1.05] tracking-[-0.04em] sm:text-5xl md:text-6xl">
                 শিখুন, প্র্যাকটিস করুন, সফল হন -
-                <span className="block text-foreground/90">সব এক প্ল্যাটফর্মে</span>
+                <span className={`block ${theme === "dark" ? "text-foreground/90" : "text-black/90"}`}>সব এক প্ল্যাটফর্মে</span>
               </h1>
-              <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-white/70 md:text-lg">
+              <p className={`mx-auto mt-6 max-w-2xl text-base leading-8 md:text-lg ${
+                theme === "dark" ? "text-white/70" : "text-black/70"
+              }`}>
                 ExamPathshala আপনার complete academic workflow. প্রশ্ন ব্যাংক,
                 অনলাইন পরীক্ষা, রেজাল্ট analytics, leaderboard, এবং teacher tools
                 একই ecosystem এ।
               </p>
 
               <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                <Button variant="glass" className="h-12 px-7 text-base font-semibold" asChild>
+                <Button
+                  variant="glass"
+                  className={`h-12 px-7 text-base font-semibold ${
+                    theme === "dark"
+                      ? "border-white/25 bg-white/12 text-foreground hover:bg-white/20"
+                      : "border-black/15 bg-black/5 text-black hover:bg-black/10"
+                  }`}
+                  asChild
+                >
                   <Link to="/signup">
                     ফ্রি প্র্যাকটিস শুরু করুন <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
-                <Button variant="glass" className="h-12 px-7 text-base" asChild>
+                <Button
+                  variant="glass"
+                  className={`h-12 px-7 text-base ${
+                    theme === "dark"
+                      ? "border-white/25 bg-white/12 text-foreground hover:bg-white/20"
+                      : "border-black/15 bg-black/5 text-black hover:bg-black/10"
+                  }`}
+                  asChild
+                >
                   <a href="#preview">
                     ডেমো দেখুন <PlayCircle className="ml-2 h-4 w-4" />
                   </a>
@@ -742,14 +783,22 @@ const Index = () => {
 
             <motion.div
               id="preview"
-              className="mx-auto mt-12 max-w-5xl rounded-3xl border border-white/10 bg-[#0b0b0f] p-4 shadow-[0_35px_90px_rgba(0,0,0,0.55)]"
+              className={`mx-auto mt-12 max-w-5xl rounded-3xl border p-4 shadow-[0_35px_90px_rgba(0,0,0,0.55)] transition-colors duration-300 ${
+                theme === "dark"
+                  ? "border-white/10 bg-[#0b0b0f]"
+                  : "border-black/10 bg-white"
+              }`}
               initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.85, ease: "easeOut" }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={{ duration: 1.0, ease: "easeInOut" }}
             >
               <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-                <div className="rounded-2xl border border-white/10 bg-[#111115] p-4">
+                <div className={`rounded-2xl border p-4 transition-colors duration-300 ${
+                  theme === "dark"
+                    ? "border-white/10 bg-[#111115]"
+                    : "border-black/10 bg-white/50"
+                }`}>
                   <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Dashboard Preview</p>
                   <h3 className="mt-2 text-2xl font-display font-black">Smart Performance Board</h3>
                   <div className="mt-4 grid grid-cols-3 gap-3">
@@ -758,13 +807,21 @@ const Index = () => {
                       ["Accuracy", "91%"],
                       ["Rank", "#12"],
                     ].map(([k, v]) => (
-                      <div key={k} className="rounded-xl border border-white/10 bg-black/30 p-3">
+                      <div key={k} className={`rounded-xl border p-3 transition-colors duration-300 ${
+                        theme === "dark"
+                          ? "border-white/10 bg-black/30"
+                          : "border-black/10 bg-black/5"
+                      }`}>
                         <p className="text-xs text-white/55">{k}</p>
                         <p className="mt-1 text-lg font-bold">{v}</p>
                       </div>
                     ))}
                   </div>
-                  <div className="mt-4 h-36 rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-3">
+                  <div className={`mt-4 h-36 rounded-xl border p-3 transition-colors duration-300 ${
+                    theme === "dark"
+                      ? "border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))]"
+                      : "border-black/10 bg-[linear-gradient(180deg,rgba(0,0,0,0.02),rgba(0,0,0,0.01))]"
+                  }`}>
                     <div className="flex h-full items-end gap-2">
                       {[28, 44, 38, 66, 58, 74, 90].map((h, i) => (
                         <motion.div
@@ -772,8 +829,8 @@ const Index = () => {
                           className="flex-1 rounded-t-lg bg-gradient-to-t from-foreground/70 to-muted-foreground/65"
                           initial={{ height: 0 }}
                           whileInView={{ height: `${h}%` }}
-                          viewport={{ once: true }}
-                          transition={{ duration: 1.05, delay: i * 0.06, ease: "easeOut" }}
+                          viewport={{ once: true, amount: 0.2 }}
+                          transition={{ duration: 1.2, delay: i * 0.08, ease: "easeInOut" }}
                         />
                       ))}
                     </div>
@@ -781,23 +838,47 @@ const Index = () => {
                 </div>
 
                 <div className="grid gap-4">
-                  <div className="rounded-2xl border border-white/10 bg-[#111115] p-4">
-                    <p className="text-xs uppercase tracking-[0.22em] text-white/55">AI সাজেশন</p>
-                    <div className="mt-3 rounded-xl border border-white/10 bg-black/35 p-3 text-sm text-white/80">
+                  <div className={`rounded-2xl border p-4 transition-colors duration-300 ${
+                    theme === "dark"
+                      ? "border-white/10 bg-[#111115]"
+                      : "border-black/10 bg-white/50"
+                  }`}>
+                    <p className={`text-xs uppercase tracking-[0.22em] ${
+                      theme === "dark" ? "text-white/55" : "text-black/55"
+                    }`}>AI সাজেশন</p>
+                    <div className={`mt-3 rounded-xl border p-3 text-sm transition-colors duration-300 ${
+                      theme === "dark"
+                        ? "border-white/10 bg-black/35 text-white/80"
+                        : "border-black/10 bg-black/5 text-black/80"
+                    }`}>
                       আজ ২০টি গণিত MCQ প্র্যাকটিস করুন।
                     </div>
-                    <div className="mt-2 rounded-xl border border-border/70 bg-muted/35 p-3 text-sm text-foreground/80">
+                    <div className={`mt-2 rounded-xl border p-3 text-sm transition-colors duration-300 ${
+                      theme === "dark"
+                        ? "border-border/70 bg-muted/35 text-foreground/80"
+                        : "border-black/20 bg-black/5 text-black/80"
+                    }`}>
                       দুর্বল অধ্যায়: ত্রিকোণমিতি, রসায়ন সমীকরণ
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-[#111115] p-4">
+                  <div className={`rounded-2xl border p-4 transition-colors duration-300 ${
+                    theme === "dark"
+                      ? "border-white/10 bg-[#111115]"
+                      : "border-black/10 bg-white/50"
+                  }`}>
                     <div className="flex items-center justify-between">
-                      <p className="text-xs uppercase tracking-[0.22em] text-white/55">Exam Countdown</p>
-                      <CalendarClock className="h-4 w-4 text-muted-foreground" />
+                      <p className={`text-xs uppercase tracking-[0.22em] ${
+                        theme === "dark" ? "text-white/55" : "text-black/55"
+                      }`}>Exam Countdown</p>
+                      <CalendarClock className={`h-4 w-4 ${
+                        theme === "dark" ? "text-muted-foreground" : "text-black/40"
+                      }`} />
                     </div>
                     <p className="mt-2 text-2xl font-display font-black">02:45:18</p>
-                    <p className="mt-1 text-xs text-white/55">Physics Weekly Mock শুরু হতে বাকি</p>
+                    <p className={`mt-1 text-xs ${
+                      theme === "dark" ? "text-white/55" : "text-black/55"
+                    }`}>Physics Weekly Mock শুরু হতে বাকি</p>
                   </div>
                 </div>
               </div>
@@ -810,24 +891,37 @@ const Index = () => {
             <div className="text-center">
               <SectionTag text="Features" />
               <h2 className="mt-4 text-3xl font-display font-black sm:text-4xl">যা আপনাকে এগিয়ে রাখবে</h2>
-              <p className="mx-auto mt-3 max-w-2xl text-white/65">আপনার web workflow ধরে রেখে practice থেকে analysis পর্যন্ত complete flow।</p>
+              <p className={`mx-auto mt-3 max-w-2xl ${
+                theme === "dark" ? "text-white/65" : "text-black/65"
+              }`}>আপনার web workflow ধরে রেখে practice থেকে analysis পর্যন্ত complete flow।</p>
             </div>
 
             <div className="mt-12 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
               {featureCards.map((feature, index) => (
                 <motion.div
                   key={feature.title}
-                  className="group rounded-2xl border border-white/10 bg-[#0d0d11] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-white/25"
-                  initial={{ opacity: 0, y: 18 }}
+                  className={`group rounded-2xl border p-6 transition-all duration-300 hover:-translate-y-2 ${
+                    theme === "dark"
+                      ? "border-white/10 bg-[#0d0d11] hover:border-white/25"
+                      : "border-black/10 bg-white/50 hover:border-black/25"
+                  }`}
+                  initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.7, delay: index * 0.06, ease: "easeOut" }}
+                  viewport={{ once: true, amount: 0.2 }}
+                  transition={{ duration: 0.85, delay: index * 0.1, ease: "easeInOut" }}
+                  whileHover={{ transition: { duration: 0.3 } }}
                 >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted/45 text-foreground/80">
+                  <div className={`flex h-12 w-12 items-center justify-center rounded-xl transition-colors duration-300 ${
+                    theme === "dark"
+                      ? "bg-muted/45 text-foreground/80"
+                      : "bg-black/10 text-black/80"
+                  }`}>
                     <feature.icon className="h-6 w-6" />
                   </div>
                   <h3 className="mt-4 text-xl font-display font-bold">{feature.title}</h3>
-                  <p className="mt-2 text-sm leading-7 text-white/65">{feature.description}</p>
+                  <p className={`mt-2 text-sm leading-7 ${
+                    theme === "dark" ? "text-white/65" : "text-black/65"
+                  }`}>{feature.description}</p>
                 </motion.div>
               ))}
             </div>
@@ -841,19 +935,39 @@ const Index = () => {
               <h2 className="mt-4 text-3xl font-display font-black sm:text-4xl">দুই role, এক seamless অভিজ্ঞতা</h2>
             </div>
 
-            <div className="mx-auto mt-10 max-w-xl rounded-full border border-white/15 bg-[#0d0d11] p-1">
+            <div className={`mx-auto mt-10 max-w-xl rounded-full border p-1 transition-colors duration-300 ${
+              theme === "dark"
+                ? "border-white/15 bg-[#0d0d11]"
+                : "border-black/15 bg-white/50"
+            }`}>
               <div className="grid grid-cols-2 gap-1">
                 <button
                   type="button"
                   onClick={() => setMode("student")}
-                  className={`rounded-full border px-4 py-2 text-sm font-semibold backdrop-blur-md transition ${mode === "student" ? "border-white/20 bg-white/15 text-white" : "border-transparent text-white/70 hover:bg-white/8"}`}
+                  className={`rounded-full border px-4 py-2 text-sm font-semibold backdrop-blur-md transition ${
+                    mode === "student"
+                      ? theme === "dark"
+                        ? "border-white/20 bg-white/15 text-white"
+                        : "border-black/20 bg-black/15 text-black"
+                      : theme === "dark"
+                      ? "border-transparent text-white/70 hover:bg-white/8"
+                      : "border-transparent text-black/70 hover:bg-black/8"
+                  }`}
                 >
                   👨‍🎓 Student
                 </button>
                 <button
                   type="button"
                   onClick={() => setMode("teacher")}
-                  className={`rounded-full border px-4 py-2 text-sm font-semibold backdrop-blur-md transition ${mode === "teacher" ? "border-white/20 bg-white/15 text-white" : "border-transparent text-white/70 hover:bg-white/8"}`}
+                  className={`rounded-full border px-4 py-2 text-sm font-semibold backdrop-blur-md transition ${
+                    mode === "teacher"
+                      ? theme === "dark"
+                        ? "border-white/20 bg-white/15 text-white"
+                        : "border-black/20 bg-black/15 text-black"
+                      : theme === "dark"
+                      ? "border-transparent text-white/70 hover:bg-white/8"
+                      : "border-transparent text-black/70 hover:bg-black/8"
+                  }`}
                 >
                   👨‍🏫 Teacher
                 </button>
@@ -863,13 +977,19 @@ const Index = () => {
             <motion.div
               key={mode}
               className="mt-8 grid gap-5 lg:grid-cols-2"
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, ease: "easeOut" }}
+              transition={{ duration: 0.75, ease: "easeInOut" }}
             >
-              <div className="rounded-2xl border border-white/10 bg-[#0d0d11] p-6">
+              <div className={`rounded-2xl border p-6 transition-colors duration-300 ${
+                theme === "dark"
+                  ? "border-white/10 bg-[#0d0d11]"
+                  : "border-black/10 bg-white/50"
+              }`}>
                 <h3 className="text-2xl font-display font-black">{mode === "student" ? "প্র্যাকটিস, পরীক্ষা, ট্র্যাক" : "তৈরি, ম্যানেজ, মনিটর"}</h3>
-                <ul className="mt-4 space-y-3 text-sm text-white/75">
+                <ul className={`mt-4 space-y-3 text-sm ${
+                  theme === "dark" ? "text-white/75" : "text-black/75"
+                }`}>
                   {(mode === "student"
                     ? [
                         "টপিকভিত্তিক প্রশ্ন অনুশীলন",
@@ -882,15 +1002,23 @@ const Index = () => {
                         "স্টুডেন্ট পারফরম্যান্স ট্র্যাকিং",
                       ]).map((item) => (
                     <li key={item} className="flex items-start gap-2">
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                      <CheckCircle2 className={`mt-0.5 h-4 w-4 ${
+                        theme === "dark" ? "text-muted-foreground" : "text-black/40"
+                      }`} />
                       {item}
                     </li>
                   ))}
                 </ul>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-[#0d0d11] p-6">
-                <p className="text-xs uppercase tracking-[0.2em] text-white/45">Quick metrics</p>
+              <div className={`rounded-2xl border p-6 transition-colors duration-300 ${
+                theme === "dark"
+                  ? "border-white/10 bg-[#0d0d11]"
+                  : "border-black/10 bg-white/50"
+              }`}>
+                <p className={`text-xs uppercase tracking-[0.2em] ${
+                  theme === "dark" ? "text-white/45" : "text-black/45"
+                }`}>Quick metrics</p>
                 <div className="mt-4 grid grid-cols-3 gap-3">
                   {(mode === "student"
                     ? [
@@ -903,8 +1031,14 @@ const Index = () => {
                         ["Students", "460"],
                         ["Exams", "180"],
                       ]).map(([k, v]) => (
-                    <div key={k} className="rounded-xl border border-white/10 bg-black/30 p-3 text-center">
-                      <p className="text-xs text-white/50">{k}</p>
+                    <div key={k} className={`rounded-xl border p-3 text-center transition-colors duration-300 ${
+                      theme === "dark"
+                        ? "border-white/10 bg-black/30"
+                        : "border-black/10 bg-black/5"
+                    }`}>
+                      <p className={`text-xs ${
+                        theme === "dark" ? "text-white/50" : "text-black/50"
+                      }`}>{k}</p>
                       <p className="mt-1 text-xl font-display font-black">{v}</p>
                     </div>
                   ))}
@@ -921,19 +1055,25 @@ const Index = () => {
                 Premium Courses
               </span>
               <h2 className="mt-4 text-3xl font-display font-black sm:text-4xl md:text-5xl">বিশেষভাবে ডিজাইন করা কোর্স</h2>
-              <p className="mx-auto mt-3 max-w-2xl text-white/65">আপনার ক্যারিয়ারের লক্ষ্য অর্জনের জন্য বিশেষজ্ঞ-তৈরি কোর্স প্রোগ্রাম।</p>
+              <p className={`mx-auto mt-3 max-w-2xl ${
+                theme === "dark" ? "text-white/65" : "text-black/65"
+              }`}>আপনার ক্যারিয়ারের লক্ষ্য অর্জনের জন্য বিশেষজ্ঞ-তৈরি কোর্স প্রোগ্রাম।</p>
             </div>
 
             <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {courses.slice(0, 3).map((course, index) => (
                 <motion.div
                   key={course.id}
-                  className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.08] via-white/[0.03] to-transparent p-6 backdrop-blur-xl transition-all duration-300 hover:border-white/30 hover:from-white/[0.12] hover:via-white/[0.06]"
-                  initial={{ opacity: 0, y: 20 }}
+                  className={`group relative overflow-hidden rounded-2xl border p-6 backdrop-blur-xl transition-all duration-300 ${
+                    theme === "dark"
+                      ? "border-white/10 bg-gradient-to-br from-white/[0.08] via-white/[0.03] to-transparent hover:border-white/30 hover:from-white/[0.12] hover:via-white/[0.06]"
+                      : "border-black/10 bg-gradient-to-br from-black/[0.05] via-black/[0.02] to-transparent hover:border-black/30 hover:from-black/[0.08] hover:via-black/[0.04]"
+                  }`}
+                  initial={{ opacity: 0, y: 24 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, amount: 0.3 }}
-                  transition={{ duration: 0.6, delay: index * 0.08 }}
-                  whileHover={{ y: -8, boxShadow: "0 20px 40px rgba(0,0,0,0.3)" }}
+                  viewport={{ once: true, amount: 0.25 }}
+                  transition={{ duration: 0.8, delay: index * 0.12, ease: "easeInOut" }}
+                  whileHover={{ y: -12, boxShadow: "0 25px 50px rgba(0,0,0,0.35)", transition: { duration: 0.4 } }}
                 >
                   {/* Gradient accent corner */}
                   <div
@@ -942,7 +1082,11 @@ const Index = () => {
                   />
 
                   {/* Course Image */}
-                  <div className="relative mb-5 h-48 overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-white/5 to-transparent">
+                  <div className={`relative mb-5 h-48 overflow-hidden rounded-xl border bg-gradient-to-br from-white/5 to-transparent transition-colors duration-300 ${
+                    theme === "dark"
+                      ? "border-white/10"
+                      : "border-black/10"
+                  }`}>
                     <img
                       src={course.image}
                       alt={course.title}
@@ -964,12 +1108,18 @@ const Index = () => {
                   <div className="relative z-10 space-y-3">
                     {/* Title and Description */}
                     <div>
-                      <h3 className="line-clamp-2 text-base font-display font-bold text-white leading-tight">{course.title}</h3>
-                      <p className="mt-2 line-clamp-2 text-xs text-white/65">{course.shortDesc}</p>
+                      <h3 className={`line-clamp-2 text-base font-display font-bold leading-tight ${
+                        theme === "dark" ? "text-white" : "text-black"
+                      }`}>{course.title}</h3>
+                      <p className={`mt-2 line-clamp-2 text-xs ${
+                        theme === "dark" ? "text-white/65" : "text-black/65"
+                      }`}>{course.shortDesc}</p>
                     </div>
 
                     {/* Duration and Students */}
-                    <div className="flex items-center gap-3 text-xs text-white/70">
+                    <div className={`flex items-center gap-3 text-xs ${
+                      theme === "dark" ? "text-white/70" : "text-black/70"
+                    }`}>
                       <div className="flex items-center gap-1">
                         <Clock3 className="h-3.5 w-3.5" />
                         <span>{course.duration}</span>
@@ -994,31 +1144,49 @@ const Index = () => {
                           />
                         ))}
                       </div>
-                      <span className="text-xs font-semibold text-white">{course.rating.toFixed(1)}</span>
+                      <span className={`text-xs font-semibold ${theme === "dark" ? "text-white" : "text-black"}`}>
+                        {course.rating.toFixed(1)}
+                      </span>
                     </div>
 
                     {/* Stats Row */}
                     <div className="grid grid-cols-3 gap-2 py-3">
                       {course.stats.slice(0, 3).map((stat, idx) => (
-                        <div key={idx} className="rounded-lg border border-white/10 bg-white/5 p-2 text-center">
-                          <p className="text-[10px] text-white/50">{stat.label}</p>
-                          <p className="mt-0.5 text-xs font-bold text-white">{stat.value}</p>
+                        <div key={idx} className={`rounded-lg border p-2 text-center transition-colors duration-300 ${
+                          theme === "dark"
+                            ? "border-white/10 bg-white/5"
+                            : "border-black/10 bg-black/5"
+                        }`}>
+                          <p className={`text-[10px] ${
+                            theme === "dark" ? "text-white/50" : "text-black/50"
+                          }`}>{stat.label}</p>
+                          <p className={`mt-0.5 text-xs font-bold ${theme === "dark" ? "text-white" : "text-black"}`}>
+                            {stat.value}
+                          </p>
                         </div>
                       ))}
                     </div>
 
                     {/* Divider */}
-                    <div className="h-px bg-gradient-to-r from-white/10 via-white/20 to-white/10" />
+                    <div className={`h-px bg-gradient-to-r transition-colors duration-300 ${
+                      theme === "dark"
+                        ? "from-white/10 via-white/20 to-white/10"
+                        : "from-black/10 via-black/20 to-black/10"
+                    }`} />
 
                     {/* Footer: Price and Button */}
                     <div className="flex items-center justify-between gap-3 pt-3">
                       <div>
-                        <p className="text-xs text-white/50">মূল্য</p>
+                        <p className={`text-xs ${
+                          theme === "dark" ? "text-white/50" : "text-black/50"
+                        }`}>মূল্য</p>
                         <div className="mt-0.5 flex items-baseline gap-2">
                           <p className="text-lg font-display font-black" style={{ color: course.accent }}>
                             {course.price}
                           </p>
-                          <p className="text-xs text-white/35 line-through">{course.oldPrice}</p>
+                          <p className={`text-xs line-through ${theme === "dark" ? "text-white/35" : "text-black/35"}`}>
+                            {course.oldPrice}
+                          </p>
                         </div>
                       </div>
                       <button
@@ -1061,7 +1229,11 @@ const Index = () => {
           {selectedCourse && <CourseDetailModal course={selectedCourse} onClose={() => setSelectedCourse(null)} />}
         </AnimatePresence>
 
-        <section className="border-y border-white/10 bg-[#050505] py-20 md:py-24">
+        <section className={`border-y py-20 md:py-24 transition-colors duration-300 ${
+          theme === "dark"
+            ? "border-white/10 bg-[#050505]"
+            : "border-black/10 bg-white"
+        }`}>
           <div className="container mx-auto px-4">
             <div className="mx-auto max-w-3xl text-center">
               <span className="inline-flex rounded-full border border-border/70 bg-card/70 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
@@ -1072,64 +1244,100 @@ const Index = () => {
               </h2>
             </div>
 
-            <div className="mx-auto mt-12 grid max-w-6xl gap-5 rounded-3xl border border-white/10 bg-[#070707] p-4 md:grid-cols-2 md:p-6">
+            <div className={`mx-auto mt-12 grid max-w-6xl gap-5 rounded-3xl border p-4 md:grid-cols-2 md:p-6 transition-colors duration-300 ${
+              theme === "dark"
+                ? "border-white/10 bg-[#070707]"
+                : "border-black/10 bg-white/50"
+            }`}>
               <motion.div
-                className="rounded-2xl border border-[#38d45f]/45 bg-[linear-gradient(180deg,#071108,#080909)] p-5"
-                initial={{ opacity: 0, x: -26 }}
+                className={`rounded-2xl border p-5 transition-colors duration-300 ${
+                  theme === "dark"
+                    ? "border-[#38d45f]/45 bg-[linear-gradient(180deg,#071108,#080909)]"
+                    : "border-[#38d45f]/30 bg-[linear-gradient(180deg,rgba(56,212,95,0.08),rgba(8,9,9,0.05))]"
+                }`}
+                initial={{ opacity: 0, x: -32 }}
                 whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, amount: 0.35 }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
+                viewport={{ once: true, amount: 0.3 }}
+                transition={{ duration: 0.95, ease: "easeInOut" }}
               >
                 <div className="flex items-center gap-3">
                   <div className="flex h-11 w-11 items-center justify-center rounded-full border border-[#38d45f]/40 bg-[#38d45f]/10">
                     <Target className="h-5 w-5 text-[#49de70]" />
                   </div>
-                  <h3 className="text-2xl font-display font-bold text-white">ExamPathshala</h3>
+                  <h3 className={`text-2xl font-display font-bold ${
+                    theme === "dark" ? "text-white" : "text-black"
+                  }`}>ExamPathshala</h3>
                 </div>
 
                 <div className="mt-6 space-y-3">
                   {comparisonPoints.map((point, index) => (
                     <motion.div
                       key={point.ours}
-                      className="flex items-start gap-3 rounded-xl border border-[#38d45f]/25 bg-black/25 p-3"
-                      initial={{ opacity: 0, y: 16, scale: 0.97 }}
+                      className={`flex items-start gap-3 rounded-xl border p-3 transition-colors duration-300 ${
+                        theme === "dark"
+                          ? "border-[#38d45f]/25 bg-black/25"
+                          : "border-[#38d45f]/20 bg-[#38d45f]/10"
+                      }`}
+                      initial={{ opacity: 0, y: 18, scale: 0.95 }}
                       whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                      viewport={{ once: true, amount: 0.25 }}
-                      transition={{ duration: 0.6, delay: index * 0.06, ease: "easeOut" }}
+                      viewport={{ once: true, amount: 0.2 }}
+                      transition={{ duration: 0.75, delay: index * 0.09, ease: "easeInOut" }}
                     >
                       <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#4cdf73]" />
-                      <p className="text-sm text-white/90 md:text-base">{point.ours}</p>
+                      <p className={`text-sm md:text-base ${
+                        theme === "dark" ? "text-white/90" : "text-black/90"
+                      }`}>{point.ours}</p>
                     </motion.div>
                   ))}
                 </div>
               </motion.div>
 
               <motion.div
-                className="rounded-2xl border border-border/70 bg-[linear-gradient(180deg,hsl(var(--card)/0.92),hsl(var(--muted)/0.3))] p-5"
-                initial={{ opacity: 0, x: 26 }}
+                className={`rounded-2xl border p-5 transition-colors duration-300 ${
+                  theme === "dark"
+                    ? "border-border/70 bg-[linear-gradient(180deg,hsl(var(--card)/0.92),hsl(var(--muted)/0.3))]"
+                    : "border-black/20 bg-[linear-gradient(180deg,rgba(0,0,0,0.08),rgba(0,0,0,0.03))]"
+                }`}
+                initial={{ opacity: 0, x: 32 }}
                 whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, amount: 0.35 }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
+                viewport={{ once: true, amount: 0.3 }}
+                transition={{ duration: 0.95, ease: "easeInOut" }}
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full border border-border/70 bg-muted/35">
-                    <Layers3 className="h-5 w-5 text-muted-foreground" />
+                  <div className={`flex h-11 w-11 items-center justify-center rounded-full border transition-colors duration-300 ${
+                    theme === "dark"
+                      ? "border-border/70 bg-muted/35"
+                      : "border-black/20 bg-black/5"
+                  }`}>
+                    <Layers3 className={`h-5 w-5 ${
+                      theme === "dark" ? "text-muted-foreground" : "text-black/40"
+                    }`} />
                   </div>
-                  <h3 className="text-2xl font-display font-bold text-white">Others</h3>
+                  <h3 className={`text-2xl font-display font-bold ${
+                    theme === "dark" ? "text-white" : "text-black"
+                  }`}>Others</h3>
                 </div>
 
                 <div className="mt-6 space-y-3">
                   {comparisonPoints.map((point, index) => (
                     <motion.div
                       key={point.others}
-                      className="flex items-start gap-3 rounded-xl border border-border/70 bg-black/25 p-3"
-                      initial={{ opacity: 0, y: 16, scale: 0.97 }}
+                      className={`flex items-start gap-3 rounded-xl border p-3 transition-colors duration-300 ${
+                        theme === "dark"
+                          ? "border-border/70 bg-black/25"
+                          : "border-black/20 bg-white/50"
+                      }`}
+                      initial={{ opacity: 0, y: 18, scale: 0.95 }}
                       whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                      viewport={{ once: true, amount: 0.25 }}
-                      transition={{ duration: 0.6, delay: index * 0.06, ease: "easeOut" }}
+                      viewport={{ once: true, amount: 0.2 }}
+                      transition={{ duration: 0.75, delay: index * 0.09, ease: "easeInOut" }}
                     >
-                      <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
-                      <p className="text-sm text-white/90 md:text-base">{point.others}</p>
+                      <XCircle className={`mt-0.5 h-5 w-5 shrink-0 ${
+                        theme === "dark" ? "text-muted-foreground" : "text-black/40"
+                      }`} />
+                      <p className={`text-sm md:text-base ${
+                        theme === "dark" ? "text-white/90" : "text-black/90"
+                      }`}>{point.others}</p>
                     </motion.div>
                   ))}
                 </div>
@@ -1154,12 +1362,16 @@ const Index = () => {
                 {impactCards.map((card, index) => (
                   <motion.article
                     key={card.title}
-                    className={`group relative overflow-hidden rounded-2xl border border-white/15 bg-gradient-to-b ${card.tone} p-5 ${card.height}`}
-                    initial={{ opacity: 0, y: 20, rotateY: index % 2 === 0 ? -8 : 8 }}
+                    className={`group relative overflow-hidden rounded-2xl border bg-gradient-to-b p-5 ${card.height} transition-colors duration-300 ${
+                      theme === "dark"
+                        ? "border-white/15"
+                        : "border-black/15"
+                    } ${card.tone}`}
+                    initial={{ opacity: 0, y: 28, rotateY: index % 2 === 0 ? -10 : 10 }}
                     whileInView={{ opacity: 1, y: 0, rotateY: 0 }}
-                    viewport={{ once: true, amount: 0.3 }}
-                    transition={{ duration: 0.8, delay: index * 0.06, ease: "easeOut" }}
-                    whileHover={{ y: -4, rotateX: 1.2, rotateY: index % 2 === 0 ? -2 : 2 }}
+                    viewport={{ once: true, amount: 0.2 }}
+                    transition={{ duration: 0.95, delay: index * 0.1, ease: "easeInOut" }}
+                    whileHover={{ y: -6, rotateX: 2, rotateY: index % 2 === 0 ? -3 : 3, transition: { duration: 0.4 } }}
                     style={{ transformStyle: "preserve-3d" }}
                   >
                     <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
@@ -1167,17 +1379,27 @@ const Index = () => {
 
                     <div className="relative z-10 flex h-full flex-col justify-between">
                       <div className="flex justify-end">
-                        <div className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-black/70">
+                        <div className={`inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors duration-300 ${
+                          theme === "dark"
+                            ? "bg-black/70"
+                            : "bg-black/20"
+                        }`}>
                           <ArrowRight className="h-5 w-5" />
                         </div>
                       </div>
 
                       <div>
-                        <p className="inline-flex rounded-full border border-border/70 bg-card/80 px-3 py-1 text-xs font-semibold text-foreground">
+                        <p className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold transition-colors duration-300 ${
+                          theme === "dark"
+                            ? "border-border/70 bg-card/80 text-foreground"
+                            : "border-black/20 bg-black/10 text-black"
+                        }`}>
                           ExamPathshala Event
                         </p>
                         <h3 className="mt-3 text-2xl font-display font-black leading-tight">{card.title}</h3>
-                        <p className="mt-2 text-sm leading-7 text-white/85">{card.text}</p>
+                        <p className={`mt-2 text-sm leading-7 ${
+                          theme === "dark" ? "text-white/85" : "text-black/85"
+                        }`}>{card.text}</p>
                       </div>
                     </div>
                   </motion.article>
@@ -1187,9 +1409,15 @@ const Index = () => {
           </div>
         </section>
 
-        <section className="border-y border-white/10 bg-[#050505] py-10 md:py-12">
+        <section className={`border-y py-10 md:py-12 transition-colors duration-300 ${
+          theme === "dark"
+            ? "border-white/10 bg-[#050505]"
+            : "border-black/10 bg-white"
+        }`}>
           <div className="container mx-auto px-4">
-            <p className="mb-6 text-center text-xs uppercase tracking-[0.3em] text-white/35">Payment & Hiring Partners</p>
+            <p className={`mb-6 text-center text-xs uppercase tracking-[0.3em] ${
+              theme === "dark" ? "text-white/35" : "text-black/35"
+            }`}>Payment & Hiring Partners</p>
             <div className="space-y-5">
               <PartnerLogoMarqueeRow duration={56} />
               <PartnerLogoMarqueeRow reverse duration={62} />
@@ -1205,23 +1433,43 @@ const Index = () => {
             </div>
             <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {stats.map((stat) => (
-                <div key={stat.label} className="rounded-2xl border border-white/10 bg-[#0d0d11] p-6 text-center">
-                  <p className="text-3xl font-display font-black text-foreground">
+                <div key={stat.label} className={`rounded-2xl border p-6 text-center transition-colors duration-300 ${
+                  theme === "dark"
+                    ? "border-white/10 bg-[#0d0d11]"
+                    : "border-black/10 bg-white/50"
+                }`}>
+                  <p className={`text-3xl font-display font-black ${
+                    theme === "dark" ? "text-foreground" : "text-black"
+                  }`}>
                     <CountUp value={stat.value} suffix={stat.suffix} />
                   </p>
-                  <p className="mt-2 text-sm text-white/70">{stat.label}</p>
+                  <p className={`mt-2 text-sm ${
+                    theme === "dark" ? "text-white/70" : "text-black/70"
+                  }`}>{stat.label}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        <section className="overflow-hidden bg-[#030303] py-20 text-white md:py-24">
+        <section className={`overflow-hidden py-20 md:py-24 transition-colors duration-300 ${
+          theme === "dark"
+            ? "bg-[#030303] text-white"
+            : "bg-[#f5f5f7] text-black"
+        }`}>
           <div className="container mx-auto px-4">
             <div className="text-center">
-              <span className="inline-flex rounded-full border border-border/70 bg-card/80 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-foreground">Community</span>
-              <h2 className="mt-4 text-3xl font-display font-black sm:text-4xl">They came. They cooked. They got placed.</h2>
-              <p className="mx-auto mt-3 max-w-2xl text-sm text-white/60 md:text-base">উপরের সারি ডান দিক থেকে বামে এবং নিচের সারি বাম দিক থেকে ডানে ক্রমাগত চলবে।</p>
+              <span className={`inline-flex rounded-full border px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] transition-colors duration-300 ${
+                theme === "dark"
+                  ? "border-border/70 bg-card/80 text-foreground"
+                  : "border-black/20 bg-black/10 text-black"
+              }`}>Community</span>
+              <h2 className={`mt-4 text-3xl font-display font-black sm:text-4xl ${
+                theme === "dark" ? "text-white" : "text-black"
+              }`}>They came. They cooked. They got placed.</h2>
+              <p className={`mx-auto mt-3 max-w-2xl text-sm md:text-base ${
+                theme === "dark" ? "text-white/60" : "text-black/60"
+              }`}>উপরের সারি ডান দিক থেকে বামে এবং নিচের সারি বাম দিক থেকে ডানে ক্রমাগত চলবে।</p>
             </div>
 
             <div className="mt-12 space-y-6">
@@ -1238,23 +1486,39 @@ const Index = () => {
               <h2 className="mt-4 text-3xl font-display font-black sm:text-4xl">What sets ExamPathshala apart</h2>
             </div>
             <div className="mt-10 grid gap-5 lg:grid-cols-2">
-              <div className="rounded-2xl border border-border/70 bg-[#0d0d11] p-6">
+              <div className={`rounded-2xl border p-6 transition-colors duration-300 ${
+                theme === "dark"
+                  ? "border-border/70 bg-[#0d0d11]"
+                  : "border-black/20 bg-white/50"
+              }`}>
                 <h3 className="text-xl font-display font-bold text-foreground">যা পাবেন</h3>
-                <ul className="mt-4 space-y-2 text-sm text-white/75">
+                <ul className={`mt-4 space-y-2 text-sm ${
+                  theme === "dark" ? "text-white/75" : "text-black/75"
+                }`}>
                   {["AI study suggestions", "Mock exam workflow", "Topic-wise analytics", "Leaderboard + streak system", "Teacher management tools"].map((item) => (
                     <li key={item} className="flex items-start gap-2">
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                      <CheckCircle2 className={`mt-0.5 h-4 w-4 ${
+                        theme === "dark" ? "text-muted-foreground" : "text-black/40"
+                      }`} />
                       {item}
                     </li>
                   ))}
                 </ul>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-[#0d0d11] p-6">
+              <div className={`rounded-2xl border p-6 transition-colors duration-300 ${
+                theme === "dark"
+                  ? "border-white/10 bg-[#0d0d11]"
+                  : "border-black/10 bg-white/50"
+              }`}>
                 <h3 className="text-xl font-display font-bold">প্রস্তুতির ফল</h3>
-                <ul className="mt-4 space-y-2 text-sm text-white/75">
+                <ul className={`mt-4 space-y-2 text-sm ${
+                  theme === "dark" ? "text-white/75" : "text-black/75"
+                }`}>
                   {["Consistency through streak", "Stronger exam confidence", "Faster revision cycles", "Role-based dashboards", "Better result visibility"].map((item) => (
                     <li key={item} className="flex items-start gap-2">
-                      <Star className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                      <Star className={`mt-0.5 h-4 w-4 ${
+                        theme === "dark" ? "text-muted-foreground" : "text-black/40"
+                      }`} />
                       {item}
                     </li>
                   ))}
@@ -1272,12 +1536,20 @@ const Index = () => {
             </div>
             <div className="mx-auto mt-10 max-w-4xl space-y-3">
               {faq.map((item) => (
-                <details key={item.q} className="group rounded-xl border border-white/10 bg-[#0d0d11] p-4">
+                <details key={item.q} className={`group rounded-xl border p-4 transition-colors duration-300 ${
+                  theme === "dark"
+                    ? "border-white/10 bg-[#0d0d11]"
+                    : "border-black/10 bg-white/50"
+                }`}>
                   <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold">
                     {item.q}
-                    <ChevronDown className="h-4 w-4 text-white/60 transition group-open:rotate-180" />
+                    <ChevronDown className={`h-4 w-4 transition group-open:rotate-180 ${
+                      theme === "dark" ? "text-white/60" : "text-black/60"
+                    }`} />
                   </summary>
-                  <p className="mt-3 text-sm leading-7 text-white/70">{item.a}</p>
+                  <p className={`mt-3 text-sm leading-7 ${
+                    theme === "dark" ? "text-white/70" : "text-black/70"
+                  }`}>{item.a}</p>
                 </details>
               ))}
             </div>
@@ -1286,24 +1558,48 @@ const Index = () => {
 
         <section className="pb-24">
           <div className="container mx-auto px-4">
-            <div className="overflow-hidden rounded-3xl border border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),#0d0d11_55%,hsl(var(--muted)/0.45))] p-8 md:p-12">
+            <div className={`overflow-hidden rounded-3xl border p-8 md:p-12 transition-colors duration-300 ${
+              theme === "dark"
+                ? "border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),#0d0d11_55%,hsl(var(--muted)/0.45))]"
+                : "border-black/20 bg-white"
+            }`}>
               <div className="grid items-center gap-8 lg:grid-cols-[1.1fr_0.9fr]">
                 <div>
                   <SectionTag text="Final CTA" />
-                  <h2 className="mt-4 text-3xl font-display font-black sm:text-4xl md:text-5xl">
+                  <h2 className={`mt-4 text-3xl font-display font-black sm:text-4xl md:text-5xl ${
+                    theme === "dark" ? "text-white" : "text-black"
+                  }`}>
                     আজই আপনার প্রস্তুতি শুরু করুন
                   </h2>
-                  <p className="mt-4 text-white/70">
+                  <p className={`mt-4 ${
+                    theme === "dark" ? "text-white/70" : "text-black/70"
+                  }`}>
                     আপনার সফলতার যাত্রা এখান থেকেই শুরু। এক প্ল্যাটফর্মে learning,
                     practice, exam, analytics - সবকিছু।
                   </p>
                   <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-                    <Button variant="glass" className="h-12 px-7 text-base font-semibold" asChild>
+                    <Button
+                      variant="glass"
+                      className={`h-12 px-7 text-base font-semibold ${
+                        theme === "dark"
+                          ? "border-white/20 bg-white/10 text-white hover:bg-white/15"
+                          : "border-black/15 bg-black/5 text-black hover:bg-black/10"
+                      }`}
+                      asChild
+                    >
                       <Link to="/signup">
                         <Flame className="mr-2 h-4 w-4" /> ফ্রি প্র্যাকটিস শুরু করুন
                       </Link>
                     </Button>
-                    <Button variant="outline" className="h-12 border-white/20 bg-white/5 px-7 text-base text-white hover:bg-white/10" asChild>
+                    <Button
+                      variant="outline"
+                      className={`h-12 px-7 text-base ${
+                        theme === "dark"
+                          ? "border-white/20 bg-white/5 text-white hover:bg-white/10"
+                          : "border-black/20 bg-black/5 text-black hover:bg-black/10"
+                      }`}
+                      asChild
+                    >
                       <Link to="/signup?role=teacher">
                         শিক্ষক হিসেবে যোগ দিন <ArrowRight className="ml-2 h-4 w-4" />
                       </Link>
