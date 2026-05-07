@@ -61,7 +61,7 @@ const Login = () => {
               <BookOpen className="h-5 w-5 text-white" />
             </div>
             <div className="text-left leading-tight">
-              <span className="block text-2xl font-display font-bold">LearnSmart Prep</span>
+              <span className="block text-2xl font-display font-bold">ExamPathshala</span>
               <span className="block text-xs text-white/60">Bangla First Learning Platform</span>
             </div>
           </Link>

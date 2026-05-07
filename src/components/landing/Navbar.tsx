@@ -7,9 +7,9 @@ const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const navLinks = [
-    { label: "হোম", href: "#" },
+    { label: "হোম", href: "/" },
     { label: "ফিচার", href: "#features" },
-    { label: "কোর্স", href: "#courses" },
+    { label: "কোর্স", href: "/courses" },
     { label: "প্রশ্নোত্তর", href: "#faq" },
   ];
 
@@ -23,7 +23,7 @@ const Navbar = () => {
             </div>
             <span className="hidden h-7 w-px bg-white/20 sm:block" />
             <div className="leading-tight">
-              <span className="block text-xl font-display font-bold tracking-tight">LearnSmart Prep</span>
+              <span className="block text-xl font-display font-bold tracking-tight">ExamPathshala</span>
               <span className="hidden text-[11px] text-white/60 sm:block">Bangla First Learning Platform</span>
             </div>
           </Link>

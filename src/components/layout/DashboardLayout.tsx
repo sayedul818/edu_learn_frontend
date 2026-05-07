@@ -134,7 +134,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
               <BookOpen className="h-4 w-4 text-primary-foreground" />
             </div>
             <div className="leading-tight">
-              <span className="block text-lg font-display font-bold text-foreground">LearnSmart Prep</span>
+              <span className="block text-lg font-display font-bold text-foreground">ExamPathshala</span>
               <span className="text-[11px] text-muted-foreground">Smart learning, better outcomes.</span>
             </div>
             <button className="lg:hidden ml-auto text-muted-foreground" onClick={() => setSidebarOpen(false)}>

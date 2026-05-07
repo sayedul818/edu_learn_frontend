@@ -4,7 +4,7 @@
  */
 
 const CLOUDINARY_CLOUD_NAME = (import.meta.env.VITE_CLOUDINARY_CLOUD_NAME as string) || "dbjpqg8e3";
-const CLOUDINARY_UPLOAD_PRESET = (import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET as string) || "learnsmart_questions";
+const CLOUDINARY_UPLOAD_PRESET = (import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET as string) || "exampathshala_questions";
 
 const IMAGE_COMPRESS_THRESHOLD_BYTES = 300 * 1024;
 const IMAGE_MAX_DIMENSION = 1920;

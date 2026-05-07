@@ -117,7 +117,9 @@ const getSenderId = (sender: any) => String(sender?._id || sender || "");
 const buildMessageSocketUrl = (token: string) => {
   const envUrl = import.meta.env.VITE_API_URL as string | undefined;
   const apiUrl = envUrl || (import.meta.env.DEV ? 'http://localhost:5000/api' : 'https://learn-edu-backend.vercel.app/api');
-  return `${apiUrl.replace(/\/+$/, '').replace(/^http/, 'ws')}/messages/ws?token=${encodeURIComponent(token)}`;
+  const wsUrl = `${apiUrl.replace(/\/+$/, '').replace(/^http/, 'ws')}/messages/ws?token=${encodeURIComponent(token)}`;
+  console.log('[buildMessageSocketUrl] envUrl=', envUrl, 'apiUrl=', apiUrl, 'wsUrl=', wsUrl);
+  return wsUrl;
 };
 
 const StudentMessages = () => {
@@ -377,21 +379,28 @@ const StudentMessages = () => {
 
   useEffect(() => {
     const token = localStorage.getItem('authToken');
-    if (!token) return;
+    if (!token) {
+      console.log('[StudentMessages] No auth token, skipping websocket');
+      return;
+    }
     const socketUrl = buildMessageSocketUrl(token);
-    try { console.debug('[StudentMessages] connecting websocket to', socketUrl); } catch (e) {}
+    console.log('[StudentMessages] connecting websocket to', socketUrl);
 
     const socket = new WebSocket(socketUrl);
 
     socket.onopen = () => {
-      try { console.debug('[StudentMessages] ws open', socketUrl); } catch (e) {}
+      console.log('[StudentMessages] ws open', socketUrl);
     };
 
     socket.onmessage = (event) => {
-      try { console.debug('[StudentMessages] ws message len=', String(event.data || '').length); } catch (e) {}
+      console.log('[StudentMessages] ws message len=', String(event.data || '').length);
       try {
         const data = JSON.parse(String(event.data || '{}'));
-        if (data?.type !== 'message.created' && data?.type !== 'conversation.updated') return;
+        console.log('[StudentMessages] ws parsed message type=', data?.type, 'conversationId=', data?.conversationId);
+        if (data?.type !== 'message.created' && data?.type !== 'conversation.updated') {
+          console.log('[StudentMessages] ignoring event type:', data?.type);
+          return;
+        }
 
         // Skip polling for 2 seconds after websocket update to prevent race condition
         skipPollingUntilRef.current = Date.now() + 2000;
@@ -400,17 +409,17 @@ const StudentMessages = () => {
         if (activeConversationRef.current && String(data?.conversationId || '') === activeConversationRef.current) {
           loadMessages(activeConversationRef.current, true);
         }
-      } catch {
-        // Ignore malformed websocket payloads and keep polling as fallback.
+      } catch (err) {
+        console.error('[StudentMessages] ws message parse error:', err);
       }
     };
 
-    socket.onerror = () => {
-      // Polling remains the fallback transport.
+    socket.onerror = (event) => {
+      console.error('[StudentMessages] ws error:', event);
     };
 
     socket.onclose = (ev) => {
-      try { console.debug('[StudentMessages] ws closed', ev && ev.code); } catch (e) {}
+      console.log('[StudentMessages] ws closed code=', ev.code, 'reason=', ev.reason);
     };
 
     return () => socket.close();

@@ -8,6 +8,7 @@ import { StudentCourseProvider } from "@/contexts/StudentCourseContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useEffect } from "react";
 import Index from "./pages/Index";
+import Courses from "./pages/Courses";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
@@ -107,6 +108,7 @@ const DashboardRedirect = () => {
 const AppRoutes = () => (
   <Routes>
     <Route path="/" element={<Index />} />
+    <Route path="/courses" element={<Courses />} />
     <Route path="/login" element={<Login />} />
     <Route path="/signup" element={<Signup />} />
 

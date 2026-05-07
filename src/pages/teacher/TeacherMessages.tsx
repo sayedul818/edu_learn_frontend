@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -109,26 +110,14 @@ const buildMessageSocketUrl = (token: string) => {
 const TeacherMessages = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const qc = useQueryClient();
   const meId = String(user?.id || "");
 
   const [search, setSearch] = useState("");
-  const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string>("");
-  const [activeConversation, setActiveConversation] = useState<any>(null);
-
-  const [messages, setMessages] = useState<MessageItem[]>([]);
-  const [sharedFiles, setSharedFiles] = useState<Attachment[]>([]);
   const [messageText, setMessageText] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([]);
   const [composerMode, setComposerMode] = useState<null | { type: "reply" | "forward" | "edit"; message: MessageItem }>(null);
-
-  const [loadingConversations, setLoadingConversations] = useState(true);
-  const [loadingMessages, setLoadingMessages] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [uploading, setUploading] = useState(false);
-
-  const [students, setStudents] = useState<any[]>([]);
-  const [newChatStudentId, setNewChatStudentId] = useState<string>("none");
   const [mobileView, setMobileView] = useState<"list" | "chat">("list");
 
   const typingStopTimer = useRef<any>(null);
@@ -137,6 +126,178 @@ const TeacherMessages = () => {
   const searchRef = useRef(search);
   const inputFileRef = useRef<HTMLInputElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const skipPollingRef = useRef<number>(0);
+
+  // React Query - Conversations List
+  const convQuery = useQuery({
+    queryKey: ["teacher", "messages", "conversations", search],
+    queryFn: () => messagesAPI.listConversations(search ? { search } : undefined).then((res) => Array.isArray(res?.data) ? res.data : []),
+    refetchInterval: 1500,
+    refetchIntervalInBackground: true,
+    staleTime: 0,
+  });
+  const conversations = convQuery.data || [];
+
+  // React Query - Students List
+  const studentsQuery = useQuery({
+    queryKey: ["teacher", "students"],
+    queryFn: () => teacherAPI.getStudents().then((res) => Array.isArray(res?.data) ? res.data : []),
+  });
+  const students = studentsQuery.data || [];
+
+  // React Query - Messages for active conversation
+  const msgQuery = useQuery({
+    queryKey: ["teacher", "messages", "items", activeConversationId],
+    queryFn: () => messagesAPI.getMessages(activeConversationId, { limit: 200 }).then((res) => {
+      const payload = res?.data || {};
+      return {
+        messages: Array.isArray(payload?.messages) ? payload.messages : [],
+        conversation: payload?.conversation || null,
+        sharedFiles: Array.isArray(payload?.sharedFiles) ? payload.sharedFiles : [],
+      };
+    }),
+    enabled: Boolean(activeConversationId),
+    refetchInterval: 1500,
+    refetchIntervalInBackground: true,
+    staleTime: 0,
+  });
+
+  // Force refetch when activeConversationId changes
+  useEffect(() => {
+    if (activeConversationId) {
+      console.log("[TeacherMessages] Switching to conversation:", activeConversationId);
+      msgQuery.refetch();
+    }
+  }, [activeConversationId]);
+
+  const messages = msgQuery.data?.messages || [];
+  const activeConversation = msgQuery.data?.conversation || null;
+  const sharedFiles = msgQuery.data?.sharedFiles || [];
+
+  // Manually poll messages with skip logic to prevent WebSocket/polling race
+  useEffect(() => {
+    if (!activeConversationId) return;
+    const pollTimer = setInterval(() => {
+      if (Date.now() < skipPollingRef.current) return;
+      msgQuery.refetch();
+    }, 1500);
+    return () => clearInterval(pollTimer);
+  }, [activeConversationId, msgQuery]);
+
+  // Mark messages as read
+  useEffect(() => {
+    if (!activeConversationId) return;
+    messagesAPI.markRead(activeConversationId).catch(() => {});
+  }, [activeConversationId]);
+
+  // Mutations
+  const sendMutation = useMutation({
+    mutationFn: async (payload: { text: string; attachments?: Attachment[] }) => {
+      const res = await messagesAPI.sendMessage(activeConversationId, payload);
+      return res?.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["teacher", "messages", "items", activeConversationId] });
+      qc.invalidateQueries({ queryKey: ["teacher", "messages", "conversations"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to send message", description: error?.message, variant: "destructive" });
+    },
+  });
+
+  const createConvMutation = useMutation({
+    mutationFn: (studentId: string) => messagesAPI.createConversation({ studentId }).then((res) => res?.data),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["teacher", "messages", "conversations"] });
+      if (data?._id) {
+        setActiveConversationId(String(data._id));
+      }
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to start chat", description: error?.message, variant: "destructive" });
+    },
+  });
+
+  const deleteMessageMutation = useMutation({
+    mutationFn: ({ messageId, scope }: { messageId: string; scope: "me" | "everyone" }) =>
+      messagesAPI.deleteMessage(activeConversationId, messageId, scope),
+    onSuccess: (_, { scope }) => {
+      if (scope === "everyone") {
+        qc.invalidateQueries({ queryKey: ["teacher", "messages", "items", activeConversationId] });
+        qc.invalidateQueries({ queryKey: ["teacher", "messages", "conversations"] });
+      }
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to delete message", description: error?.message, variant: "destructive" });
+    },
+  });
+
+  const editMessageMutation = useMutation({
+    mutationFn: ({ messageId, text }: { messageId: string; text: string }) =>
+      messagesAPI.editMessage(activeConversationId, messageId, { text }).then((res) => res?.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["teacher", "messages", "items", activeConversationId] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to edit message", description: error?.message, variant: "destructive" });
+    },
+  });
+
+  const muteMutation = useMutation({
+    mutationFn: (muted: boolean) => messagesAPI.setMute(activeConversationId, muted),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["teacher", "messages", "conversations"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to update mute", description: error?.message, variant: "destructive" });
+    },
+  });
+
+  // WebSocket connection with React Query cache updates
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    if (!token) return;
+
+    const socket = new WebSocket(buildMessageSocketUrl(token));
+
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(String(event.data || '{}'));
+        if (data?.type !== 'message.created' && data?.type !== 'conversation.updated') return;
+
+        // Skip polling for 2 seconds after WebSocket update
+        skipPollingRef.current = Date.now() + 2000;
+
+        // Update conversation list via React Query
+        qc.invalidateQueries({ queryKey: ["teacher", "messages", "conversations"] });
+
+        // Update active conversation messages via React Query
+        if (activeConversationRef.current && String(data?.conversationId || '') === activeConversationRef.current) {
+          qc.invalidateQueries({ queryKey: ["teacher", "messages", "items", activeConversationRef.current] });
+        }
+      } catch {
+        // Ignore malformed websocket payloads and keep polling as fallback
+      }
+    };
+
+    socket.onerror = () => {
+      // Polling remains the fallback transport
+    };
+
+    return () => socket.close();
+  }, [qc]);
+
+  useEffect(() => {
+    activeConversationRef.current = activeConversationId;
+  }, [activeConversationId]);
+
+  useEffect(() => {
+    searchRef.current = search;
+  }, [search]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length]);
 
   const groupedMessages = useMemo(() => {
     const groups: Array<{ label: string; messages: MessageItem[] }> = [];
@@ -151,7 +312,14 @@ const TeacherMessages = () => {
 
   const activeSummary = useMemo(() => {
     if (!activeConversationId) return null;
-    return conversations.find((conversation) => conversation._id === activeConversationId) || null;
+    const found = conversations.find((conversation) => conversation._id === activeConversationId) || null;
+    if (found) {
+      console.log("[TeacherMessages] activeSummary found:", found.displayName || found.peer?.name);
+    } else {
+      console.log("[TeacherMessages] activeSummary NOT FOUND for ID:", activeConversationId);
+      console.log("[TeacherMessages] Available conversations:", conversations.map(c => ({ id: c._id, name: c.displayName || c.peer?.name })));
+    }
+    return found;
   }, [activeConversationId, conversations]);
 
   const activeOthersTyping = useMemo(() => {
@@ -169,118 +337,6 @@ const TeacherMessages = () => {
     const latestOwn = [...messages].reverse().find((message) => getSenderId(message.senderId) === meId);
     return latestOwn?.status || "sent";
   }, [messages, meId]);
-
-  const loadConversations = async (query = search, keepSelected = true) => {
-    try {
-      if (!keepSelected) setLoadingConversations(true);
-      const res = await messagesAPI.listConversations(query ? { search: query } : undefined);
-      const rows = Array.isArray(res?.data) ? res.data : [];
-      setConversations(rows);
-      if (!activeConversationId && rows.length > 0) {
-        setActiveConversationId(String(rows[0]._id));
-      }
-    } catch (error: any) {
-      toast({ title: "Failed to load conversations", description: error?.message, variant: "destructive" });
-    } finally {
-      setLoadingConversations(false);
-    }
-  };
-
-  const loadStudents = async () => {
-    try {
-      const res = await teacherAPI.getStudents();
-      setStudents(Array.isArray(res?.data) ? res.data : []);
-    } catch (error: any) {
-      toast({ title: "Failed to load students", description: error?.message, variant: "destructive" });
-    }
-  };
-
-  const loadMessages = async (conversationId: string, silent = false) => {
-    if (!conversationId) return;
-    if (!silent) setLoadingMessages(true);
-
-    try {
-      const res = await messagesAPI.getMessages(conversationId, { limit: 200 });
-      const payload = res?.data || {};
-      setMessages(Array.isArray(payload?.messages) ? payload.messages : []);
-      setSharedFiles(Array.isArray(payload?.sharedFiles) ? payload.sharedFiles : []);
-      setActiveConversation(payload?.conversation || null);
-
-      try {
-        await messagesAPI.markRead(conversationId);
-      } catch {
-        // Keep chat usable even if read-receipt update fails.
-      }
-    } catch (error: any) {
-      toast({ title: "Failed to load messages", description: error?.message, variant: "destructive" });
-    } finally {
-      setLoadingMessages(false);
-    }
-  };
-
-  useEffect(() => {
-    loadConversations("", false);
-    loadStudents();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      loadConversations(search, true);
-    }, 1500);
-    return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, activeConversationId]);
-
-  useEffect(() => {
-    if (!activeConversationId) return;
-    loadMessages(activeConversationId, false);
-
-    const timer = setInterval(() => {
-      loadMessages(activeConversationId, true);
-    }, 1500);
-    return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeConversationId]);
-
-  useEffect(() => {
-    activeConversationRef.current = activeConversationId;
-  }, [activeConversationId]);
-
-  useEffect(() => {
-    searchRef.current = search;
-  }, [search]);
-
-  useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    if (!token) return;
-
-    const socket = new WebSocket(buildMessageSocketUrl(token));
-
-    socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(String(event.data || '{}'));
-        if (data?.type !== 'message.created' && data?.type !== 'conversation.updated') return;
-
-        loadConversations(searchRef.current, true);
-        if (activeConversationRef.current && String(data?.conversationId || '') === activeConversationRef.current) {
-          loadMessages(activeConversationRef.current, true);
-        }
-      } catch {
-        // Ignore malformed websocket payloads and keep polling as fallback.
-      }
-    };
-
-    socket.onerror = () => {
-      // Polling remains the fallback transport.
-    };
-
-    return () => socket.close();
-  }, []);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length, activeOthersTyping]);
 
   const onTypingChange = async (next: string) => {
     setMessageText(next);
@@ -308,21 +364,13 @@ const TeacherMessages = () => {
   };
 
   const handleCreateConversation = async () => {
-    if (!newChatStudentId || newChatStudentId === "none") return;
-    try {
-      const res = await messagesAPI.createConversation({ studentId: newChatStudentId });
-      const created = res?.data;
-      if (created?._id) setActiveConversationId(String(created._id));
-      setNewChatStudentId("none");
-      await loadConversations(search, true);
-    } catch (error: any) {
-      toast({ title: "Failed to start chat", description: error?.message, variant: "destructive" });
-    }
+    const studentId = (document.querySelector('[data-new-chat-select]') as any)?.value || "none";
+    if (!studentId || studentId === "none") return;
+    createConvMutation.mutate(studentId);
   };
 
   const handleUploadAttachments = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    setUploading(true);
 
     try {
       const list = Array.from(files);
@@ -349,8 +397,6 @@ const TeacherMessages = () => {
       setPendingAttachments((prev) => [...prev, ...uploaded]);
     } catch (error: any) {
       toast({ title: "Attachment upload failed", description: error?.message, variant: "destructive" });
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -359,49 +405,19 @@ const TeacherMessages = () => {
     if (!text && pendingAttachments.length === 0) return;
 
     if (composerMode?.type === "edit" && composerMode.message._id) {
-      if (!activeConversationId) return;
-      try {
-        const res = await messagesAPI.editMessage(activeConversationId, composerMode.message._id, { text });
-        const saved = res?.data;
-        setMessages((prev) => prev.map((msg) => (msg._id === saved?._id ? { ...msg, ...saved } : msg)));
-        clearComposerMode();
-        setMessageText("");
-        await loadMessages(activeConversationId, true);
-      } catch (error: any) {
-        toast({ title: "Failed to edit message", description: error?.message, variant: "destructive" });
-      }
+      editMessageMutation.mutate({ messageId: composerMode.message._id, text });
+      clearComposerMode();
+      setMessageText("");
       return;
     }
 
     let conversationId = activeConversationId;
-    if (!conversationId && newChatStudentId && newChatStudentId !== "none") {
-      try {
-        const created = await messagesAPI.createConversation({ studentId: newChatStudentId });
-        conversationId = String(created?.data?._id || "");
-        setActiveConversationId(conversationId);
-      } catch (error: any) {
-        toast({ title: "Failed to start conversation", description: error?.message, variant: "destructive" });
-        return;
-      }
-    }
-
     if (!conversationId) {
       toast({ title: "Select a conversation", description: "Pick a student or existing chat first." });
       return;
     }
 
-    setSending(true);
-    const localId = `local-${Date.now()}`;
-    const optimistic: MessageItem = {
-      localId,
-      senderId: { _id: meId, name: user?.name || "Teacher", avatar: user?.avatar || "" },
-      text,
-      attachments: pendingAttachments,
-      status: "sent",
-      createdAt: new Date().toISOString(),
-    };
-
-    setMessages((prev) => [...prev, optimistic]);
+    sendMutation.mutate({ text, attachments: pendingAttachments });
     setMessageText("");
     setPendingAttachments([]);
     setComposerMode(null);
@@ -411,29 +427,11 @@ const TeacherMessages = () => {
     } catch {
       // ignore
     }
-
-    try {
-      const res = await messagesAPI.sendMessage(conversationId, { text, attachments: optimistic.attachments || [] });
-      const saved = res?.data;
-      setMessages((prev) => prev.map((msg) => (msg.localId === localId ? saved : msg)));
-      await Promise.all([loadConversations(search, true), loadMessages(conversationId, true)]);
-    } catch (error: any) {
-      setMessages((prev) => prev.filter((msg) => msg.localId !== localId));
-      toast({ title: "Failed to send message", description: error?.message, variant: "destructive" });
-    } finally {
-      setSending(false);
-    }
   };
 
   const toggleMute = async () => {
-    if (!activeConversationId) return;
-    try {
-      const current = Boolean(activeSummary?.muted);
-      await messagesAPI.setMute(activeConversationId, !current);
-      await loadConversations(search, true);
-    } catch (error: any) {
-      toast({ title: "Failed to update mute", description: error?.message, variant: "destructive" });
-    }
+    if (!activeSummary) return;
+    muteMutation.mutate(!Boolean(activeSummary?.muted));
   };
 
   const clearComposerMode = () => {
@@ -463,21 +461,11 @@ const TeacherMessages = () => {
   };
 
   const handleDeleteMessage = async (message: MessageItem, scope: "me" | "everyone") => {
-    if (!activeConversationId || !message._id) return;
-    try {
-      await messagesAPI.deleteMessage(activeConversationId, message._id, scope);
-      if (scope === "everyone") {
-        await loadMessages(activeConversationId, true);
-        await loadConversations(search, true);
-      } else {
-        setMessages((prev) => prev.filter((item) => (item._id || item.localId) !== message._id));
-      }
-      if (composerMode?.message?._id === message._id) {
-        clearComposerMode();
-        setMessageText("");
-      }
-    } catch (error: any) {
-      toast({ title: "Failed to delete message", description: error?.message, variant: "destructive" });
+    if (!message._id) return;
+    deleteMessageMutation.mutate({ messageId: message._id, scope });
+    if (composerMode?.message?._id === message._id) {
+      clearComposerMode();
+      setMessageText("");
     }
   };
 
@@ -488,6 +476,9 @@ const TeacherMessages = () => {
   };
 
   const selectConversation = (conversationId: string) => {
+    console.log("[TeacherMessages] Selected conversation ID:", conversationId);
+    const selected = conversations.find((c) => c._id === conversationId);
+    console.log("[TeacherMessages] Found conversation:", selected?.displayName || selected?.peer?.name || "Unknown");
     setActiveConversationId(conversationId);
     setMobileView("chat");
   };
@@ -512,8 +503,12 @@ const TeacherMessages = () => {
           </div>
 
           <div className="mt-3 flex items-center gap-2">
-            <Select value={newChatStudentId} onValueChange={setNewChatStudentId}>
-              <SelectTrigger className="h-10 rounded-full border-border bg-background">
+            <Select onValueChange={(val) => {
+              if (val !== "none") {
+                createConvMutation.mutate(val);
+              }
+            }}>
+              <SelectTrigger className="h-10 rounded-full border-border bg-background" data-new-chat-select>
                 <SelectValue placeholder="New chat" />
               </SelectTrigger>
               <SelectContent>
@@ -523,14 +518,14 @@ const TeacherMessages = () => {
                 ))}
               </SelectContent>
             </Select>
-            <Button size="sm" className="h-10 rounded-full bg-primary px-4 text-primary-foreground hover:bg-primary/90" onClick={handleCreateConversation}>
-              <Plus className="mr-1 h-4 w-4" /> Start
+            <Button size="sm" className="h-10 rounded-full bg-primary px-4 text-primary-foreground hover:bg-primary/90" disabled={createConvMutation.isPending}>
+              <Plus className="mr-1 h-4 w-4" /> {createConvMutation.isPending ? "..." : "Start"}
             </Button>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto bg-muted/40 p-2 dark:bg-zinc-900/50">
-          {loadingConversations ? (
+          {convQuery.isLoading ? (
             <div className="space-y-2 p-2">
               <Skeleton className="h-16 w-full rounded-xl" />
               <Skeleton className="h-16 w-full rounded-xl" />
@@ -624,7 +619,7 @@ const TeacherMessages = () => {
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto bg-muted/40 px-3 py-4 md:px-4 dark:bg-zinc-900/70">
-              {loadingMessages ? (
+              {msgQuery.isLoading ? (
                 <div className="space-y-2">
                   <Skeleton className="ml-auto h-11 w-2/3 rounded-2xl" />
                   <Skeleton className="h-11 w-2/3 rounded-2xl" />
@@ -739,7 +734,7 @@ const TeacherMessages = () => {
                   }}
                 />
 
-                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full border border-border" onClick={() => inputFileRef.current?.click()} disabled={uploading}>
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full border border-border" onClick={() => inputFileRef.current?.click()} disabled={false}>
                   <Paperclip className="h-4 w-4" />
                 </Button>
 
@@ -760,13 +755,13 @@ const TeacherMessages = () => {
                   <Smile className="h-4 w-4" />
                 </Button>
 
-                <Button className="h-9 rounded-full bg-primary px-3 text-primary-foreground hover:bg-primary/90" onClick={handleSend} disabled={sending || uploading}>
+                <Button className="h-9 rounded-full bg-primary px-3 text-primary-foreground hover:bg-primary/90" onClick={handleSend} disabled={sendMutation.isPending}>
                   <SendHorizontal className="h-4 w-4" />
                 </Button>
               </div>
 
               <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
-                <span>{uploading ? "Uploading attachment..." : `${sharedFiles.length} shared files`}</span>
+                <span>{false ? "Uploading attachment..." : `${sharedFiles.length} shared files`}</span>
                 <span className="flex items-center gap-1">
                   {statusIcon(latestOwnMessageStatus)}
                   {latestOwnMessageStatus === "seen" ? "Seen" : latestOwnMessageStatus === "delivered" ? "Delivered" : "Sent"}

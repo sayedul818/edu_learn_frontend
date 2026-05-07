@@ -58,12 +58,12 @@ const Signup = () => {
               <BookOpen className="h-5 w-5 text-white" />
             </div>
             <div className="text-left leading-tight">
-              <span className="block text-2xl font-display font-bold">LearnSmart Prep</span>
+              <span className="block text-2xl font-display font-bold">ExamPathshala</span>
               <span className="block text-xs text-white/60">Bangla First Learning Platform</span>
             </div>
           </Link>
           <h1 className="text-3xl font-display font-black tracking-tight">Create your account</h1>
-          <p className="mt-1 text-sm text-white/65">Start your journey with LearnSmart Prep</p>
+          <p className="mt-1 text-sm text-white/65">Start your journey with ExamPathshala</p>
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-[#0d0d11] p-8 shadow-[0_28px_70px_rgba(0,0,0,0.55)]">

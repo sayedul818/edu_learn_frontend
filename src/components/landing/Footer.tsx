@@ -11,7 +11,7 @@ const Footer = () => {
               <div className="h-8 w-8 rounded-lg border border-border/70 bg-card/80 flex items-center justify-center backdrop-blur-sm">
                 <BookOpen className="h-4 w-4 text-foreground" />
               </div>
-              <span className="text-lg font-display font-bold">LearnSmart Prep</span>
+              <span className="text-lg font-display font-bold">ExamPathshala</span>
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed">
               স্মার্ট লার্নিং, অনুশীলন, আর একাডেমিক সাফল্যের একক ঠিকানা।
@@ -51,7 +51,7 @@ const Footer = () => {
 
         <div className="border-t border-border pt-6 text-center">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} LearnSmart Prep. সর্বস্বত্ব সংরক্ষিত।
+            © {new Date().getFullYear()} ExamPathshala. সর্বস্বত্ব সংরক্ষিত।
           </p>
         </div>
       </div>

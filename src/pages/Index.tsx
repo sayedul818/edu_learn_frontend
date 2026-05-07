@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
   BadgeCheck,
@@ -77,28 +77,194 @@ const featureCards = [
 
 const courses = [
   {
+    id: 1,
     title: "জব রেডি AI Powered Complete Web Development + DSA",
-    text: "Beginner থেকে advanced পর্যন্ত guided roadmap.",
+    shortDesc: "Beginner থেকে advanced পর্যন্ত guided roadmap with live projects.",
+    text: "Beginner থেকে advanced পর্যন্ত guided roadmap with real-world projects এবং live mentorship।",
     price: "৳৫,৯৯৯",
     oldPrice: "৳১১,৯৯৮",
     image: courseSSC,
-    accent: "hsl(var(--foreground))",
+    accent: "#3b82f6",
+    level: "Beginner to Advanced",
+    duration: "6 months",
+    students: "৪.৫k+ students",
+    rating: 4.8,
+    modules: 24,
+    projects: 8,
+    stats: [
+      { label: "সম্পন্ন করেছেন", value: "২৮৫০+" },
+      { label: "গড় রেটিং", value: "৪.৮/৫" },
+      { label: "জব প্লেসমেন্ট", value: "৮৫%" },
+    ],
+    features: [
+      "HTML, CSS, JavaScript - Foundation থেকে Advanced",
+      "React.js - Hooks, Context, Performance",
+      "Node.js + Express - RESTful APIs",
+      "MongoDB - Database Design & Optimization",
+      "DSA - 100+ Problem Solutions",
+      "Git & Deployment - AWS, Vercel",
+      "8 Real-World Projects",
+      "Live Code Reviews & Mentorship",
+      "Career Guidance & Resume Building",
+    ],
   },
   {
+    id: 2,
     title: "Data Science & Analytics with Gen AI",
-    text: "Project-based learning with live mentor support.",
+    shortDesc: "Project-based learning with live mentor support এবং real dataset.",
+    text: "Python, ML, AI এর সাথে real business projects এবং industry expert mentorship।",
     price: "৳৬,৯৯৯",
-    oldPrice: "৳১২,৪৯৯",
+    oldPrice: "৳१२,४९৯",
     image: courseHSC,
-    accent: "hsl(var(--muted-foreground))",
+    accent: "#f59e0b",
+    level: "Intermediate to Advanced",
+    duration: "5 months",
+    students: "২.৮k+ students",
+    rating: 4.9,
+    modules: 20,
+    projects: 6,
+    stats: [
+      { label: "সম্পন্ন করেছেন", value: "১৯৫০+" },
+      { label: "গড় রেটিং", value: "৪.৯/৫" },
+      { label: "ক্যারিয়ার শিফট", value: "৭২%" },
+    ],
+    features: [
+      "Python প্রোগ্রামিং - Pandas, NumPy, Scikit-learn",
+      "Machine Learning - Supervised & Unsupervised",
+      "Deep Learning - TensorFlow & PyTorch",
+      "Generative AI - Prompt Engineering & LLMs",
+      "Data Visualization - Tableau & Power BI",
+      "Big Data Processing - Spark",
+      "6 Industry Projects",
+      "Portfolio Building",
+      "Live Kaggle Competitions",
+    ],
   },
   {
-    title: "প্রিমিয়াম পরীক্ষার প্রস্তুতি ব্যাচ",
-    text: "SSC, HSC, admission এর জন্য full practice workflow.",
+    id: 3,
+    title: "এসএমএমসি এবং এইচএমসি পরীক্ষার প্রস্তুতি প্যাকেজ",
+    shortDesc: "সম্পূর্ণ প্র্যাকটিস ফ্লো সহ পরীক্ষা প্রস্তুতি।",
+    text: "SSC এবং HSC এর জন্য complete practice workflow with analytics এবং personalized guidance।",
     price: "৳৩,৪৯৯",
     oldPrice: "৳৬,৯৯৯",
     image: courseAdmission,
-    accent: "hsl(var(--foreground))",
+    accent: "#ef4444",
+    level: "SSC/HSC দ্বাদশ",
+    duration: "3-6 months",
+    students: "৫.২k+ students",
+    rating: 4.7,
+    modules: 45,
+    projects: 0,
+    stats: [
+      { label: "সাকসেস রেট", value: "৯২%" },
+      { label: "গড় স্কোর বৃদ্ধি", value: "২২ পয়েন্ট" },
+      { label: "সক্রিয় শিক্ষার্থী", value: "৫.২k+" },
+    ],
+    features: [
+      "সকল বিষয় - বাংলা, ইংরেজি, গণিত, বিজ্ঞান",
+      "সম্পূর্ণ সিলেবাস কভারেজ",
+      "১০,০০০+ প্র্যাকটিস প্রশ্ন",
+      "মাসিক মডেল পরীক্ষা",
+      "বিস্তারিত সমাধান ভিডিও",
+      "টপিক-ওয়াইজ দুর্বলতা বিশ্লেষণ",
+      "পার্সোনালাইজড স্টাডি প্ল্যান",
+      "দ্রুত সংশোধন গাইড",
+    ],
+  },
+  {
+    id: 4,
+    title: "Cloud DevOps & Kubernetes Mastery",
+    shortDesc: "AWS, Docker, Kubernetes এবং CI/CD pipeline মাস্টারি।",
+    text: "DevOps এর সম্পূর্ণ ইকোসিস্টেম - cloud deployment থেকে automated pipelines পর্যন্ত।",
+    price: "৳৫,৪৯৯",
+    oldPrice: "৳১০,৯৯৯",
+    image: courseSSC,
+    accent: "#10b981",
+    level: "Intermediate to Advanced",
+    duration: "4 months",
+    students: "১.৯k+ students",
+    rating: 4.6,
+    modules: 18,
+    projects: 5,
+    stats: [
+      { label: "সম্পন্ন করেছেন", value: "১,২০০+" },
+      { label: "গড় রেটিং", value: "৪.৬/৫" },
+      { label: "ক্লাউড সার্টিফিকেশন", value: "৬৮%" },
+    ],
+    features: [
+      "AWS মাস্টারি - EC2, S3, RDS, Lambda",
+      "Docker - Containerization ও ইমেজ অপটিমাইজেশন",
+      "Kubernetes - Orchestration ও স্কেলিং",
+      "CI/CD পাইপলাইন - Jenkins, GitLab CI",
+      "Infrastructure as Code - Terraform",
+      "মনিটরিং ও লগিং - Prometheus, ELK",
+      "5 Production Projects",
+      "AWS Solution Architect প্রস্তুতি",
+    ],
+  },
+  {
+    id: 5,
+    title: "মোবাইল অ্যাপ ডেভেলপমেন্ট - React Native & Flutter",
+    shortDesc: "iOS এবং Android উভয় প্ল্যাটফর্মে নেটিভ অ্যাপ তৈরি।",
+    text: "Cross-platform মোবাইল ডেভেলপমেন্ট সম্পূর্ণ বাস্তব প্রকল্প সহ।",
+    price: "৳৫,৭৯৯",
+    oldPrice: "৳११,৫৯৮",
+    image: courseHSC,
+    accent: "#8b5cf6",
+    level: "Intermediate to Advanced",
+    duration: "5 months",
+    students: "২.১k+ students",
+    rating: 4.7,
+    modules: 22,
+    projects: 7,
+    stats: [
+      { label: "সম্পন্ন করেছেন", value: "১,৫৫০+" },
+      { label: "গড় রেটিং", value: "৪.७/५" },
+      { label: "অ্যাপ প্রকাশিত", value: "৮৪%" },
+    ],
+    features: [
+      "React Native - JavaScript থেকে Native",
+      "Flutter - Dart প্রোগ্রামিং",
+      "UI/UX ডিজাইন নীতিমালা",
+      "Native APIs - ক্যামেরা, লোকেশন, সেন্সর",
+      "Firebase ইন্টিগ্রেশন",
+      "App Store & Google Play ডিপ্লয়মেন্ট",
+      "7 Real-World Apps",
+      "Monetization কৌশল",
+      "App Performance অপটিমাইজেশন",
+    ],
+  },
+  {
+    id: 6,
+    title: "সিস্টেম ডিজাইন এবং মাইক্রোসার্ভিসেস আর্কিটেকচার",
+    shortDesc: "স্কেলেবল, হাই-পারফরম্যান্স সিস্টেম ডিজাইন করুন।",
+    text: "Large-scale সিস্টেম ডিজাইনের নীতিমালা এবং ব্যবহারিক ইমপ্লিমেন্টেশন।",
+    price: "৳৬,৯৯৯",
+    oldPrice: "৳१३,৯९८",
+    image: courseAdmission,
+    accent: "#ec4899",
+    level: "Advanced",
+    duration: "5 months",
+    students: "১.৪k+ students",
+    rating: 4.9,
+    modules: 20,
+    projects: 4,
+    stats: [
+      { label: "সম্পন্ন করেছেন", value: "८००+" },
+      { label: "গড় রেটিং", value: "४.९/५" },
+      { label: "FAANG প্রস্তুত", value: "79%" },
+    ],
+    features: [
+      "স্কেলেবিলিটি - Horizontal & Vertical",
+      "ডাটাবেজ ডিজাইন - SQL, NoSQL, Caching",
+      "মাইক্রোসার্ভিসেস আর্কিটেকচার",
+      "API ডিজাইন - REST, GraphQL, gRPC",
+      "মেসেজিং সিস্টেম - Kafka, RabbitMQ",
+      "লোড ব্যালান্সিং এবং ডিস্ট্রিবিউটেড সিস্টেম",
+      "4 System Design Case Studies",
+      "FAANG ইন্টারভিউ প্রস্তুতি",
+      "লাইভ আর্কিটেকচার রিভিউ সেশন",
+    ],
   },
 ];
 
@@ -371,8 +537,174 @@ const PartnerLogoMarqueeRow = ({ reverse, duration }: { reverse?: boolean; durat
   );
 };
 
+const CourseDetailModal = ({ course, onClose }: { course: typeof courses[0] | null; onClose: () => void }) => {
+  if (!course) return null;
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4"
+      onClick={onClose}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      <motion.div
+        className="relative max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-3xl border border-white/15 bg-gradient-to-br from-[#0f0f13] via-[#0a0a0f] to-[#050507] p-8 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+      >
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="absolute right-6 top-6 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-all duration-200"
+        >
+          <span className="text-lg font-semibold text-white/80">✕</span>
+        </button>
+
+        <div className="grid gap-8 md:grid-cols-[1.2fr_1fr]">
+          {/* Left: Course Image Section */}
+          <div className="space-y-4">
+            <div
+              className="relative h-72 overflow-hidden rounded-2xl border border-white/15 bg-gradient-to-br"
+              style={{
+                backgroundImage: `linear-gradient(135deg, ${course.accent}20 0%, ${course.accent}05 100%)`,
+              }}
+            >
+              <img src={course.image} alt={course.title} className="h-full w-full object-cover" />
+              {/* Level Badge */}
+              <div
+                className="absolute right-4 top-4 rounded-full px-3 py-1.5 text-xs font-bold text-white backdrop-blur-md border"
+                style={{
+                  backgroundColor: `${course.accent}30`,
+                  borderColor: `${course.accent}60`,
+                  color: course.accent,
+                }}
+              >
+                {course.level}
+              </div>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="grid grid-cols-3 gap-3">
+              {course.stats.map((stat, idx) => (
+                <div
+                  key={idx}
+                  className="rounded-xl border border-white/10 bg-white/5 p-3 text-center backdrop-blur-sm"
+                >
+                  <p className="text-xs text-white/60">{stat.label}</p>
+                  <p className="mt-1.5 text-sm font-display font-bold text-white">{stat.value}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Course Metrics */}
+            <div className="grid grid-cols-2 gap-3">
+              <div
+                className="rounded-xl border px-4 py-3 backdrop-blur-sm"
+                style={{
+                  borderColor: `${course.accent}40`,
+                  backgroundColor: `${course.accent}10`,
+                }}
+              >
+                <p className="text-xs text-white/60">📚 Modules</p>
+                <p className="mt-1 text-xl font-display font-bold" style={{ color: course.accent }}>
+                  {course.modules}
+                </p>
+              </div>
+              <div
+                className="rounded-xl border px-4 py-3 backdrop-blur-sm"
+                style={{
+                  borderColor: `${course.accent}40`,
+                  backgroundColor: `${course.accent}10`,
+                }}
+              >
+                <p className="text-xs text-white/60">🎯 Projects</p>
+                <p className="mt-1 text-xl font-display font-bold" style={{ color: course.accent }}>
+                  {course.projects}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Content Section */}
+          <div className="flex flex-col justify-between space-y-6">
+            {/* Title and Description */}
+            <div>
+              <h2 className="text-2xl md:text-3xl font-display font-black text-white leading-tight">{course.title}</h2>
+              <p className="mt-3 text-sm text-white/75 leading-relaxed">{course.text}</p>
+
+              {/* Star Rating and Duration */}
+              <div className="mt-4 flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-0.5">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className="h-4 w-4"
+                        fill={i < Math.floor(course.rating) ? course.accent : "none"}
+                        stroke={course.accent}
+                        strokeWidth={i < Math.floor(course.rating) ? 0 : 1.5}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-sm font-semibold text-white">{course.rating.toFixed(1)}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-white/70">
+                  <Clock3 className="h-4 w-4" />
+                  {course.duration}
+                </div>
+              </div>
+            </div>
+
+            {/* Features Section */}
+            <div>
+              <h4 className="text-sm font-display font-bold text-white mb-3">✨ কোর্স বৈশিষ্ট্যসমূহ</h4>
+              <ul className="space-y-2">
+                {course.features.map((feature, idx) => (
+                  <li key={idx} className="flex items-start gap-2.5 text-sm text-white/80">
+                    <CheckCircle2
+                      className="mt-0.5 h-4 w-4 shrink-0"
+                      style={{ color: course.accent }}
+                    />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Divider */}
+            <div className="h-px bg-gradient-to-r from-white/10 via-white/20 to-white/10" />
+
+            {/* Price and CTA */}
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs text-white/60">বিশেষ মূল্য</p>
+                <div className="mt-2 flex items-baseline gap-2">
+                  <p className="text-3xl font-display font-black" style={{ color: course.accent }}>
+                    {course.price}
+                  </p>
+                  <p className="text-sm text-white/40 line-through">{course.oldPrice}</p>
+                </div>
+              </div>
+              <Button
+                className="h-12 rounded-xl px-8 text-base font-semibold text-white transition-all duration-200 hover:shadow-lg"
+                style={{ backgroundColor: course.accent }}
+              >
+                এখনই কোর্স নিন
+              </Button>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
 const Index = () => {
   const [mode, setMode] = useState<"student" | "teacher">("student");
+  const [selectedCourse, setSelectedCourse] = useState<typeof courses[0] | null>(null);
 
   return (
     <div className="home-glass-vibe min-h-screen overflow-x-hidden bg-background text-foreground">
@@ -383,13 +715,13 @@ const Index = () => {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.16),transparent_34%),radial-gradient(circle_at_top_right,hsl(var(--foreground)/0.06),transparent_28%)]" />
           <div className="container relative mx-auto px-4">
             <div className="mx-auto max-w-4xl text-center">
-              <SectionTag text="LearnSmart Prep" />
+              <SectionTag text="ExamPathshala" />
               <h1 className="mt-6 text-4xl font-display font-black leading-[1.05] tracking-[-0.04em] sm:text-5xl md:text-6xl">
                 শিখুন, প্র্যাকটিস করুন, সফল হন -
                 <span className="block text-foreground/90">সব এক প্ল্যাটফর্মে</span>
               </h1>
               <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-white/70 md:text-lg">
-                LearnSmart Prep আপনার complete academic workflow. প্রশ্ন ব্যাংক,
+                ExamPathshala আপনার complete academic workflow. প্রশ্ন ব্যাংক,
                 অনলাইন পরীক্ষা, রেজাল্ট analytics, leaderboard, এবং teacher tools
                 একই ecosystem এ।
               </p>
@@ -582,76 +914,152 @@ const Index = () => {
           </div>
         </section>
 
-        <section id="courses" className="bg-[#ece7e2] py-20 text-[#111]">
+        <section id="courses" className="py-20 md:py-24">
           <div className="container mx-auto px-4">
             <div className="text-center">
-              <span className="inline-flex rounded-full border border-border/70 bg-card/80 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-foreground">Courses</span>
-              <h2 className="mt-4 text-3xl font-display font-black sm:text-4xl">Not sure কোন কোর্স নেবেন? We are here to help.</h2>
+              <span className="inline-flex rounded-full border border-border/70 bg-card/70 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                Premium Courses
+              </span>
+              <h2 className="mt-4 text-3xl font-display font-black sm:text-4xl md:text-5xl">বিশেষভাবে ডিজাইন করা কোর্স</h2>
+              <p className="mx-auto mt-3 max-w-2xl text-white/65">আপনার ক্যারিয়ারের লক্ষ্য অর্জনের জন্য বিশেষজ্ঞ-তৈরি কোর্স প্রোগ্রাম।</p>
             </div>
 
-            <div className="mt-10 space-y-8 [perspective:1400px]">
-              {courses.map((course, index) => (
-                <motion.article
-                  key={course.title}
-                  className="sticky top-20 overflow-hidden rounded-[1.75rem] border border-black/10 bg-white text-[#0f1115] shadow-[0_22px_60px_rgba(14,16,20,0.14)] md:top-24 md:p-6 dark:border-[#121212] dark:bg-[#050505] dark:text-white dark:shadow-[0_30px_90px_rgba(0,0,0,0.4)]"
-                  initial={{ opacity: 0, y: 28, rotateX: 8, rotateY: index % 2 === 0 ? -9 : 9, scale: 0.97 }}
-                  whileInView={{ opacity: 1, y: 0, rotateX: 0, rotateY: 0, scale: 1 }}
+            <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {courses.slice(0, 3).map((course, index) => (
+                <motion.div
+                  key={course.id}
+                  className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.08] via-white/[0.03] to-transparent p-6 backdrop-blur-xl transition-all duration-300 hover:border-white/30 hover:from-white/[0.12] hover:via-white/[0.06]"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, amount: 0.3 }}
-                  transition={{ duration: 0.9, ease: "easeOut", delay: index * 0.12 }}
-                  whileHover={{ y: -4, rotateY: index % 2 === 0 ? 1.8 : -1.8 }}
-                  style={{ transformStyle: "preserve-3d", zIndex: index + 1 }}
+                  transition={{ duration: 0.6, delay: index * 0.08 }}
+                  whileHover={{ y: -8, boxShadow: "0 20px 40px rgba(0,0,0,0.3)" }}
                 >
-                  <div className="grid items-stretch gap-6 lg:grid-cols-[1.02fr_1.18fr]">
-                    <div>
-                      <div className="h-full overflow-hidden rounded-2xl border border-black/10 bg-[radial-gradient(circle_at_top,rgba(240,90,40,0.12),transparent_55%)] dark:border-white/10 dark:bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.16),transparent_45%)]">
-                        <img
-                          src={course.image}
-                          alt={`${course.title} preview`}
-                          loading="lazy"
-                          className="h-full min-h-[15rem] w-full object-cover"
-                        />
-                      </div>
-                    </div>
+                  {/* Gradient accent corner */}
+                  <div
+                    className="absolute -right-8 -top-8 h-32 w-32 rounded-full blur-3xl opacity-20 transition-opacity duration-300 group-hover:opacity-40"
+                    style={{ backgroundColor: course.accent }}
+                  />
 
-                    <div className="flex flex-col justify-between">
-                      <div>
-                        <h3 className="text-3xl font-display font-black leading-tight md:text-5xl">{course.title}</h3>
-                        <p className="mt-4 max-w-2xl text-sm text-[#334155] md:text-base dark:text-white/70">{course.text}</p>
-
-                        <div className="mt-6 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
-                          <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-muted/35 p-3">
-                            <Clock3 className="h-4 w-4 text-muted-foreground" />
-                            <span>200+ Hours</span>
-                          </div>
-                          <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-muted/35 p-3">
-                            <BadgeCheck className="h-4 w-4 text-muted-foreground" />
-                            <span>Yes Certified</span>
-                          </div>
-                          <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-muted/35 p-3">
-                            <Headset className="h-4 w-4 text-muted-foreground" />
-                            <span>24/7 Support</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                        <div>
-                          <p className="text-sm text-[#475569] dark:text-white/60">Price</p>
-                          <p className="text-4xl font-display font-black" style={{ color: course.accent }}>{course.price}</p>
-                          <p className="text-sm text-[#64748b] line-through dark:text-white/45">{course.oldPrice}</p>
-                        </div>
-
-                        <Button variant="glass" className="h-11 rounded-xl px-6 text-base font-semibold">
-                          Check Course <ArrowRight className="ml-1 h-4 w-4" />
-                        </Button>
-                      </div>
+                  {/* Course Image */}
+                  <div className="relative mb-5 h-48 overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-white/5 to-transparent">
+                    <img
+                      src={course.image}
+                      alt={course.title}
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+                    />
+                    {/* Level Badge */}
+                    <div
+                      className="absolute right-3 top-3 rounded-full px-3 py-1 text-xs font-bold text-white backdrop-blur-md border"
+                      style={{
+                        backgroundColor: `${course.accent}20`,
+                        borderColor: `${course.accent}50`,
+                        color: course.accent,
+                      }}
+                    >
+                      {course.level}
                     </div>
                   </div>
-                </motion.article>
+
+                  <div className="relative z-10 space-y-3">
+                    {/* Title and Description */}
+                    <div>
+                      <h3 className="line-clamp-2 text-base font-display font-bold text-white leading-tight">{course.title}</h3>
+                      <p className="mt-2 line-clamp-2 text-xs text-white/65">{course.shortDesc}</p>
+                    </div>
+
+                    {/* Duration and Students */}
+                    <div className="flex items-center gap-3 text-xs text-white/70">
+                      <div className="flex items-center gap-1">
+                        <Clock3 className="h-3.5 w-3.5" />
+                        <span>{course.duration}</span>
+                      </div>
+                      <span className="text-white/30">•</span>
+                      <div className="flex items-center gap-1">
+                        <Users className="h-3.5 w-3.5" />
+                        <span>{course.students}</span>
+                      </div>
+                    </div>
+
+                    {/* Star Rating */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-0.5">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className="h-3.5 w-3.5"
+                            fill={i < Math.floor(course.rating) ? course.accent : "none"}
+                            stroke={course.accent}
+                            strokeWidth={i < Math.floor(course.rating) ? 0 : 2}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-xs font-semibold text-white">{course.rating.toFixed(1)}</span>
+                    </div>
+
+                    {/* Stats Row */}
+                    <div className="grid grid-cols-3 gap-2 py-3">
+                      {course.stats.slice(0, 3).map((stat, idx) => (
+                        <div key={idx} className="rounded-lg border border-white/10 bg-white/5 p-2 text-center">
+                          <p className="text-[10px] text-white/50">{stat.label}</p>
+                          <p className="mt-0.5 text-xs font-bold text-white">{stat.value}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Divider */}
+                    <div className="h-px bg-gradient-to-r from-white/10 via-white/20 to-white/10" />
+
+                    {/* Footer: Price and Button */}
+                    <div className="flex items-center justify-between gap-3 pt-3">
+                      <div>
+                        <p className="text-xs text-white/50">মূল্য</p>
+                        <div className="mt-0.5 flex items-baseline gap-2">
+                          <p className="text-lg font-display font-black" style={{ color: course.accent }}>
+                            {course.price}
+                          </p>
+                          <p className="text-xs text-white/35 line-through">{course.oldPrice}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setSelectedCourse(course)}
+                        className="flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-200 border"
+                        style={{
+                          backgroundColor: `${course.accent}20`,
+                          borderColor: course.accent,
+                          color: course.accent,
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = course.accent;
+                          e.currentTarget.style.color = "white";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = `${course.accent}20`;
+                          e.currentTarget.style.color = course.accent;
+                        }}
+                      >
+                        <span>বিস্তারিত</span>
+                        <ArrowRight className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
               ))}
+            </div>
+
+            <div className="mt-10 text-center">
+              <Link to="/courses">
+                <Button className="h-12 px-8 text-base font-semibold rounded-xl bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70">
+                  সমস্ত কোর্স দেখুন <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
             </div>
           </div>
         </section>
+
+        <AnimatePresence>
+          {selectedCourse && <CourseDetailModal course={selectedCourse} onClose={() => setSelectedCourse(null)} />}
+        </AnimatePresence>
 
         <section className="border-y border-white/10 bg-[#050505] py-20 md:py-24">
           <div className="container mx-auto px-4">
@@ -660,7 +1068,7 @@ const Index = () => {
                 Comparison
               </span>
               <h2 className="mt-4 text-3xl font-display font-black sm:text-4xl md:text-5xl">
-                LearnSmart কে আলাদা করে তোলে যেসব কারণে
+                ExamPathshala কে আলাদা করে তোলে যেসব কারণে
               </h2>
             </div>
 
@@ -676,7 +1084,7 @@ const Index = () => {
                   <div className="flex h-11 w-11 items-center justify-center rounded-full border border-[#38d45f]/40 bg-[#38d45f]/10">
                     <Target className="h-5 w-5 text-[#49de70]" />
                   </div>
-                  <h3 className="text-2xl font-display font-bold text-white">LearnSmart Prep</h3>
+                  <h3 className="text-2xl font-display font-bold text-white">ExamPathshala</h3>
                 </div>
 
                 <div className="mt-6 space-y-3">
@@ -766,7 +1174,7 @@ const Index = () => {
 
                       <div>
                         <p className="inline-flex rounded-full border border-border/70 bg-card/80 px-3 py-1 text-xs font-semibold text-foreground">
-                          LearnSmart Event
+                          ExamPathshala Event
                         </p>
                         <h3 className="mt-3 text-2xl font-display font-black leading-tight">{card.title}</h3>
                         <p className="mt-2 text-sm leading-7 text-white/85">{card.text}</p>
@@ -826,8 +1234,8 @@ const Index = () => {
         <section className="py-20 md:py-24">
           <div className="container mx-auto px-4">
             <div className="text-center">
-              <SectionTag text="Why LearnSmart" />
-              <h2 className="mt-4 text-3xl font-display font-black sm:text-4xl">What sets LearnSmart apart</h2>
+              <SectionTag text="Why ExamPathshala" />
+              <h2 className="mt-4 text-3xl font-display font-black sm:text-4xl">What sets ExamPathshala apart</h2>
             </div>
             <div className="mt-10 grid gap-5 lg:grid-cols-2">
               <div className="rounded-2xl border border-border/70 bg-[#0d0d11] p-6">

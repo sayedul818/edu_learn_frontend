@@ -37,7 +37,7 @@ const ChatbotWidget = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      text: "হ্যালো! আমি LearnSmart Prep সহকারী। ছাত্র, শিক্ষক, কোর্স, বা পরীক্ষার যেকোনো প্রশ্ন করুন।",
+      text: "হ্যালো! আমি ExamPathshala সহকারী। ছাত্র, শিক্ষক, কোর্স, বা পরীক্ষার যেকোনো প্রশ্ন করুন।",
     },
   ]);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -105,7 +105,7 @@ const ChatbotWidget = () => {
                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border/70 bg-muted/60 text-foreground shadow-md sm:h-9 sm:w-9">
                   <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </span>
-                LearnSmart Prep Assistant
+                ExamPathshala Assistant
               </DialogTitle>
               <p className="mt-1 text-[11px] text-muted-foreground sm:text-xs">Bangla-first help for students and teachers</p>
             </div>
