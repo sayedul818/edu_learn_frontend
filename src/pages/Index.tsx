@@ -1364,9 +1364,9 @@ const Index = () => {
                     key={card.title}
                     className={`group relative overflow-hidden rounded-2xl border bg-gradient-to-b p-5 ${card.height} transition-colors duration-300 ${
                       theme === "dark"
-                        ? "border-white/15"
-                        : "border-black/15"
-                    } ${card.tone}`}
+                        ? `border-white/15 ${card.tone}`
+                        : "border-black/15 from-white/80 via-white/60 to-white/40"
+                    }`}
                     initial={{ opacity: 0, y: 28, rotateY: index % 2 === 0 ? -10 : 10 }}
                     whileInView={{ opacity: 1, y: 0, rotateY: 0 }}
                     viewport={{ once: true, amount: 0.2 }}
@@ -1374,15 +1374,19 @@ const Index = () => {
                     whileHover={{ y: -6, rotateX: 2, rotateY: index % 2 === 0 ? -3 : 3, transition: { duration: 0.4 } }}
                     style={{ transformStyle: "preserve-3d" }}
                   >
-                    <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
-                    <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/50 to-transparent" />
+                    <div className={`absolute -right-8 -top-8 h-24 w-24 rounded-full blur-2xl ${
+                      theme === "dark" ? "bg-white/10" : "bg-black/8"
+                    }`} />
+                    <div className={`absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t ${
+                      theme === "dark" ? "from-black/50 to-transparent" : "from-black/15 to-transparent"
+                    }`} />
 
                     <div className="relative z-10 flex h-full flex-col justify-between">
                       <div className="flex justify-end">
                         <div className={`inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors duration-300 ${
                           theme === "dark"
-                            ? "bg-black/70"
-                            : "bg-black/20"
+                            ? "bg-black/70 text-white"
+                            : "bg-white/70 text-black"
                         }`}>
                           <ArrowRight className="h-5 w-5" />
                         </div>
@@ -1396,9 +1400,11 @@ const Index = () => {
                         }`}>
                           ExamPathshala Event
                         </p>
-                        <h3 className="mt-3 text-2xl font-display font-black leading-tight">{card.title}</h3>
+                        <h3 className={`mt-3 text-2xl font-display font-black leading-tight ${
+                          theme === "dark" ? "text-white" : "text-black"
+                        }`}>{card.title}</h3>
                         <p className={`mt-2 text-sm leading-7 ${
-                          theme === "dark" ? "text-white/85" : "text-black/85"
+                          theme === "dark" ? "text-white/85" : "text-black/75"
                         }`}>{card.text}</p>
                       </div>
                     </div>
