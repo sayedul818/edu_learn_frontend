@@ -26,6 +26,11 @@ const GET_CACHE_TTL_MS = 60 * 1000;
 const responseCache = new Map<string, { data: any; expiresAt: number }>();
 const inFlightRequests = new Map<string, Promise<any>>();
 
+function notifyAuthExpired() {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('auth:expired'));
+}
+
 const cacheablePrefixes = [
   '/classes',
   '/groups',
@@ -127,6 +132,9 @@ async function fetchAPI(endpoint: string, options: FetchOptions = {}) {
 
       if (!response.ok) {
         const error = await parseJsonSafely(response);
+        if (response.status === 401) {
+          notifyAuthExpired();
+        }
         throw new Error(error?.error || `API Error: ${response.status}`);
       }
 

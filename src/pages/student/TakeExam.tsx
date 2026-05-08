@@ -13,10 +13,11 @@ const TakeExam = () => {
   const { examId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const userId = user?.id || (user as any)?._id || "anon";
   const examDraftKey = examId ? `examDraft_${userId}_${examId}` : null;
   const startedAtRef = useRef<string>(new Date().toISOString());
+  const autoSubmitTriggeredRef = useRef(false);
 
   type UploadedFileEntry = {
     name: string;
@@ -32,6 +33,8 @@ const TakeExam = () => {
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, UploadedFileEntry[]>>({});
   const [timeLeft, setTimeLeft] = useState(0);
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   // CQ questions: track which parent question ids the student has marked as answered or skipped
@@ -347,89 +350,77 @@ const TakeExam = () => {
   }, [examId, exam, isLoading, submitted, examDraftKey, userId, currentQ, answers, flagged, uploadedFiles, cqStatus, timeLeft]);
 
   const handleSubmit = useCallback(async () => {
-    if (submitted) return;
-    setSubmitted(true);
+    if (submitted || isSubmitting) return;
+    setIsSubmitting(true);
+    setSubmissionError(null);
     setShowConfirm(false);
-    // Mark exam as completed (user-scoped)
     try {
-      const uid = user?.id || (user as any)?._id || 'anon';
-      const compKey = `completedExams_${uid}`;
-      const stored = localStorage.getItem(compKey) || localStorage.getItem("completedExams");
-      const completed = stored ? JSON.parse(stored) : [];
-      if (!completed.includes(examId)) {
-        completed.push(examId);
-        localStorage.setItem(compKey, JSON.stringify(completed));
+      // Detect CQ (written) sub-questions. If any parent with subQuestions exists, mark result as pending evaluation
+      const hasCQ = questions.some((q) => Array.isArray(q.subQuestions) && q.subQuestions.length > 0);
+      const totalMarks = exam?.totalMarks || 0;
+      let score = 0;
+      let percentage = 0;
+
+      if (!hasCQ) {
+        // Calculate score only when there are no written sub-questions
+        questions.forEach((q) => {
+          if (answers[q.id] === q.correctAnswer) score += q.marks;
+          else if (answers[q.id] && exam?.negativeMarking) score -= exam.negativeMarkValue;
+        });
+        percentage = totalMarks > 0 ? Math.round((Math.max(0, score) / totalMarks) * 100) : 0;
       }
-    } catch (e) {
-      console.error("Failed to save completed exam", e);
-    }
-    // Detect CQ (written) sub-questions. If any parent with subQuestions exists, mark result as pending evaluation
-    const hasCQ = questions.some((q) => Array.isArray(q.subQuestions) && q.subQuestions.length > 0);
-    const totalMarks = exam?.totalMarks || 0;
-    let score = 0;
-    let percentage = 0;
 
-    if (!hasCQ) {
-      // Calculate score only when there are no written sub-questions
-      questions.forEach((q) => {
-        if (answers[q.id] === q.correctAnswer) score += q.marks;
-        else if (answers[q.id] && exam?.negativeMarking) score -= exam.negativeMarkValue;
-      });
-      percentage = totalMarks > 0 ? Math.round((Math.max(0, score) / totalMarks) * 100) : 0;
-    }
+      const timeTaken = (exam?.duration || 0) * 60 - timeLeft;
+      const result: any = {
+        examId,
+        score: hasCQ ? null : Math.max(0, score),
+        totalMarks,
+        percentage: hasCQ ? null : percentage,
+        answers,
+        cqStatus,
+        timeTaken,
+        completedAt: new Date().toISOString(),
+        pendingEvaluation: hasCQ,
+      };
 
-    const timeTaken = (exam?.duration || 0) * 60 - timeLeft;
-    const result: any = {
-      examId,
-      score: hasCQ ? null : Math.max(0, score),
-      totalMarks,
-      percentage: hasCQ ? null : percentage,
-      answers,
-      cqStatus,
-      timeTaken,
-      completedAt: new Date().toISOString(),
-      pendingEvaluation: hasCQ,
-    };
+      // Build attachments: upload files to Cloudinary if available, else fall back to data-URL
+      let attachmentsPayload: Record<string, { name: string; type: string; url?: string; dataUrl?: string } | Array<{ name: string; type: string; url?: string; dataUrl?: string }>> = {};
+      try {
+        // import helper lazily to avoid loading when not needed
+        const { uploadFileToCloudinary } = await import('@/services/cloudinary');
+        for (const qid of Object.keys(uploadedFiles)) {
+          const files = uploadedFiles[qid] || [];
+          if (!files.length) continue;
 
-    // Build attachments: upload files to Cloudinary if available, else fall back to data-URL
-    let attachmentsPayload: Record<string, { name: string; type: string; url?: string; dataUrl?: string } | Array<{ name: string; type: string; url?: string; dataUrl?: string }>> = {};
-    try {
-      // import helper lazily to avoid loading when not needed
-      const { uploadFileToCloudinary } = await import('@/services/cloudinary');
-      for (const qid of Object.keys(uploadedFiles)) {
-        const files = uploadedFiles[qid] || [];
-        if (!files.length) continue;
+          const uploadedEntries: Array<{ name: string; type: string; url?: string; dataUrl?: string }> = [];
 
-        const uploadedEntries: Array<{ name: string; type: string; url?: string; dataUrl?: string }> = [];
-
-        for (const f of files) {
-          try {
-            const fileObj = await dataUrlToFile(f.dataUrl, f.name, f.type);
-            // attempt Cloudinary upload
+          for (const f of files) {
             try {
-              const url = await uploadFileToCloudinary(fileObj);
-              uploadedEntries.push({ name: f.name, type: f.type, url });
-              continue;
-            } catch (uploadErr) {
-              console.warn('Cloudinary upload failed, falling back to data-URL', uploadErr);
+              const fileObj = await dataUrlToFile(f.dataUrl, f.name, f.type);
+              // attempt Cloudinary upload
+              try {
+                const url = await uploadFileToCloudinary(fileObj);
+                uploadedEntries.push({ name: f.name, type: f.type, url });
+                continue;
+              } catch (uploadErr) {
+                console.warn('Cloudinary upload failed, falling back to data-URL', uploadErr);
+                uploadedEntries.push({ name: f.name, type: f.type, dataUrl: f.dataUrl });
+              }
+            } catch (e) {
+              console.error('Failed to prepare attachment for', qid, e);
               uploadedEntries.push({ name: f.name, type: f.type, dataUrl: f.dataUrl });
             }
-          } catch (e) {
-            console.error('Failed to prepare attachment for', qid, e);
-            uploadedEntries.push({ name: f.name, type: f.type, dataUrl: f.dataUrl });
           }
+
+          if (uploadedEntries.length === 1) attachmentsPayload[qid] = uploadedEntries[0];
+          else if (uploadedEntries.length > 1) attachmentsPayload[qid] = uploadedEntries;
         }
-
-        if (uploadedEntries.length === 1) attachmentsPayload[qid] = uploadedEntries[0];
-        else if (uploadedEntries.length > 1) attachmentsPayload[qid] = uploadedEntries;
+      } catch (e) {
+        console.error('Failed preparing attachments', e);
       }
-    } catch (e) {
-      console.error('Failed preparing attachments', e);
-    }
 
-    // Submit result to backend; include pendingEvaluation flag and attachments
-    let savedResult: any = null;
-    try {
+      // Submit result to backend; include pendingEvaluation flag and attachments
+      let savedResult: any = null;
       const resp = await examResultsAPI.submit({
         examId,
         answers,
@@ -442,78 +433,114 @@ const TakeExam = () => {
         attachments: Object.keys(attachmentsPayload).length > 0 ? attachmentsPayload : undefined,
       });
       savedResult = resp?.data || resp;
+
+      // Mark exam as completed only after the backend confirms persistence.
+      try {
+        const uid = user?.id || (user as any)?._id || 'anon';
+        const compKey = `completedExams_${uid}`;
+        const stored = localStorage.getItem(compKey) || localStorage.getItem("completedExams");
+        const completed = stored ? JSON.parse(stored) : [];
+        if (!completed.includes(examId)) {
+          completed.push(examId);
+          localStorage.setItem(compKey, JSON.stringify(completed));
+        }
+      } catch (e) {
+        console.error("Failed to save completed exam", e);
+      }
+
+      // If this was a self-created exam (local), keep sessionStorage so ExamResult can load instantly.
+      try {
+        const selfExamKey = `selfExam_${examId}`;
+        const selfExamData = sessionStorage.getItem(selfExamKey);
+        if (selfExamData) {
+          const uid = user?.id || (user as any)?._id || 'anon';
+          try {
+            sessionStorage.setItem(`lastExamResult_${uid}`, JSON.stringify(savedResult || result));
+          } catch (e) {
+            sessionStorage.setItem('lastExamResult', JSON.stringify(savedResult || result));
+          }
+          // keep local copy for self exams
+          const key = `examResults_${uid}`;
+          try {
+            const storedResults = localStorage.getItem(key) || localStorage.getItem('examResults');
+            const results = storedResults ? JSON.parse(storedResults) : {};
+            results[examId] = savedResult || result;
+            localStorage.setItem(key, JSON.stringify(results));
+          } catch (e) {
+            // ignore
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      // Persist uploaded files for manual evaluation later (store as data URLs)
+      try {
+        const uid = user?.id || (user as any)?._id || 'anon';
+        const attachmentsKey = `examAttachments_${uid}_${examId}`;
+        if (Object.keys(attachmentsPayload).length > 0) {
+          try {
+            localStorage.setItem(attachmentsKey, JSON.stringify(attachmentsPayload));
+          } catch (e) {
+            console.error('Failed to persist attachments', e);
+          }
+        }
+      } catch (e) {
+        console.error('Error while persisting attachments', e);
+      }
+
+      try {
+        sessionStorage.removeItem(`examInProgress_${examId}`);
+        if (examDraftKey) {
+          localStorage.removeItem(examDraftKey);
+        }
+      } catch (e) {
+        console.error("Failed to clear exam in progress", e);
+      }
+
+      if (hasCQ) {
+        toast({ title: "Exam submitted successfully.", description: "Result is under preparation. Please wait for admin evaluation.", variant: "default" });
+        navigate('/exams');
+        return;
+      }
+
+      // For auto-evaluated exams, go to the result page
+      navigate(`/exam-result/${examId}`);
     } catch (e) {
       console.error("Failed to submit result to backend", e);
-      savedResult = result;
-    }
+      const message = e instanceof Error ? e.message : String(e);
+      const authExpired = /token|unauth|auth/i.test(message);
 
-    // If this was a self-created exam (local), keep sessionStorage so ExamResult can load instantly.
-    try {
-      const selfExamKey = `selfExam_${examId}`;
-      const selfExamData = sessionStorage.getItem(selfExamKey);
-      if (selfExamData) {
-        const uid = user?.id || (user as any)?._id || 'anon';
-        try {
-          sessionStorage.setItem(`lastExamResult_${uid}`, JSON.stringify(savedResult || result));
-        } catch (e) {
-          sessionStorage.setItem('lastExamResult', JSON.stringify(savedResult || result));
-        }
-        // keep local copy for self exams
-        const key = `examResults_${uid}`;
-        try {
-          const storedResults = localStorage.getItem(key) || localStorage.getItem('examResults');
-          const results = storedResults ? JSON.parse(storedResults) : {};
-          results[examId] = savedResult || result;
-          localStorage.setItem(key, JSON.stringify(results));
-        } catch (e) {
-          // ignore
-        }
+      if (authExpired) {
+        setSubmissionError(message);
+        toast({
+          title: "Session expired",
+          description: "Please log in again and resubmit the exam. Your draft is still saved locally.",
+          variant: "destructive",
+        });
+        await Promise.resolve(logout());
+        navigate('/login');
+        return;
       }
-    } catch (e) {
-      // ignore
-    }
 
-    // Persist uploaded files for manual evaluation later (store as data URLs)
-    try {
-      const uid = user?.id || (user as any)?._id || 'anon';
-      const attachmentsKey = `examAttachments_${uid}_${examId}`;
-      if (Object.keys(attachmentsPayload).length > 0) {
-        try {
-          localStorage.setItem(attachmentsKey, JSON.stringify(attachmentsPayload));
-        } catch (e) {
-          console.error('Failed to persist attachments', e);
-        }
-      }
-    } catch (e) {
-      console.error('Error while persisting attachments', e);
+      toast({
+        title: "Submission failed",
+        description: message || "Unable to save the exam right now. Please try again.",
+        variant: "destructive",
+      });
+      setSubmissionError(message || "Unable to save the exam right now. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    try {
-      sessionStorage.removeItem(`examInProgress_${examId}`);
-      if (examDraftKey) {
-        localStorage.removeItem(examDraftKey);
-      }
-    } catch (e) {
-      console.error("Failed to clear exam in progress", e);
-    }
-
-    // Notify user when manual evaluation is required
-    if (hasCQ) {
-      toast({ title: "Exam submitted successfully.", description: "Result is under preparation. Please wait for admin evaluation.", variant: "default" });
-      // Do not show the result page — return student to exams list
-      navigate('/exams');
-      return;
-    }
-    // For auto-evaluated exams, go to the result page
-    navigate(`/exam-result/${examId}`);
-  }, [answers, cqStatus, exam, questions, submitted, timeLeft, examId, navigate, uploadedFiles, user, toast, examDraftKey]);
+  }, [answers, cqStatus, exam, questions, submitted, isSubmitting, timeLeft, examId, navigate, uploadedFiles, user, toast, examDraftKey, logout]);
 
   // Auto-submit when time runs out
   useEffect(() => {
-    if (timeLeft === 0 && !submitted && exam && exam.autoSubmit !== false) {
+    if (timeLeft === 0 && !submitted && !isSubmitting && exam && exam.autoSubmit !== false && !autoSubmitTriggeredRef.current) {
+      autoSubmitTriggeredRef.current = true;
       handleSubmit();
     }
-  }, [timeLeft, submitted, exam, handleSubmit]);
+  }, [timeLeft, submitted, isSubmitting, exam, handleSubmit]);
 
   if (isLoading) {
     return (
@@ -539,6 +566,33 @@ const TakeExam = () => {
         <div className="fixed inset-0 z-[70] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-md">
             <BeautifulLoader message="পরীক্ষা সাবমিট হচ্ছে... অনুগ্রহ করে অপেক্ষা করুন" className="w-full" />
+          </div>
+        </div>
+      )}
+
+      {submissionError && !submitted && (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive space-y-3">
+          <div>
+            <p className="font-semibold">Submission failed</p>
+            <p className="mt-1 text-destructive/90">{submissionError}</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Retrying..." : "Retry Submission"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setSubmissionError(null)}
+              disabled={isSubmitting}
+            >
+              Dismiss
+            </Button>
           </div>
         </div>
       )}
@@ -897,11 +951,11 @@ const TakeExam = () => {
       {/* Submit button */}
       <div className="flex justify-center pb-8">
         <Button
-          disabled={submitted}
+          disabled={submitted || isSubmitting}
           className="w-full max-w-md bg-success hover:bg-success/90 text-white font-bold text-base py-6 rounded-xl transition-all hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed"
           onClick={() => setShowConfirm(true)}
         >
-          {submitted ? "Submitting..." : "Submit Exam"}
+          {submitted || isSubmitting ? "Submitting..." : "Submit Exam"}
         </Button>
       </div>
 
@@ -926,8 +980,8 @@ const TakeExam = () => {
                 )}
               </div>
               <div className="flex gap-3">
-                <Button variant="outline" className="flex-1" onClick={() => setShowConfirm(false)} disabled={submitted}>Go Back</Button>
-                <Button className="flex-1" onClick={handleSubmit} disabled={submitted}>{submitted ? "Submitting..." : "Submit"}</Button>
+                <Button variant="outline" className="flex-1" onClick={() => setShowConfirm(false)} disabled={submitted || isSubmitting}>Go Back</Button>
+                <Button className="flex-1" onClick={handleSubmit} disabled={submitted || isSubmitting}>{submitted || isSubmitting ? "Submitting..." : "Submit"}</Button>
               </div>
             </CardContent>
           </Card>

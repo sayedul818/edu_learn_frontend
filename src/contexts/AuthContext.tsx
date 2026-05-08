@@ -116,6 +116,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     bootstrap();
   }, []);
 
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      clearSession();
+    };
+
+    window.addEventListener('auth:expired', handleAuthExpired);
+    return () => window.removeEventListener('auth:expired', handleAuthExpired);
+  }, []);
+
   // Migrate legacy, shared local/session storage keys to user-scoped keys when a user becomes available.
   // This prevents cached results from one user leaking into another user's session on the same browser.
   useEffect(() => {
