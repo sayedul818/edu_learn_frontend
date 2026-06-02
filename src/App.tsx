@@ -79,7 +79,8 @@ const ThemeRouteController = () => {
 };
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isHydrating } = useAuth();
+  if (isHydrating) return <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Loading session...</div>;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return <StudentCourseProvider><DashboardLayout>{children}</DashboardLayout></StudentCourseProvider>;
 };
@@ -91,7 +92,8 @@ const RoleRoute = ({
   children: React.ReactNode;
   allowedRoles: Array<"student" | "teacher" | "admin">;
 }) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, isHydrating, user } = useAuth();
+  if (isHydrating) return <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Loading session...</div>;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (!user || !allowedRoles.includes(user.role)) return <Navigate to="/dashboard" replace />;
   return <StudentCourseProvider><DashboardLayout>{children}</DashboardLayout></StudentCourseProvider>;

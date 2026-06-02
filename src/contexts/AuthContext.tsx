@@ -105,8 +105,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const me = await authAPI.me();
           setUser(me);
           localStorage.setItem('exampro_user', JSON.stringify(me));
-        } catch {
-          clearSession();
+        } catch (err: any) {
+          // Only clear session when the error indicates invalid/expired token (401).
+          const msg = (err && err.message) ? String(err.message) : '';
+          console.warn('Auth bootstrap /auth/me failed:', msg);
+          if (/401|invalid token|no token|not authenticated|invalid token/i.test(msg)) {
+            clearSession();
+          } else {
+            // transient/network error — do not forcibly clear session; leave token intact
+            // so user won't be logged out on refresh due to temporary backend failures.
+          }
         }
       } finally {
         setIsHydrating(false);
